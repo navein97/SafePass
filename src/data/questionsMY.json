@@ -1,0 +1,47 @@
+[
+  {
+    "id": "my_001",
+    "text": "What is the maximum speed limit for heavy vehicles on Malaysian expressways?",
+    "options": ["80 km/h", "90 km/h", "110 km/h", "70 km/h"],
+    "correctOptionIndex": 1,
+    "explanation": "Heavy vehicles exceeding 10,000kg BDM are limited to 90 km/h on expressways (Lebuhraya) and 80 km/h on federal roads.",
+    "region": ["MY"],
+    "category": "Speed Limits"
+  },
+  {
+    "id": "my_002",
+    "text": "According to JPJ regulations, how often must a commercial vehicle undergo PUSPAKOM inspection?",
+    "options": ["Every 3 months", "Every 6 months", "Every 12 months", "Every 24 months"],
+    "correctOptionIndex": 1,
+    "explanation": "Commercial vehicles are required to undergo routine inspection at PUSPAKOM every 6 months to ensure roadworthiness.",
+    "region": ["MY"],
+    "category": "Compliance"
+  },
+  {
+    "id": "my_003",
+    "text": "What does a solid double white line on the road indicate?",
+    "options": ["Overtaking allowed if safe", "Overtaking strictly prohibited", "Parking allowed", "U-turn allowed"],
+    "correctOptionIndex": 1,
+    "explanation": "A double white line indicates that overtaking is strictly prohibited in both directions.",
+    "region": ["MY"],
+    "category": "Road Rules"
+  },
+  {
+    "id": "my_004",
+    "text": "When is it legal to use the emergency lane?",
+    "options": ["To avoid traffic jams", "When your vehicle breaks down", "To answer a phone call", "When rushing for delivery"],
+    "correctOptionIndex": 1,
+    "explanation": "The emergency lane is strictly for emergencies such as vehicle breakdown or medical emergencies. Misuse is an offense.",
+    "region": ["MY"],
+    "category": "Road Rules"
+  },
+  {
+    "id": "my_005",
+    "text": "What is the legal blood alcohol concentration (BAC) limit for drivers in Malaysia?",
+    "options": ["0.08%", "0.05%", "0.02%", "0.00%"],
+    "correctOptionIndex": 1,
+    "explanation": "The legal BAC limit in Malaysia was reduced to 0.05% (50mg/100ml blood) in 2020.",
+    "region": ["MY"],
+    "category": "Safety"
+  }
+]

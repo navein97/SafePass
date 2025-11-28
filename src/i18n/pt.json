@@ -1,0 +1,48 @@
+{
+  "common": {
+    "loading": "A carregar...",
+    "error": "Ocorreu um erro",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "back": "Voltar",
+    "next": "Seguinte",
+    "submit": "Submeter"
+  },
+  "auth": {
+    "login": "Entrar",
+    "employeeId": "ID de Funcionário",
+    "password": "Palavra-passe",
+    "welcome": "Bem-vindo ao SafePass"
+  },
+  "home": {
+    "safetyIndex": "Índice de Segurança",
+    "weeklyStatus": "Estado Semanal",
+    "compliant": "CONFORME",
+    "overdue": "EM ATRASO",
+    "startQuiz": "Iniciar Quiz Semanal",
+    "quizDue": "Quiz deve ser concluído até Domingo 23:59"
+  },
+  "quiz": {
+    "question": "Pergunta",
+    "of": "de",
+    "correct": "Correto!",
+    "incorrect": "Incorreto",
+    "explanation": "Explicação",
+    "finish": "Terminar Quiz",
+    "score": "A Sua Pontuação"
+  },
+  "profile": {
+    "title": "Perfil do Motorista",
+    "managerView": "Vista Rápida do Gestor",
+    "region": "Região"
+  },
+  "audit": {
+    "title": "Auditoria de Conformidade",
+    "lastActivity": "Última Atividade",
+    "history": "Histórico",
+    "week": "Semana",
+    "score": "Pontuação",
+    "date": "Data",
+    "tamperDetected": "ADULTERAÇÃO DETETADA"
+  }
+}

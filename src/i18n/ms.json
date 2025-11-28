@@ -1,0 +1,48 @@
+{
+  "common": {
+    "loading": "Memuatkan...",
+    "error": "Ralat berlaku",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "back": "Kembali",
+    "next": "Seterusnya",
+    "submit": "Hantar"
+  },
+  "auth": {
+    "login": "Log Masuk",
+    "employeeId": "ID Pekerja",
+    "password": "Kata Laluan",
+    "welcome": "Selamat Datang ke SafePass"
+  },
+  "home": {
+    "safetyIndex": "Indeks Keselamatan Pemandu",
+    "weeklyStatus": "Status Mingguan",
+    "compliant": "PATUH",
+    "overdue": "TERLEWAT",
+    "startQuiz": "Mula Kuiz Mingguan",
+    "quizDue": "Kuiz perlu disiapkan sebelum Ahad 11:59 PM"
+  },
+  "quiz": {
+    "question": "Soalan",
+    "of": "daripada",
+    "correct": "Betul!",
+    "incorrect": "Salah",
+    "explanation": "Penjelasan",
+    "finish": "Tamat Kuiz",
+    "score": "Markah Anda"
+  },
+  "profile": {
+    "title": "Profil Pemandu",
+    "managerView": "Paparan Pantas Pengurus",
+    "region": "Wilayah"
+  },
+  "audit": {
+    "title": "Audit Pematuhan",
+    "lastActivity": "Aktiviti Terakhir",
+    "history": "Sejarah",
+    "week": "Minggu",
+    "score": "Markah",
+    "date": "Tarikh",
+    "tamperDetected": "USIKAN DIKESAN"
+  }
+}

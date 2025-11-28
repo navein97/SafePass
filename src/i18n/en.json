@@ -1,0 +1,48 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit"
+  },
+  "auth": {
+    "login": "Login",
+    "employeeId": "Employee ID",
+    "password": "Password",
+    "welcome": "Welcome to SafePass"
+  },
+  "home": {
+    "safetyIndex": "Driver Safety Index",
+    "weeklyStatus": "Weekly Status",
+    "compliant": "COMPLIANT",
+    "overdue": "OVERDUE",
+    "startQuiz": "Start Weekly Quiz",
+    "quizDue": "Quiz due by Sunday 11:59 PM"
+  },
+  "quiz": {
+    "question": "Question",
+    "of": "of",
+    "correct": "Correct!",
+    "incorrect": "Incorrect",
+    "explanation": "Explanation",
+    "finish": "Finish Quiz",
+    "score": "Your Score"
+  },
+  "profile": {
+    "title": "Driver Profile",
+    "managerView": "Manager Quick View",
+    "region": "Region"
+  },
+  "audit": {
+    "title": "Compliance Audit",
+    "lastActivity": "Last Activity",
+    "history": "History",
+    "week": "Week",
+    "score": "Score",
+    "date": "Date",
+    "tamperDetected": "TAMPERING DETECTED"
+  }
+}

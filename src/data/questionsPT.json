@@ -1,0 +1,47 @@
+[
+  {
+    "id": "pt_001",
+    "text": "Qual é o limite máximo de horas de condução diária permitido na UE?",
+    "options": ["8 horas", "9 horas", "10 horas", "11 horas"],
+    "correctOptionIndex": 1,
+    "explanation": "O limite diário de condução é de 9 horas, podendo ser estendido para 10 horas no máximo duas vezes por semana.",
+    "region": ["PT"],
+    "category": "Regulamentação UE"
+  },
+  {
+    "id": "pt_002",
+    "text": "Após 4,5 horas de condução, qual a pausa obrigatória mínima?",
+    "options": ["15 minutos", "30 minutos", "45 minutos", "60 minutos"],
+    "correctOptionIndex": 2,
+    "explanation": "Após um período de condução de 4,5 horas, o condutor deve fazer uma pausa ininterrupta de pelo menos 45 minutos.",
+    "region": ["PT"],
+    "category": "Tempos de Condução"
+  },
+  {
+    "id": "pt_003",
+    "text": "Qual é o limite de velocidade para veículos pesados de mercadorias em autoestradas em Portugal?",
+    "options": ["80 km/h", "90 km/h", "100 km/h", "110 km/h"],
+    "correctOptionIndex": 1,
+    "explanation": "O limite máximo de velocidade para veículos pesados de mercadorias em autoestradas é de 90 km/h.",
+    "region": ["PT"],
+    "category": "Limites de Velocidade"
+  },
+  {
+    "id": "pt_004",
+    "text": "O que indica o sinal de tacógrafo 'Cama'?",
+    "options": ["Condução", "Trabalho", "Disponibilidade", "Repouso"],
+    "correctOptionIndex": 3,
+    "explanation": "O símbolo da cama no tacógrafo indica que o condutor está em período de repouso ou pausa.",
+    "region": ["PT"],
+    "category": "Tacógrafo"
+  },
+  {
+    "id": "pt_005",
+    "text": "É obrigatório o uso de colete refletor ao sair do veículo na autoestrada?",
+    "options": ["Apenas à noite", "Sim, sempre", "Não é obrigatório", "Apenas se estiver a chover"],
+    "correctOptionIndex": 1,
+    "explanation": "É obrigatório usar o colete refletor sempre que sair do veículo na autoestrada ou vias equiparadas, de dia ou de noite.",
+    "region": ["PT"],
+    "category": "Segurança"
+  }
+]
