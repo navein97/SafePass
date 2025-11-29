@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -16,6 +17,7 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [fullName, setFullName] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [region, setRegion] = useState<Region>('MY');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   
   // Validation state
@@ -93,7 +95,16 @@ export const RegisterScreen = ({ navigation }: any) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background.default} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          bounces={true}
+        >
         <Text style={styles.title}>SafePass</Text>
         <Text style={styles.subtitle}>Create Driver Account</Text>
 
@@ -152,16 +163,28 @@ export const RegisterScreen = ({ navigation }: any) => {
 
           <View>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={[styles.input, errors.password ? styles.inputError : null]}
-              placeholderTextColor={colors.text.secondary}
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
-              }}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.passwordInput, errors.password ? styles.inputError : null]}
+                placeholderTextColor={colors.text.secondary}
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+                }}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff size={20} color={colors.text.secondary} />
+                ) : (
+                  <Eye size={20} color={colors.text.secondary} />
+                )}
+              </TouchableOpacity>
+            </View>
             {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
           </View>
 
@@ -204,7 +227,8 @@ export const RegisterScreen = ({ navigation }: any) => {
             </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -215,6 +239,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.default,
   },
   content: {
+    flexGrow: 1,
     padding: 24,
   },
   title: {
@@ -250,6 +275,26 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: typography.sizes.base,
     fontFamily: typography.fonts.regular,
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    backgroundColor: colors.background.paper,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 16,
+    paddingRight: 50,
+    color: colors.text.primary,
+    fontSize: typography.sizes.base,
+    fontFamily: typography.fonts.regular,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    padding: 4,
   },
   regionContainer: {
     flexDirection: 'row',

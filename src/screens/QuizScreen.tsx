@@ -183,7 +183,7 @@ export const QuizScreen = ({ navigation }: any) => {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} bounces={true}>
         <Text style={styles.questionText}>{currentQuestion.text}</Text>
 
         <View style={styles.optionsContainer}>

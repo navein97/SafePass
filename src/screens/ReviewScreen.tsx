@@ -13,7 +13,7 @@ export const ReviewScreen = ({ route, navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} bounces={true}>
         <View style={styles.scoreHeader}>
           <Text style={styles.scoreTitle}>{t('quiz.score')}</Text>
           <Text style={styles.scoreValue}>{attempt.score}%</Text>
