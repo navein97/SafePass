@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
-import { Shield, AlertCircle, CheckCircle } from 'lucide-react-native';
+import { Shield, AlertCircle, CheckCircle, User } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 
@@ -65,7 +65,9 @@ export const HomeScreen = ({ navigation }: any) => {
             style={styles.profileButton}
             onPress={() => navigation.navigate('Profile')}
           >
-            <View style={styles.avatar} />
+            <View style={styles.avatar}>
+              <User size={24} color={colors.primary.light} />
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -158,6 +160,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary.dark,
     borderWidth: 2,
     borderColor: colors.primary.light,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   card: {
     backgroundColor: colors.background.paper,

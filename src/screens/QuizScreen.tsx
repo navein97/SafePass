@@ -8,7 +8,7 @@ import { QuizService } from '../services/quizService';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import { Question } from '../types/models';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, ChevronLeft } from 'lucide-react-native';
 
 export const QuizScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -168,10 +168,16 @@ export const QuizScreen = ({ navigation }: any) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header / Progress */}
+      {/* Header / Progress */}
       <View style={styles.header}>
-        <Text style={styles.progressText}>
-          {t('quiz.question')} {currentIndex + 1} {t('quiz.of')} {questions.length}
-        </Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <ChevronLeft color={colors.text.primary} size={28} />
+          </TouchableOpacity>
+          <Text style={styles.progressText}>
+            {t('quiz.question')} {currentIndex + 1} {t('quiz.of')} {questions.length}
+          </Text>
+        </View>
         <View style={styles.progressBarBg}>
           <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
         </View>
@@ -226,10 +232,17 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 12,
   },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backButton: {
+    marginRight: 16,
+  },
   progressText: {
     color: colors.text.secondary,
     fontFamily: typography.fonts.medium,
-    marginBottom: 8,
   },
   progressBarBg: {
     height: 6,
