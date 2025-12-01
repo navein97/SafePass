@@ -7,7 +7,7 @@ import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthService } from '../services/authService';
 import { Region } from '../types/models';
-
+import { Toast } from '../components/Toast';
 import { Validation } from '../utils/validation';
 
 export const RegisterScreen = ({ navigation }: any) => {
@@ -19,6 +19,11 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [region, setRegion] = useState<Region>('MY');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Toast state
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
   
   // Validation state
   const [errors, setErrors] = useState({
@@ -82,19 +87,31 @@ export const RegisterScreen = ({ navigation }: any) => {
     if (error) {
       const friendlyMsg = Validation.getFriendlyErrorMessage(error);
       setErrors(prev => ({ ...prev, general: friendlyMsg }));
-      Alert.alert('Registration Failed', friendlyMsg);
+      setToastType('error');
+      setToastMessage(friendlyMsg);
+      setToastVisible(true);
     } else {
-      Alert.alert(
-        'Verify Your Email',
-        'We have sent a verification link to ' + email + '.\n\nPlease check your inbox (and spam folder) and click the link to activate your account.',
-        [{ text: 'OK, I will check', onPress: () => navigation.navigate('Login') }]
-      );
+      // Show success toast
+      setToastType('success');
+      setToastMessage('✅ Check your email for verification link!');
+      setToastVisible(true);
+      
+      // Navigate to login after a short delay
+      setTimeout(() => {
+        navigation.navigate('Login');
+      }, 2000);
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background.default} />
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setToastVisible(false)}
+      />
       <KeyboardAvoidingView 
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

@@ -8,6 +8,7 @@ import './src/i18n'; // Initialize i18n
 // Screens
 import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
+import { AuthCallbackScreen } from './src/screens/AuthCallbackScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { QuizScreen } from './src/screens/QuizScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
@@ -70,6 +71,7 @@ export default function App() {
         >
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
           <Stack.Screen name="Main" component={HomeScreen} />
           <Stack.Screen name="Quiz" component={QuizScreen} />
           <Stack.Screen name="Review" component={ReviewScreen} />

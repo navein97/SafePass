@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Region } from '../types/models';
+import { Platform } from 'react-native';
 
 export interface SignUpData {
     email: string;
@@ -20,10 +21,16 @@ export const AuthService = {
      */
     async signUp(data: SignUpData) {
         try {
+            // Use web URL for web platform, deep link for mobile
+            const redirectUrl = Platform.OS === 'web'
+                ? 'https://safepass-kappa.vercel.app/auth/callback'
+                : 'safepass://auth/callback';
+
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: data.email,
                 password: data.password,
                 options: {
+                    emailRedirectTo: redirectUrl,
                     data: {
                         full_name: data.fullName,
                         employee_id: data.employeeId,
