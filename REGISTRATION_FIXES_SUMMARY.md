@@ -17,6 +17,14 @@
 - **Web users** → `https://safepass-kappa.vercel.app/auth/callback`
 - **Mobile users** → `safepass://auth/callback` (deep link)
 
+### 3. Fixed 404 Error on Vercel
+**Before:** Clicking email link showed "404: NOT_FOUND"
+**After:** Correctly loads the app and verifies email
+
+- **vercel.json:** Added rewrite rules for SPA routing
+- **App.tsx:** Configured deep linking to handle `/auth/callback`
+- **Dependencies:** Installed `expo-linking`
+
 ## 📁 Files Created
 
 1. **src/components/Toast.tsx**

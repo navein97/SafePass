@@ -27,10 +27,28 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useCallback } from 'react';
 import { View } from 'react-native';
 
+import * as Linking from 'expo-linking';
+
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 const Stack = createNativeStackNavigator();
+
+const linking = {
+  prefixes: [Linking.createURL('/'), 'https://safepass-kappa.vercel.app', 'safepass://'],
+  config: {
+    screens: {
+      Login: 'login',
+      Register: 'register',
+      AuthCallback: 'auth/callback',
+      Main: 'home',
+      Quiz: 'quiz',
+      Review: 'review',
+      Profile: 'profile',
+      ManagerQuickView: 'manager',
+    },
+  },
+};
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -60,7 +78,7 @@ export default function App() {
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <StatusBar style="light" backgroundColor={colors.background.default} />
-      <NavigationContainer>
+      <NavigationContainer linking={linking}>
         <Stack.Navigator
           initialRouteName="Login"
           screenOptions={{

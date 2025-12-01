@@ -41,10 +41,44 @@ export const AuthService = {
 
             if (authError) throw authError;
 
+            // Debug logging
+            console.log('✅ Signup successful!');
+            console.log('📧 Email sent to:', data.email);
+            console.log('🔗 Redirect URL:', redirectUrl);
+            console.log('👤 User ID:', authData.user?.id);
+            console.log('✉️ Email confirmation required:', !authData.user?.email_confirmed_at);
+
             return { user: authData.user, error: null };
         } catch (error: any) {
             console.error('Sign up error:', error);
             return { user: null, error: error.message };
+        }
+    },
+
+    /**
+     * Resend confirmation email
+     */
+    async resendConfirmationEmail(email: string) {
+        try {
+            const redirectUrl = Platform.OS === 'web'
+                ? 'https://safepass-kappa.vercel.app/auth/callback'
+                : 'safepass://auth/callback';
+
+            const { error } = await supabase.auth.resend({
+                type: 'signup',
+                email: email,
+                options: {
+                    emailRedirectTo: redirectUrl,
+                },
+            });
+
+            if (error) throw error;
+
+            console.log('✅ Confirmation email resent to:', email);
+            return { error: null };
+        } catch (error: any) {
+            console.error('Resend email error:', error);
+            return { error: error.message };
         }
     },
 
