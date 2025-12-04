@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
-import { Shield, LogOut, User, MapPin, Hash, Eye, Trophy, ChevronLeft } from 'lucide-react-native';
+import { Shield, LogOut, User, Trophy, ChevronLeft } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
+import { GradientBackground } from '../components/ui/GradientBackground';
+import { GlassCard } from '../components/ui/GlassCard';
+import { GlassButton } from '../components/ui/GlassButton';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export const ProfileScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -69,82 +73,86 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.light} />
-        </View>
-      </SafeAreaView>
+      <GradientBackground>
+        <SafeAreaView style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+        </SafeAreaView>
+      </GradientBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} bounces={true}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <ChevronLeft color={colors.text.primary} size={28} />
-          </TouchableOpacity>
-          <Text style={styles.title}>{t('profile.title')}</Text>
-        </View>
+    <GradientBackground>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <ChevronLeft color={colors.text.primary} size={28} />
+            </TouchableOpacity>
+            <Text style={styles.title}>{t('profile.title')}</Text>
+          </View>
 
-        {/* Profile Card */}
-        <View style={styles.card}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <User size={40} color={colors.text.primary} />
+          {/* Profile Card */}
+          <GlassCard style={styles.card}>
+            <View style={styles.avatarContainer}>
+              <LinearGradient
+                colors={colors.gradients.primary as any}
+                style={styles.avatar}
+              >
+                <User size={40} color={colors.text.primary} />
+              </LinearGradient>
+              <View>
+                <Text style={styles.name}>{profile?.full_name || 'Driver'}</Text>
+                <Text style={styles.id}>{profile?.employee_id || 'N/A'}</Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.name}>{profile?.full_name || 'Driver'}</Text>
-              <Text style={styles.id}>{profile?.employee_id || 'N/A'}</Text>
+            
+            <View style={styles.divider} />
+            
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>{t('profile.region')}</Text>
+              <Text style={styles.value}>
+                {profile?.region === 'MY' ? 'Malaysia (MY)' : 'Portugal (PT)'}
+              </Text>
             </View>
-          </View>
-          
-          <View style={styles.divider} />
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>{t('profile.region')}</Text>
-            <Text style={styles.value}>
-              {profile?.region === 'MY' ? 'Malaysia (MY)' : 'Portugal (PT)'}
-            </Text>
-          </View>
-        </View>
+          </GlassCard>
 
-        {/* Safety Index */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('home.safetyIndex')}</Text>
-          <View style={styles.scoreContainer}>
-            <Shield size={48} color={colors.primary.light} />
-            <Text style={styles.score}>{profile?.safety_index || 0}</Text>
-          </View>
-          <Text style={styles.scoreSubtext}>90-day rolling average</Text>
-        </View>
+          {/* Safety Index */}
+          <GlassCard style={styles.card}>
+            <Text style={styles.cardTitle}>{t('home.safetyIndex')}</Text>
+            <View style={styles.scoreContainer}>
+              <Shield size={48} color={colors.primary.DEFAULT} />
+              <Text style={styles.score}>{profile?.safety_index || 0}</Text>
+            </View>
+            <Text style={styles.scoreSubtext}>90-day rolling average</Text>
+          </GlassCard>
 
-        {/* Leaderboard Button */}
-        <TouchableOpacity 
-          style={styles.managerButton}
-          onPress={() => navigation.navigate('ManagerQuickView')}
-        >
-          <Trophy color={colors.text.inverse} size={24} />
-          <Text style={styles.managerButtonText}>View Leaderboard</Text>
-        </TouchableOpacity>
+          {/* Leaderboard Button */}
+          <GlassButton
+            title="View Leaderboard"
+            onPress={() => navigation.navigate('ManagerQuickView')}
+            icon={<Trophy color={colors.text.primary} size={20} />}
+            style={styles.managerButton}
+          />
 
-        {/* Logout */}
-        <TouchableOpacity 
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <LogOut color={colors.status.danger} size={20} />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+          {/* Logout */}
+          <GlassButton
+            title="Logout"
+            onPress={handleLogout}
+            variant="danger"
+            icon={<LogOut color={colors.text.primary} size={20} />}
+            style={styles.logoutButton}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background.default,
   },
   loadingContainer: {
     flex: 1,
@@ -158,22 +166,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,
+    marginTop: 10,
   },
   backButton: {
     marginRight: 12,
   },
   title: {
-    fontSize: typography.sizes['3xl'],
+    fontSize: 32,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
   },
   card: {
-    backgroundColor: colors.background.paper,
-    borderRadius: 16,
-    padding: 24,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   avatarContainer: {
     flexDirection: 'row',
@@ -184,12 +188,9 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.background.subtle,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-    borderWidth: 2,
-    borderColor: colors.border,
   },
   name: {
     fontSize: typography.sizes.xl,
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginBottom: 16,
   },
   infoRow: {
@@ -236,40 +237,19 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
+    textShadowColor: 'rgba(0, 122, 255, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   scoreSubtext: {
     color: colors.status.success,
     fontFamily: typography.fonts.medium,
   },
   managerButton: {
-    backgroundColor: colors.primary.light,
-    padding: 20,
-    borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
-    shadowColor: colors.primary.light,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  managerButtonText: {
-    color: colors.text.inverse,
-    fontSize: typography.sizes.lg,
-    fontFamily: typography.fonts.bold,
+    marginBottom: 16,
   },
   logoutButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    padding: 16,
-  },
-  logoutText: {
-    color: colors.status.danger,
-    fontFamily: typography.fonts.medium,
+    marginBottom: 24,
   },
 });
+

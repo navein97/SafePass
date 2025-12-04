@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, StatusBar, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Eye, EyeOff, User, Mail, Lock, Briefcase, MapPin } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -9,6 +9,10 @@ import { AuthService } from '../services/authService';
 import { Region } from '../types/models';
 import { Toast } from '../components/Toast';
 import { Validation } from '../utils/validation';
+import { GradientBackground } from '../components/ui/GradientBackground';
+import { GlassInput } from '../components/ui/GlassInput';
+import { GlassButton } from '../components/ui/GlassButton';
+import { GlassCard } from '../components/ui/GlassCard';
 
 export const RegisterScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -104,258 +108,200 @@ export const RegisterScreen = ({ navigation }: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background.default} />
-      <Toast
-        visible={toastVisible}
-        message={toastMessage}
-        type={toastType}
-        onHide={() => setToastVisible(false)}
-      />
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          bounces={true}
+    <GradientBackground>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <Toast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+          onHide={() => setToastVisible(false)}
+        />
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-        <Text style={styles.title}>SafePass</Text>
-        <Text style={styles.subtitle}>Create Driver Account</Text>
-
-        <View style={styles.form}>
-          {errors.general ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>{errors.general}</Text>
-            </View>
-          ) : null}
-
-          <View>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={[styles.input, errors.fullName ? styles.inputError : null]}
-              placeholderTextColor={colors.text.secondary}
-              value={fullName}
-              onChangeText={(text) => {
-                setFullName(text);
-                if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
-              }}
-              autoCapitalize="words"
-            />
-            {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
-          </View>
-
-          <View>
-            <Text style={styles.label}>Employee ID</Text>
-            <TextInput
-              style={[styles.input, errors.employeeId ? styles.inputError : null]}
-              placeholderTextColor={colors.text.secondary}
-              value={employeeId}
-              onChangeText={(text) => {
-                setEmployeeId(text);
-                if (errors.employeeId) setErrors(prev => ({ ...prev, employeeId: '' }));
-              }}
-              autoCapitalize="characters"
-            />
-            {errors.employeeId ? <Text style={styles.errorText}>{errors.employeeId}</Text> : null}
-          </View>
-
-          <View>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={[styles.input, errors.email ? styles.inputError : null]}
-              placeholderTextColor={colors.text.secondary}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
-              }}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
-          </View>
-
-          <View>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={[styles.passwordInput, errors.password ? styles.inputError : null]}
-                placeholderTextColor={colors.text.secondary}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
-                }}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity 
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeOff size={20} color={colors.text.secondary} />
-                ) : (
-                  <Eye size={20} color={colors.text.secondary} />
-                )}
-              </TouchableOpacity>
-            </View>
-            {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
-          </View>
-
-          <Text style={styles.label}>Region</Text>
-          <View style={styles.regionContainer}>
-            <TouchableOpacity
-              style={[styles.regionButton, region === 'MY' && styles.regionButtonActive]}
-              onPress={() => setRegion('MY')}
-            >
-              <Text style={[styles.regionText, region === 'MY' && styles.regionTextActive]}>
-                Malaysia
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.regionButton, region === 'PT' && styles.regionButtonActive]}
-              onPress={() => setRegion('PT')}
-            >
-              <Text style={[styles.regionText, region === 'PT' && styles.regionTextActive]}>
-                Portugal
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity 
-            style={[styles.button, loading && styles.buttonDisabled]} 
-            onPress={handleRegister}
-            disabled={loading}
+          <ScrollView 
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            bounces={true}
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.buttonText}>
-              {loading ? 'Creating Account...' : 'Register'}
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.header}>
+              <Text style={styles.title}>SafePass</Text>
+              <Text style={styles.subtitle}>Create Driver Account</Text>
+            </View>
 
-          <TouchableOpacity 
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.linkText}>
-              Already have an account? <Text style={styles.linkTextBold}>Sign In</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <GlassCard style={styles.formCard}>
+              <View style={styles.form}>
+                {errors.general ? (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.errorBannerText}>{errors.general}</Text>
+                  </View>
+                ) : null}
+
+                <GlassInput
+                  label="Full Name"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChangeText={(text) => {
+                    setFullName(text);
+                    if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
+                  }}
+                  autoCapitalize="words"
+                  error={errors.fullName}
+                  leftIcon={<User size={20} color={colors.text.secondary} />}
+                />
+
+                <GlassInput
+                  label="Employee ID"
+                  placeholder="EMP12345"
+                  value={employeeId}
+                  onChangeText={(text) => {
+                    setEmployeeId(text);
+                    if (errors.employeeId) setErrors(prev => ({ ...prev, employeeId: '' }));
+                  }}
+                  autoCapitalize="characters"
+                  error={errors.employeeId}
+                  leftIcon={<Briefcase size={20} color={colors.text.secondary} />}
+                />
+
+                <GlassInput
+                  label="Email"
+                  placeholder="driver@company.com"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                  }}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  error={errors.email}
+                  leftIcon={<Mail size={20} color={colors.text.secondary} />}
+                />
+
+                <GlassInput
+                  label="Password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+                  }}
+                  secureTextEntry={!showPassword}
+                  error={errors.password}
+                  leftIcon={<Lock size={20} color={colors.text.secondary} />}
+                  rightIcon={
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                      {showPassword ? (
+                        <EyeOff size={20} color={colors.text.secondary} />
+                      ) : (
+                        <Eye size={20} color={colors.text.secondary} />
+                      )}
+                    </TouchableOpacity>
+                  }
+                />
+
+                <Text style={styles.label}>Region</Text>
+                <View style={styles.regionContainer}>
+                  <GlassButton
+                    title="Malaysia"
+                    onPress={() => setRegion('MY')}
+                    variant={region === 'MY' ? 'primary' : 'outline'}
+                    style={styles.regionButton}
+                    icon={<MapPin size={16} color={region === 'MY' ? colors.text.primary : colors.primary.DEFAULT} />}
+                  />
+                  <GlassButton
+                    title="Portugal"
+                    onPress={() => setRegion('PT')}
+                    variant={region === 'PT' ? 'primary' : 'outline'}
+                    style={styles.regionButton}
+                    icon={<MapPin size={16} color={region === 'PT' ? colors.text.primary : colors.primary.DEFAULT} />}
+                  />
+                </View>
+
+                <GlassButton
+                  title={loading ? 'Creating Account...' : 'Register'}
+                  onPress={handleRegister}
+                  loading={loading}
+                  style={styles.registerButton}
+                />
+
+                <TouchableOpacity 
+                  style={styles.linkButton}
+                  onPress={() => navigation.navigate('Login')}
+                >
+                  <Text style={styles.linkText}>
+                    Already have an account? <Text style={styles.linkTextBold}>Sign In</Text>
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </GlassCard>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background.default,
   },
   content: {
     flexGrow: 1,
     padding: 24,
   },
+  header: {
+    marginBottom: 32,
+    alignItems: 'center',
+    marginTop: 20,
+  },
   title: {
-    fontSize: typography.sizes['4xl'],
+    fontSize: 36,
     fontFamily: typography.fonts.bold,
-    color: colors.primary.light,
+    color: colors.primary.DEFAULT,
     marginBottom: 8,
     textAlign: 'center',
-    marginTop: 20,
+    textShadowColor: colors.primary.dark,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
   },
   subtitle: {
     fontSize: typography.sizes.lg,
     fontFamily: typography.fonts.regular,
     color: colors.text.secondary,
-    marginBottom: 32,
     textAlign: 'center',
   },
+  formCard: {
+    width: '100%',
+  },
   form: {
-    gap: 16,
+    gap: 8,
   },
   label: {
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.medium,
     color: colors.text.primary,
-    marginBottom: 4,
-  },
-  input: {
-    backgroundColor: colors.background.paper,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 16,
-    color: colors.text.primary,
-    fontSize: typography.sizes.base,
-    fontFamily: typography.fonts.regular,
-  },
-  passwordContainer: {
-    position: 'relative',
-  },
-  passwordInput: {
-    backgroundColor: colors.background.paper,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 16,
-    paddingRight: 50,
-    color: colors.text.primary,
-    fontSize: typography.sizes.base,
-    fontFamily: typography.fonts.regular,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    top: 16,
-    padding: 4,
+    marginBottom: 8,
+    marginLeft: 4,
   },
   regionContainer: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 16,
   },
   regionButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background.paper,
-    alignItems: 'center',
+    height: 44,
   },
-  regionButtonActive: {
-    borderColor: colors.primary.light,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  regionText: {
-    color: colors.text.secondary,
-    fontFamily: typography.fonts.medium,
-  },
-  regionTextActive: {
-    color: colors.primary.light,
-    fontFamily: typography.fonts.bold,
-  },
-  button: {
-    backgroundColor: colors.primary.DEFAULT,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: colors.text.primary,
-    fontSize: typography.sizes.base,
-    fontFamily: typography.fonts.bold,
+  registerButton: {
+    marginTop: 8,
   },
   linkButton: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 24,
   },
   linkText: {
     color: colors.text.secondary,
@@ -365,20 +311,11 @@ const styles = StyleSheet.create({
     color: colors.primary.light,
     fontFamily: typography.fonts.bold,
   },
-  inputError: {
-    borderColor: colors.status.danger,
-  },
-  errorText: {
-    color: colors.status.danger,
-    fontSize: typography.sizes.xs,
-    marginTop: 4,
-    fontFamily: typography.fonts.regular,
-  },
   errorBanner: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
     borderWidth: 1,
     borderColor: colors.status.danger,
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 16,
   },
@@ -389,3 +326,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

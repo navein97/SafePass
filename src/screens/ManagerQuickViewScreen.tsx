@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
-import { Shield, Trophy, User, ChevronLeft, AlertTriangle } from 'lucide-react-native';
+import { Trophy, ChevronLeft, AlertTriangle } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import { getWeek, getYear } from 'date-fns';
+import { GradientBackground } from '../components/ui/GradientBackground';
+import { GlassCard } from '../components/ui/GlassCard';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface LeaderboardEntry {
   id: string;
@@ -96,80 +99,93 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary.light} />
-      </SafeAreaView>
+      <GradientBackground>
+        <SafeAreaView style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+        </SafeAreaView>
+      </GradientBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ChevronLeft color={colors.text.primary} size={24} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Weekly Leaderboard</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView 
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        <View style={styles.banner}>
-          <Trophy size={48} color="#FFD700" />
-          <Text style={styles.bannerTitle}>Safety Champions</Text>
-          <Text style={styles.bannerSubtitle}>Week {getWeek(new Date())}</Text>
+    <GradientBackground>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <ChevronLeft color={colors.text.primary} size={24} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Weekly Leaderboard</Text>
+          <View style={{ width: 24 }} />
         </View>
 
-        {leaderboard.length === 0 ? (
-          <View style={styles.emptyState}>
-            <AlertTriangle size={48} color={colors.text.tertiary} />
-            <Text style={styles.emptyText}>No quizzes completed this week yet.</Text>
-            <Text style={styles.emptySubtext}>Be the first to complete the quiz!</Text>
-          </View>
-        ) : (
-          leaderboard.map((entry, index) => {
-            const isMe = entry.user_id === currentUser?.id;
-            return (
-              <View 
-                key={entry.id} 
-                style={[
-                  styles.card, 
-                  isMe && styles.myCard,
-                  index === 0 && styles.goldCard,
-                  index === 1 && styles.silverCard,
-                  index === 2 && styles.bronzeCard
-                ]}
-              >
-                <View style={styles.rankContainer}>
-                  <Text style={[styles.rank, isMe && styles.myRank]}>#{index + 1}</Text>
-                </View>
-                
-                <View style={styles.infoContainer}>
-                  <Text style={[styles.name, isMe && styles.myName]}>
-                    {entry.full_name} {isMe ? '(You)' : ''}
-                  </Text>
-                  <Text style={[styles.id, isMe && styles.myId]}>{entry.employee_id}</Text>
-                </View>
+        <ScrollView 
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary.DEFAULT} />}
+          showsVerticalScrollIndicator={false}
+        >
+          <GlassCard style={styles.banner}>
+            <Trophy size={48} color="#FFD700" />
+            <Text style={styles.bannerTitle}>Safety Champions</Text>
+            <Text style={styles.bannerSubtitle}>Week {getWeek(new Date())}</Text>
+          </GlassCard>
 
-                <View style={styles.scoreContainer}>
-                  <Text style={[styles.score, isMe && styles.myScore]}>{entry.score}%</Text>
-                  <Text style={styles.status}>{entry.status}</Text>
-                </View>
-              </View>
-            );
-          })
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          {leaderboard.length === 0 ? (
+            <View style={styles.emptyState}>
+              <AlertTriangle size={48} color={colors.text.tertiary} />
+              <Text style={styles.emptyText}>No quizzes completed this week yet.</Text>
+              <Text style={styles.emptySubtext}>Be the first to complete the quiz!</Text>
+            </View>
+          ) : (
+            leaderboard.map((entry, index) => {
+              const isMe = entry.user_id === currentUser?.id;
+              return (
+                <GlassCard 
+                  key={entry.id} 
+                  style={[
+                    styles.card, 
+                    isMe && styles.myCard,
+                    index === 0 && styles.goldCard,
+                    index === 1 && styles.silverCard,
+                    index === 2 && styles.bronzeCard
+                  ]}
+                  intensity={isMe ? 40 : 20}
+                >
+                  <View style={styles.cardContent}>
+                    <View style={styles.rankContainer}>
+                      <Text style={[styles.rank, isMe && styles.myRank]}>#{index + 1}</Text>
+                    </View>
+                    
+                    <View style={styles.infoContainer}>
+                      <Text style={[styles.name, isMe && styles.myName]}>
+                        {entry.full_name} {isMe ? '(You)' : ''}
+                      </Text>
+                      <Text style={[styles.id, isMe && styles.myId]}>{entry.employee_id}</Text>
+                    </View>
+
+                    <View style={styles.scoreContainer}>
+                      <Text style={[styles.score, isMe && styles.myScore]}>{entry.score}%</Text>
+                      <Text style={styles.status}>{entry.status}</Text>
+                    </View>
+                  </View>
+                </GlassCard>
+              );
+            })
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background.default,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -177,8 +193,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginTop: 10,
   },
   backButton: {
     padding: 8,
@@ -195,10 +210,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     padding: 24,
-    backgroundColor: colors.background.paper,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   bannerTitle: {
     fontSize: typography.sizes['2xl'],
@@ -212,14 +223,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.medium,
   },
   card: {
+    marginBottom: 12,
+  },
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.paper,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   myCard: {
     borderColor: colors.primary.light,
@@ -302,3 +310,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet, Dimensions } from 'react-native';
+import { Animated, Text, StyleSheet, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
@@ -65,10 +66,21 @@ export const Toast: React.FC<ToastProps> = ({
 
   if (!visible) return null;
 
-  const backgroundColor = 
-    type === 'success' ? colors.status.success :
-    type === 'error' ? colors.status.danger :
-    colors.primary.DEFAULT;
+  const getBorderColor = () => {
+    switch (type) {
+      case 'success': return colors.status.success;
+      case 'error': return colors.status.danger;
+      default: return colors.primary.DEFAULT;
+    }
+  };
+
+  const getBackgroundColor = () => {
+    switch (type) {
+      case 'success': return 'rgba(52, 199, 89, 0.2)';
+      case 'error': return 'rgba(255, 59, 48, 0.2)';
+      default: return 'rgba(0, 122, 255, 0.2)';
+    }
+  };
 
   return (
     <Animated.View
@@ -77,10 +89,12 @@ export const Toast: React.FC<ToastProps> = ({
         {
           opacity,
           transform: [{ translateY }],
-          backgroundColor,
+          borderColor: getBorderColor(),
+          backgroundColor: getBackgroundColor(),
         },
       ]}
     >
+      <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
       <Text style={styles.message}>{message}</Text>
     </Animated.View>
   );
@@ -93,16 +107,12 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
     zIndex: 9999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   message: {
     color: colors.text.primary,
@@ -111,3 +121,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

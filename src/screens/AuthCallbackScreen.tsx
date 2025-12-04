@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { supabase } from '../lib/supabase';
+import { GradientBackground } from '../components/ui/GradientBackground';
+import { GlassCard } from '../components/ui/GlassCard';
 
 export const AuthCallbackScreen = ({ navigation }: any) => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -50,34 +52,38 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {status === 'loading' && (
-          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-        )}
-        
-        <Text style={[
-          styles.message,
-          status === 'success' && styles.successMessage,
-          status === 'error' && styles.errorMessage,
-        ]}>
-          {message}
-        </Text>
+    <GradientBackground>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <View style={styles.content}>
+          <GlassCard style={styles.card}>
+            {status === 'loading' && (
+              <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={styles.spinner} />
+            )}
+            
+            <Text style={[
+              styles.message,
+              status === 'success' && styles.successMessage,
+              status === 'error' && styles.errorMessage,
+            ]}>
+              {message}
+            </Text>
 
-        {status === 'loading' && (
-          <Text style={styles.subMessage}>
-            Please wait while we verify your email...
-          </Text>
-        )}
-      </View>
-    </SafeAreaView>
+            {status === 'loading' && (
+              <Text style={styles.subMessage}>
+                Please wait while we verify your email...
+              </Text>
+            )}
+          </GlassCard>
+        </View>
+      </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background.default,
   },
   content: {
     flex: 1,
@@ -85,12 +91,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
+  card: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  spinner: {
+    marginBottom: 24,
+  },
   message: {
     fontSize: typography.sizes['2xl'],
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
     textAlign: 'center',
-    marginTop: 24,
   },
   successMessage: {
     color: colors.status.success,
@@ -106,3 +119,4 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 });
+
