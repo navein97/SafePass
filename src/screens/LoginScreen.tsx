@@ -59,7 +59,7 @@ export const LoginScreen = ({ navigation }: any) => {
       setErrors(prev => ({ ...prev, general: friendlyMsg }));
       Alert.alert('Login Failed', friendlyMsg);
     } else if (session) {
-      navigation.replace('Main');
+      navigation.replace('MainTabs');
     }
   };
 
@@ -137,6 +137,14 @@ export const LoginScreen = ({ navigation }: any) => {
                 />
 
                 <TouchableOpacity 
+                  style={styles.forgotPasswordButton}
+                  onPress={() => navigation.navigate('ForgotPassword')}
+                  disabled={loading}
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
                   style={styles.linkButton}
                   onPress={() => navigation.navigate('Register')}
                   disabled={loading}
@@ -191,6 +199,15 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 16,
+  },
+  forgotPasswordButton: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    color: colors.primary.light,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.fonts.medium,
   },
   linkButton: {
     alignItems: 'center',

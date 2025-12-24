@@ -1,18 +1,24 @@
+import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import './src/i18n'; // Initialize i18n
 
-// Screens
+// Navigation
+import { MainTabNavigator } from './src/navigation/MainTabNavigator';
+
+// Auth Screens
 import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
 import { AuthCallbackScreen } from './src/screens/AuthCallbackScreen';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
+
+// Other Screens
 import { QuizScreen } from './src/screens/QuizScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
-import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ManagerQuickViewScreen } from './src/screens/ManagerQuickViewScreen';
 import { colors } from './src/theme/colors';
 
@@ -25,7 +31,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import * as Linking from 'expo-linking';
 
@@ -41,10 +47,9 @@ const linking = {
       Login: 'login',
       Register: 'register',
       AuthCallback: 'auth/callback',
-      Main: 'home',
+      MainTabs: 'home',
       Quiz: 'quiz',
       Review: 'review',
-      Profile: 'profile',
       ManagerQuickView: 'manager',
     },
   },
@@ -76,27 +81,41 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider onLayout={onLayoutRootView}>
-      <StatusBar style="light" backgroundColor={colors.background.default} />
-      <NavigationContainer linking={linking}>
-        <Stack.Navigator
-          initialRouteName="Login"
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background.default },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
-          <Stack.Screen name="Main" component={HomeScreen} />
-          <Stack.Screen name="Quiz" component={QuizScreen} />
-          <Stack.Screen name="Review" component={ReviewScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="ManagerQuickView" component={ManagerQuickViewScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.container}>
+      <SafeAreaProvider onLayout={onLayoutRootView}>
+        <StatusBar style="light" backgroundColor={colors.background.default} />
+        <NavigationContainer linking={linking}>
+          <Stack.Navigator
+            initialRouteName="Login"
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background.default },
+              animation: 'slide_from_right',
+            }}
+          >
+            {/* Auth Stack */}
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            
+            {/* Main App - Tab Navigator */}
+            <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+            
+            {/* Modal/Detail Screens */}
+            <Stack.Screen name="Quiz" component={QuizScreen} />
+            <Stack.Screen name="Review" component={ReviewScreen} />
+            <Stack.Screen name="ManagerQuickView" component={ManagerQuickViewScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
+

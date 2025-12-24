@@ -70,7 +70,7 @@ export const ReviewScreen = ({ route, navigation }: any) => {
 
           <GlassButton
             title="Back to Home"
-            onPress={() => navigation.navigate('Main')}
+            onPress={() => navigation.navigate('MainTabs')}
             icon={<Home color={colors.text.primary} size={20} />}
             style={styles.homeButton}
           />
