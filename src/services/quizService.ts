@@ -9,14 +9,21 @@ export const QuizService = {
      */
     async getQuestionsForRegion(region: Region): Promise<Question[]> {
         try {
+            console.log('🔍 Fetching questions for region:', region);
             const { data, error } = await supabase
                 .from('questions')
                 .select('*')
                 .contains('regions', [region]);
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Supabase error:', error);
+                throw error;
+            }
 
-            return data.map(q => ({
+            console.log('✅ Raw data from Supabase:', data?.length, 'questions');
+            console.log('📋 First question sample:', data?.[0]);
+
+            const questions = data.map(q => ({
                 id: q.id,
                 text: q.text,
                 options: q.options,
@@ -24,7 +31,11 @@ export const QuizService = {
                 explanation: q.explanation,
                 region: q.regions,
                 category: q.category,
+                imageUrl: q.image_url,
             }));
+
+            console.log('🎯 Mapped questions:', questions.length);
+            return questions;
         } catch (error) {
             console.error('Error fetching questions:', error);
             return [];
@@ -35,10 +46,13 @@ export const QuizService = {
      * Generate a weekly quiz with 30 random questions
      */
     async generateWeeklyQuiz(region: Region): Promise<Question[]> {
+        console.log('🎲 Generating weekly quiz for region:', region);
         const allQuestions = await this.getQuestionsForRegion(region);
 
+        console.log('📚 Total questions available:', allQuestions.length);
+
         if (allQuestions.length === 0) {
-            console.warn('No questions found for region:', region);
+            console.warn('⚠️ No questions found for region:', region);
             return [];
         }
 
@@ -46,7 +60,13 @@ export const QuizService = {
         const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
 
         // Return top 30 (or fewer if not enough questions)
-        return shuffled.slice(0, Math.min(30, shuffled.length));
+        const selectedCount = Math.min(30, shuffled.length);
+        const selected = shuffled.slice(0, selectedCount);
+
+        console.log('✨ Selected', selected.length, 'questions for quiz');
+        console.log('🖼️ Questions with images:', selected.filter(q => q.imageUrl).length);
+
+        return selected;
     },
 
     /**

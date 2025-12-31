@@ -25,66 +25,32 @@ import {
 } from 'react-native-gesture-handler';
 import { RotateCcw, Check, X } from 'lucide-react-native';
 import { colors } from '../theme/colors';
+import { AuthService } from '../services/authService';
+import { QuizService } from '../services/quizService';
+import { useNavigation } from '@react-navigation/native';
+import { useEffect } from 'react';
+import { Alert, ActivityIndicator, Image } from 'react-native';
+
+const QUIZ_IMAGES: Record<string, any> = {
+  'stop_sign': require('../../assets/quiz/stop_sign.png'),
+  'pedestrian_crossing': require('../../assets/quiz/pedestrian_crossing.png'),
+  'no_entry': require('../../assets/quiz/no_entry.png'),
+  'turn_right': require('../../assets/quiz/turn_right.png'),
+  'warning': require('../../assets/quiz/warning.png'),
+};
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.9;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.55;
+const CARD_HEIGHT = SCREEN_HEIGHT * 0.65;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 
 interface Question {
-  id: number;
+  id: string;
   question: string;
   options: string[];
   correctIndex: number;
+  imageUrl?: string;
 }
-
-// Sample questions - Replace with real data
-const SAMPLE_QUESTIONS: Question[] = [
-  {
-    id: 1,
-    question: "What should you do before starting your vehicle?",
-    options: [
-      "A) Check mirrors and seatbelt",
-      "B) Start driving immediately",
-      "C) Check your phone",
-      "D) Turn on the radio"
-    ],
-    correctIndex: 0,
-  },
-  {
-    id: 2,
-    question: "When approaching a construction zone, you should:",
-    options: [
-      "A) Speed up to get through quickly",
-      "B) Slow down and follow posted signs",
-      "C) Honk to warn workers",
-      "D) Change lanes abruptly"
-    ],
-    correctIndex: 1,
-  },
-  {
-    id: 3,
-    question: "What is the safe following distance in normal conditions?",
-    options: [
-      "A) 1 second",
-      "B) 2 seconds",
-      "C) 3-4 seconds",
-      "D) No specific rule"
-    ],
-    correctIndex: 2,
-  },
-  {
-    id: 4,
-    question: "If your brakes fail, you should:",
-    options: [
-      "A) Jump out of the vehicle",
-      "B) Pump the brakes and use engine braking",
-      "C) Turn off the engine immediately",
-      "D) Close your eyes and hope"
-    ],
-    correctIndex: 1,
-  },
-];
 
 interface SwipeCardProps {
   question: Question;
@@ -176,6 +142,13 @@ function SwipeCard({
           {/* Question */}
           <View style={styles.questionContainer}>
             <Text style={styles.questionLabel}>DAILY MISSION</Text>
+            {question.imageUrl && QUIZ_IMAGES[question.imageUrl] && (
+              <Image 
+                source={QUIZ_IMAGES[question.imageUrl]}
+                style={styles.questionImage}
+                resizeMode="contain"
+              />
+            )}
             <Text style={styles.questionText}>{question.question}</Text>
           </View>
 
@@ -222,13 +195,57 @@ function SwipeCard({
 }
 
 export function MissionScreen() {
+  const navigation = useNavigation();
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [answers, setAnswers] = useState<{questionId: string, selectedOptionIndex: number, isCorrect: boolean}[]>([]);
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string>('');
 
-  const currentQuestion = SAMPLE_QUESTIONS[currentQuestionIndex];
+  useEffect(() => {
+    loadQuiz();
+  }, []);
+
+  const loadQuiz = async () => {
+    try {
+      setLoading(true);
+      const { profile, error } = await AuthService.getUserProfile();
+      
+      if (error || !profile) {
+        Alert.alert('Error', 'Could not load user profile');
+        return;
+      }
+
+      setUserId(profile.id);
+
+      const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region);
+      
+      if (loadedQuestions.length === 0) {
+        Alert.alert('No Questions', 'No questions found for your region.');
+        navigation.goBack();
+        return;
+      }
+
+      // Map to MissionScreen format
+      const mappedQuestions: Question[] = loadedQuestions.map(q => ({
+        id: q.id,
+        question: q.text,
+        options: q.options,
+        correctIndex: q.correctOptionIndex,
+        imageUrl: q.imageUrl
+      }));
+
+      setQuestions(mappedQuestions);
+    } catch (error) {
+      console.error('Error loading quiz:', error);
+      Alert.alert('Error', 'Failed to load quiz');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTapLeft = useCallback(() => {
     if (currentOptionIndex > 0) {
@@ -237,26 +254,47 @@ export function MissionScreen() {
   }, [currentOptionIndex]);
 
   const handleTapRight = useCallback(() => {
-    if (currentOptionIndex < currentQuestion.options.length - 1) {
+    if (questions.length > 0 && currentOptionIndex < questions[currentQuestionIndex].options.length - 1) {
       setCurrentOptionIndex(prev => prev + 1);
     }
-  }, [currentOptionIndex, currentQuestion]);
+  }, [currentOptionIndex, questions, currentQuestionIndex]);
+
+  const handleSubmit = async (finalAnswers: typeof answers) => {
+    try {
+      const { score, attempt } = await QuizService.submitQuiz(userId, finalAnswers);
+      // Navigate to review or show breakdown
+      setIsComplete(true);
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+      Alert.alert('Error', 'Failed to submit quiz results');
+    }
+  };
 
   const handleSwipeRight = useCallback(() => {
+    if (questions.length === 0) return;
+    
+    const currentQuestion = questions[currentQuestionIndex];
     const isCorrect = currentOptionIndex === currentQuestion.correctIndex;
-    setAnswers(prev => [...prev, currentOptionIndex]);
+    
+    const newAnswers = [...answers, {
+      questionId: currentQuestion.id,
+      selectedOptionIndex: currentOptionIndex,
+      isCorrect
+    }];
+    
+    setAnswers(newAnswers);
     setShowFeedback(isCorrect ? 'correct' : 'wrong');
 
     setTimeout(() => {
       setShowFeedback(null);
-      if (currentQuestionIndex < SAMPLE_QUESTIONS.length - 1) {
+      if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(prev => prev + 1);
         setCurrentOptionIndex(0);
       } else {
-        setIsComplete(true);
+        handleSubmit(newAnswers);
       }
     }, 1500);
-  }, [currentOptionIndex, currentQuestion, currentQuestionIndex]);
+  }, [currentOptionIndex, questions, currentQuestionIndex, answers, userId]);
 
   const handleRewind = useCallback(() => {
     if (currentQuestionIndex > 0) {
@@ -267,23 +305,36 @@ export function MissionScreen() {
   }, [currentQuestionIndex]);
 
   const resetMission = useCallback(() => {
+    setLoading(true);
+    loadQuiz();
     setCurrentQuestionIndex(0);
     setCurrentOptionIndex(0);
     setAnswers([]);
     setIsComplete(false);
   }, []);
 
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+        <Text style={{ color: colors.text.secondary, marginTop: 20 }}>Loading Mission...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (questions.length === 0) return null;
+
+  const currentQuestion = questions[currentQuestionIndex];
+
   if (isComplete) {
-    const correctCount = answers.filter(
-      (ans, idx) => ans === SAMPLE_QUESTIONS[idx].correctIndex
-    ).length;
+    const correctCount = answers.filter(a => a.isCorrect).length;
 
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.completeContainer}>
           <Text style={styles.completeTitle}>Mission Complete!</Text>
           <Text style={styles.completeScore}>
-            {correctCount}/{SAMPLE_QUESTIONS.length}
+            {correctCount}/{questions.length}
           </Text>
           <Text style={styles.completeSubtitle}>Correct Answers</Text>
           <TouchableOpacity style={styles.retryButton} onPress={resetMission}>
@@ -301,7 +352,7 @@ export function MissionScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Daily Mission</Text>
           <Text style={styles.headerProgress}>
-            {currentQuestionIndex + 1}/{SAMPLE_QUESTIONS.length}
+            {currentQuestionIndex + 1}/{questions.length}
           </Text>
         </View>
 
@@ -312,6 +363,7 @@ export function MissionScreen() {
           <Pressable style={styles.tapZoneRight} onPress={handleTapRight} />
 
           <SwipeCard
+            key={currentQuestion.id}
             question={currentQuestion}
             currentOptionIndex={currentOptionIndex}
             onSwipeRight={handleSwipeRight}
@@ -327,8 +379,8 @@ export function MissionScreen() {
             <LinearGradient
               colors={
                 showFeedback === 'correct'
-                  ? colors.gradients.success
-                  : colors.gradients.danger
+                  ? colors.gradients.success as any
+                  : colors.gradients.danger as any
               }
               style={styles.feedbackGradient}
             >
@@ -404,14 +456,20 @@ const styles = StyleSheet.create({
     borderColor: colors.primary.DEFAULT,
   },
   questionContainer: {
-    marginBottom: 32,
+    marginBottom: 16, // Reduced margin
   },
   questionLabel: {
     fontFamily: 'Inter-Bold',
     fontSize: 12,
     color: colors.primary.DEFAULT,
     letterSpacing: 2,
-    marginBottom: 12,
+    marginBottom: 8, // Reduced margin
+  },
+  questionImage: {
+    width: '100%',
+    height: 120, // Reduced height
+    marginBottom: 12, // Reduced margin
+    borderRadius: 12,
   },
   questionText: {
     fontFamily: 'Inter-Bold',

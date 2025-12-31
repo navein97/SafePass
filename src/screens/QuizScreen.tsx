@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
@@ -13,6 +13,14 @@ import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
 import { LinearGradient } from 'expo-linear-gradient';
+
+const QUIZ_IMAGES: Record<string, any> = {
+  'stop_sign': require('../../assets/quiz/stop_sign.png'),
+  'pedestrian_crossing': require('../../assets/quiz/pedestrian_crossing.png'),
+  'no_entry': require('../../assets/quiz/no_entry.png'),
+  'turn_right': require('../../assets/quiz/turn_right.png'),
+  'warning': require('../../assets/quiz/warning.png'),
+};
 
 export const QuizScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -182,6 +190,13 @@ export const QuizScreen = ({ navigation }: any) => {
 
         <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
           <GlassCard style={styles.questionCard}>
+            {currentQuestion.imageUrl && QUIZ_IMAGES[currentQuestion.imageUrl] && (
+              <Image 
+                source={QUIZ_IMAGES[currentQuestion.imageUrl]}
+                style={styles.questionImage}
+                resizeMode="contain"
+              />
+            )}
             <Text style={styles.questionText}>{currentQuestion.text}</Text>
           </GlassCard>
 
@@ -302,6 +317,12 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     lineHeight: 32,
     textAlign: 'center',
+  },
+  questionImage: {
+    width: '100%',
+    height: 200,
+    marginBottom: 20,
+    borderRadius: 8,
   },
   optionsContainer: {
     gap: 16,

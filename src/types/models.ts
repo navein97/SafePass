@@ -17,6 +17,7 @@ export interface Question {
     explanation: string;
     region: Region[]; // Applicable regions
     category: string;
+    imageUrl?: string; // Optional image URL for visual questions
 }
 
 export interface QuizAttempt {
