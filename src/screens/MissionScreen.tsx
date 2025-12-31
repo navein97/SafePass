@@ -219,6 +219,12 @@ export function MissionScreen() {
         return;
       }
 
+      // Redirect managers to Team Performance
+      if (profile.role === 'manager') {
+        navigation.navigate('ManagerQuickView' as never);
+        return;
+      }
+
       setUserId(profile.id);
 
       const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region);

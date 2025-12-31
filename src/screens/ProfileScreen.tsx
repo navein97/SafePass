@@ -26,6 +26,7 @@ interface ProfileData {
   streak?: number;
   multiplier?: number;
   shieldHealth?: number;
+  role?: 'staff' | 'manager';
 }
 
 export const ProfileScreen = ({ navigation }: any) => {
@@ -34,6 +35,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
 
   // Mock gamification data - Replace with real data
+  const isManager = profile?.role === 'manager';
   const streakDays = profile?.streak || 7;
   const multiplier = streakDays >= 5 ? 2.0 : streakDays >= 3 ? 1.5 : 1.0;
   const shieldHealth = profile?.shieldHealth || 78; // Percentage
@@ -143,7 +145,9 @@ export const ProfileScreen = ({ navigation }: any) => {
             </View>
           </GlassCard>
 
-          {/* Gamification Stats Row */}
+          {/* Gamification Stats Row - Only for Staff */}
+          {!isManager && (
+          <>
           <View style={styles.statsRow}>
             {/* Flame / Streak */}
             <GlassCard style={styles.statCard}>
@@ -169,7 +173,7 @@ export const ProfileScreen = ({ navigation }: any) => {
             </GlassCard>
           </View>
 
-          {/* Safety Shield */}
+          {/* Safety Shield - Only for Staff */}
           <GlassCard style={styles.shieldCard}>
             <Text style={styles.shieldTitle}>Safety Shield</Text>
             <View style={styles.shieldContainer}>
@@ -214,6 +218,8 @@ export const ProfileScreen = ({ navigation }: any) => {
                   : '🚨 Shield critically low! Complete missions!'}
             </Text>
           </GlassCard>
+          </>
+          )}
 
           {/* Quick Actions */}
           <View style={styles.actionsContainer}>
