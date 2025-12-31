@@ -318,15 +318,16 @@ const styles = StyleSheet.create({
   },
   regionBadge: {
     backgroundColor: colors.background.subtle,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
   regionText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.text.primary,
     fontFamily: typography.fonts.medium,
+    textAlign: 'center',
   },
   statsRow: {
     flexDirection: 'row',
@@ -336,10 +337,13 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 20,
   },
   flameContainer: {
     marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   flameGlow: {
     width: 56,
@@ -361,6 +365,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
+    textAlign: 'center',
   },
   multiplierValue: {
     color: colors.streak.multiplier,
@@ -370,6 +375,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.medium,
     color: colors.text.secondary,
     marginTop: 4,
+    textAlign: 'center',
   },
   shieldCard: {
     alignItems: 'center',
@@ -381,6 +387,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
     marginBottom: 20,
+    textAlign: 'center',
   },
   shieldContainer: {
     position: 'relative',
@@ -388,12 +395,14 @@ const styles = StyleSheet.create({
     height: SHIELD_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
   },
   shieldSvg: {
     position: 'absolute',
   },
   shieldCenter: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
   shieldPercent: {
     fontSize: 20,

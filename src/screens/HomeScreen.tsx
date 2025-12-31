@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
-import { Shield, AlertCircle, CheckCircle, User } from 'lucide-react-native';
+import { Shield, AlertCircle, CheckCircle, User, Users } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { GradientBackground } from '../components/ui/GradientBackground';
@@ -45,6 +45,8 @@ export const HomeScreen = ({ navigation }: any) => {
     }
   };
 
+  const isManager = profile?.role === 'manager';
+
   if (loading) {
     return (
       <GradientBackground>
@@ -84,51 +86,74 @@ export const HomeScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           </View>
 
-          {/* Safety Index Card */}
-          <GlassCard style={styles.card}>
-            <Text style={styles.cardTitle}>{t('home.safetyIndex')}</Text>
-            <View style={styles.scoreContainer}>
-              <Shield size={48} color={colors.primary.DEFAULT} />
-              <Text style={styles.score}>{safetyIndex}</Text>
-            </View>
-            <View style={styles.progressBarBg}>
-              <LinearGradient
-                colors={colors.gradients.primary as any}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.progressBarFill, { width: `${safetyIndex}%` }]}
+          {isManager ? (
+            /* Manager Dashboard View */
+            <GlassCard style={styles.card}>
+              <Text style={styles.cardTitle}>Management Dashboard</Text>
+              <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+                <Users size={64} color={colors.primary.DEFAULT} />
+                <Text style={[styles.statusText, { textAlign: 'center', marginTop: 16 }]}>Team Overview</Text>
+                <Text style={[styles.statusSubtext, { textAlign: 'center' }]}>
+                  Monitor team compliance and safety performance.
+                </Text>
+              </View>
+              <GlassButton 
+                title="View Team stats"
+                onPress={() => navigation.navigate('ManagerQuickView')}
+                icon={<Shield color={colors.text.primary} size={20} />}
+                style={styles.actionButton}
               />
-            </View>
-            <Text style={styles.scoreSubtext}>90-day rolling average</Text>
-          </GlassCard>
+            </GlassCard>
+          ) : (
+            /* Staff Dashboard View */
+            <>
+              {/* Safety Index Card */}
+              <GlassCard style={styles.card}>
+                <Text style={styles.cardTitle}>{t('home.safetyIndex')}</Text>
+                <View style={styles.scoreContainer}>
+                  <Shield size={48} color={colors.primary.DEFAULT} />
+                  <Text style={styles.score}>{safetyIndex}</Text>
+                </View>
+                <View style={styles.progressBarBg}>
+                  <LinearGradient
+                    colors={colors.gradients.primary as any}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.progressBarFill, { width: `${safetyIndex}%` }]}
+                  />
+                </View>
+                <Text style={styles.scoreSubtext}>90-day rolling average</Text>
+              </GlassCard>
 
-          {/* Weekly Status Card */}
-          <GlassCard style={[
-            styles.card, 
-            isCompliant ? styles.cardSuccess : styles.cardDanger
-          ]}>
-            <View style={styles.statusHeader}>
-              <Text style={styles.cardTitle}>{t('home.weeklyStatus')}</Text>
-              {isCompliant ? (
-                <CheckCircle size={24} color={colors.status.success} />
-              ) : (
-                <AlertCircle size={24} color={colors.status.danger} />
-              )}
-            </View>
-            <Text style={[styles.statusText, { color: isCompliant ? colors.status.success : colors.status.danger }]}>
-              {isCompliant ? t('home.compliant') : t('home.overdue')}
-            </Text>
-            <Text style={styles.statusSubtext}>
-              {isCompliant ? 'Great job! You are up to date.' : t('home.quizDue')}
-            </Text>
-            
-            <GlassButton
-              title={isCompliant ? 'Practice Quiz' : t('home.startQuiz')}
-              onPress={() => navigation.navigate('Quiz')}
-              variant={isCompliant ? 'primary' : 'danger'}
-              style={styles.actionButton}
-            />
-          </GlassCard>
+              {/* Weekly Status Card */}
+              <GlassCard style={[
+                styles.card, 
+                isCompliant ? styles.cardSuccess : styles.cardDanger
+              ]}>
+                <View style={styles.statusHeader}>
+                  <Text style={styles.cardTitle}>{t('home.weeklyStatus')}</Text>
+                  {isCompliant ? (
+                    <CheckCircle size={24} color={colors.status.success} />
+                  ) : (
+                    <AlertCircle size={24} color={colors.status.danger} />
+                  )}
+                </View>
+                <Text style={[styles.statusText, { color: isCompliant ? colors.status.success : colors.status.danger }]}>
+                  {isCompliant ? t('home.compliant') : t('home.overdue')}
+                </Text>
+                <Text style={styles.statusSubtext}>
+                  {isCompliant ? 'Great job! You are up to date.' : t('home.quizDue')}
+                </Text>
+                
+                <GlassButton
+                  title={isCompliant ? 'Practice Quiz' : t('home.startQuiz')}
+                  onPress={() => navigation.navigate('Quiz')}
+                  variant={isCompliant ? 'primary' : 'danger'}
+                  style={styles.actionButton}
+                />
+              </GlassCard>
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </GradientBackground>

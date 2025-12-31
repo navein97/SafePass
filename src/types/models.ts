@@ -7,6 +7,7 @@ export interface Driver {
     region: Region;
     safetyIndex: number; // 0-100
     lastQuizDate?: string; // ISO string
+    role?: 'staff' | 'manager';
 }
 
 export interface Question {

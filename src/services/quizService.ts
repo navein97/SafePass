@@ -23,16 +23,37 @@ export const QuizService = {
             console.log('✅ Raw data from Supabase:', data?.length, 'questions');
             console.log('📋 First question sample:', data?.[0]);
 
-            const questions = data.map(q => ({
-                id: q.id,
-                text: q.text,
-                options: q.options,
-                correctOptionIndex: q.correct_option_index,
-                explanation: q.explanation,
-                region: q.regions,
-                category: q.category,
-                imageUrl: q.image_url,
-            }));
+            const questions = data.map(q => {
+                // Shuffle options
+                const originalOptions = [...q.options];
+                const correctOptionText = originalOptions[q.correct_option_index];
+
+                // create an array of indices [0, 1, 2, ...]
+                const indices = originalOptions.map((_, i) => i);
+
+                // shuffle the indices
+                for (let i = indices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [indices[i], indices[j]] = [indices[j], indices[i]];
+                }
+
+                // reorder options based on shuffled indices
+                const shuffledOptions = indices.map(i => originalOptions[i]);
+
+                // find new index of the correct answer
+                const newCorrectIndex = shuffledOptions.indexOf(correctOptionText);
+
+                return {
+                    id: q.id,
+                    text: q.text,
+                    options: shuffledOptions,
+                    correctOptionIndex: newCorrectIndex,
+                    explanation: q.explanation,
+                    region: q.regions,
+                    category: q.category,
+                    imageUrl: q.image_url,
+                };
+            });
 
             console.log('🎯 Mapped questions:', questions.length);
             return questions;
