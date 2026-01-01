@@ -11,10 +11,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, MessageCircle, Share2, Flame, Shield, Trophy } from 'lucide-react-native';
 import { colors } from '../theme/colors';
+import { getWeek, getYear } from 'date-fns';
 
 interface FeedPost {
   id: string;
-  type: 'streak' | 'achievement' | 'shield' | 'leaderboard';
+  type: 'streak' | 'achievement' | 'shield' | 'leaderboard' | 'pitlane';
   userName: string;
   userAvatar?: string;
   content: string;
@@ -37,6 +38,8 @@ function FeedItem({ post, onLike }: { post: FeedPost; onLike: (id: string) => vo
         return <Trophy color={colors.primary.DEFAULT} size={24} />;
       case 'leaderboard':
         return <Trophy color={colors.leaderboard.gold} size={24} />;
+      case 'pitlane':
+        return <Shield color={colors.status.warning} size={24} />;
       default:
         return null;
     }
@@ -100,9 +103,7 @@ function PitLaneCard({ drivers }: { drivers: any[] }) {
             <Text style={styles.pitLaneName}>{driver.full_name}</Text>
             <Text style={styles.pitLaneMessage}>Score: {driver.safety_index}%</Text>
           </View>
-          <TouchableOpacity style={styles.retakeButton}>
-            <Text style={styles.retakeButtonText}>Retake Mission</Text>
-          </TouchableOpacity>
+          <Text style={styles.retakeText}>Needs improvement</Text>
         </View>
       ))}
     </View>
@@ -160,11 +161,11 @@ export function SocialScreen() {
         setPitLaneDrivers(pitData);
       }
 
-      // Fetch Top 3 Drivers
+      // Fetch Top 3 Drivers (by safety_index)
       const { data: topData } = await supabase
         .from('profiles')
-        .select('full_name, total_score')
-        .order('total_score', { ascending: false })
+        .select('full_name, safety_index')
+        .order('safety_index', { ascending: false })
         .limit(3);
       
       if (topData) {
@@ -174,6 +175,98 @@ export function SocialScreen() {
        console.error('Error loading feed:', error);
     }
   };
+
+  /**
+   * Check if we need to generate weekly automated posts
+   * and create them for Top 3 and Bottom 3 drivers.
+   */
+  const checkAndCreateWeeklyPosts = async () => {
+    try {
+      const week = getWeek(new Date());
+      const year = getYear(new Date());
+      const weekTag = `[Week ${week}-${year}]`;
+
+      // 1. Check if posts already exist for this week
+      const { data: existingPosts } = await supabase
+        .from('posts')
+        .select('id')
+        .ilike('content', `%${weekTag}%`)
+        .limit(1);
+
+      if (existingPosts && existingPosts.length > 0) {
+        // Already posted this week
+        return;
+      }
+
+      console.log('Generating weekly auto-posts...');
+
+      // 2. Fetch Top 3
+      const { data: topDrivers } = await supabase
+        .from('profiles')
+        .select('id, full_name, safety_index')
+        .order('safety_index', { ascending: false })
+        .limit(3);
+
+      // 3. Fetch Bottom 3 (Pit Lane)
+      const { data: bottomDrivers } = await supabase
+        .from('profiles')
+        .select('id, full_name, safety_index')
+        .lt('safety_index', 70)
+        .order('safety_index', { ascending: true })
+        .limit(3);
+
+      const postsToCreate: any[] = [];
+
+      // Create Top 3 Posts
+      if (topDrivers) {
+        topDrivers.forEach((driver, index) => {
+          const rank = index + 1;
+          let message = '';
+          if (rank === 1) message = `🏆 UNSTOPPABLE! I secured 1st place this week with a ${driver.safety_index}% Safety Index! ${weekTag}`;
+          if (rank === 2) message = `🥈 Staying consistent! Ranked 2nd this week. Chasing gold next! ${weekTag}`;
+          if (rank === 3) message = `🥉 Made it to the podium! Top 3 finish for me. ${weekTag}`;
+
+          postsToCreate.push({
+            user_id: driver.id,
+            content: message,
+            type: 'leaderboard'
+          });
+        });
+      }
+
+      // Create Pit Lane Posts
+      if (bottomDrivers) {
+        bottomDrivers.forEach((driver) => {
+          postsToCreate.push({
+            user_id: driver.id,
+            content: `🔧 Heading to the Pit Lane. My Safety Index is ${driver.safety_index}%. Time to focus and improve! ${weekTag}`,
+            type: 'pitlane'
+          });
+        });
+      }
+
+      // 4. Batch Insert
+      if (postsToCreate.length > 0) {
+        const { error } = await supabase
+          .from('posts')
+          .insert(postsToCreate);
+        
+        if (error) console.error('Error creating auto-posts:', error);
+        else {
+           // Reload feed to show new posts
+           loadFeed();
+        }
+      }
+
+    } catch (error) {
+      console.error('Error generating weekly posts:', error);
+    }
+  };
+
+  useEffect(() => {
+    checkAndCreateWeeklyPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLike = async (id: string) => {
     try {
@@ -246,7 +339,7 @@ export function SocialScreen() {
                 {topDrivers[1]?.full_name?.split(' ')[0] || '---'}
               </Text>
               <Text style={styles.topThreeScore}>
-                {topDrivers[1]?.total_score || 0}%
+                {topDrivers[1]?.safety_index || 0}%
               </Text>
             </View>
             
@@ -259,7 +352,7 @@ export function SocialScreen() {
                  {topDrivers[0]?.full_name?.split(' ')[0] || '---'}
               </Text>
               <Text style={styles.topThreeScore}>
-                 {topDrivers[0]?.total_score || 0}%
+                 {topDrivers[0]?.safety_index || 0}%
               </Text>
             </View>
             
@@ -272,7 +365,7 @@ export function SocialScreen() {
                  {topDrivers[2]?.full_name?.split(' ')[0] || '---'}
               </Text>
               <Text style={styles.topThreeScore}>
-                 {topDrivers[2]?.total_score || 0}%
+                 {topDrivers[2]?.safety_index || 0}%
               </Text>
             </View>
           </View>
@@ -482,16 +575,11 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     marginTop: 2,
   },
-  retakeButton: {
-    backgroundColor: colors.leaderboard.pitLane,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  retakeButtonText: {
+  retakeText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: colors.text.primary,
+    color: colors.leaderboard.pitLane,
+    fontStyle: 'italic',
   },
   bottomPadding: {
     height: 100,

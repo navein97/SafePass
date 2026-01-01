@@ -95,7 +95,7 @@ function TopThreePodium({ drivers }: { drivers: Driver[] }) {
 
 function LeaderboardItem({ driver, isPitLane }: { driver: Driver; isPitLane?: boolean }) {
   return (
-    <TouchableOpacity 
+    <View 
       style={[
         styles.leaderboardItem,
         isPitLane && styles.leaderboardItemPitLane,
@@ -141,13 +141,9 @@ function LeaderboardItem({ driver, isPitLane }: { driver: Driver; isPitLane?: bo
       </View>
 
       {isPitLane && (
-        <TouchableOpacity style={styles.retakeBtn}>
-          <Wrench color={colors.text.primary} size={16} />
-        </TouchableOpacity>
+        <Text style={styles.needsTuneup}>🔧</Text>
       )}
-
-      <ChevronRight color={colors.text.tertiary} size={20} />
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -164,26 +160,137 @@ export function LeaderboardScreen() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order(activeTab === 'allTime' ? 'total_score' : 'safety_index', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-
-      if (data) {
-        const mappedDrivers: Driver[] = data.map((p: any, index: number) => ({
-          rank: index + 1,
-          name: p.full_name || 'Driver',
-          team: p.region === 'MY' ? 'Malaysia' : 'Portugal',
-          score: activeTab === 'allTime' ? (p.total_score || 0) : (p.safety_index || 0),
-          streak: p.streak || 0,
-          trend: 'same',
-          trendValue: 0
-        }));
-        setDrivers(mappedDrivers);
+      let queryFn;
+      
+      // Calculate date ranges
+      const now = new Date();
+      let startDate = new Date();
+      
+      if (activeTab === 'weekly') {
+        // Last 7 days
+        startDate.setDate(now.getDate() - 7);
+      } else if (activeTab === 'monthly') {
+        // Last 30 days
+        startDate.setDate(now.getDate() - 30);
+      } else {
+        // All Time (Arbitrary old date)
+        startDate = new Date(0); 
       }
+
+      // For Weekly/Monthly, we need to aggregate quiz attempts
+      if (activeTab === 'weekly' || activeTab === 'monthly') {
+          const { data: attempts, error } = await supabase
+            .from('quiz_attempts')
+            .select('user_id, score, profiles(full_name, region, streak)')
+            .gte('completed_at', startDate.toISOString());
+
+          if (error) throw error;
+
+          // Aggregate scores by user
+          const userScores: Record<string, { total: number, count: number, profile: any }> = {};
+          
+          attempts?.forEach((attempt: any) => {
+              if (!userScores[attempt.user_id]) {
+                  userScores[attempt.user_id] = { 
+                      total: 0, 
+                      count: 0, 
+                      profile: attempt.profiles 
+                  };
+              }
+              userScores[attempt.user_id].total += attempt.score;
+              userScores[attempt.user_id].count += 1;
+          });
+
+          // Also fetch previous period data for trend calculation
+          const previousStartDate = new Date(startDate);
+          const previousEndDate = new Date(startDate);
+          if (activeTab === 'weekly') {
+              previousStartDate.setDate(previousStartDate.getDate() - 7);
+          } else {
+              previousStartDate.setDate(previousStartDate.getDate() - 30);
+          }
+
+          const { data: prevAttempts } = await supabase
+            .from('quiz_attempts')
+            .select('user_id, score')
+            .gte('completed_at', previousStartDate.toISOString())
+            .lt('completed_at', startDate.toISOString());
+
+          // Calculate previous averages
+          const prevScores: Record<string, { total: number, count: number }> = {};
+          prevAttempts?.forEach((attempt: any) => {
+              if (!prevScores[attempt.user_id]) {
+                  prevScores[attempt.user_id] = { total: 0, count: 0 };
+              }
+              prevScores[attempt.user_id].total += attempt.score;
+              prevScores[attempt.user_id].count += 1;
+          });
+
+          // Convert to Driver array with trend
+          const mappedDrivers: Driver[] = Object.keys(userScores).map((userId) => {
+              const u = userScores[userId];
+              const currentAvg = Math.round(u.total / u.count);
+              
+              // Calculate trend
+              let trend: 'up' | 'down' | 'same' = 'same';
+              let trendValue = 0;
+              
+              const prev = prevScores[userId];
+              if (prev && prev.count > 0) {
+                  const prevAvg = Math.round(prev.total / prev.count);
+                  const diff = currentAvg - prevAvg;
+                  if (diff > 0) {
+                      trend = 'up';
+                      trendValue = diff;
+                  } else if (diff < 0) {
+                      trend = 'down';
+                      trendValue = Math.abs(diff);
+                  }
+              }
+              
+              return {
+                  rank: 0,
+                  name: u.profile?.full_name || 'Driver',
+                  team: u.profile?.region === 'MY' ? 'Malaysia' : 'Portugal',
+                  score: currentAvg,
+                  streak: u.profile?.streak || 0,
+                  trend,
+                  trendValue
+              };
+          });
+
+          // Sort by Score DESC
+          mappedDrivers.sort((a, b) => b.score - a.score);
+          
+          // Assign Ranks
+          mappedDrivers.forEach((d, i) => d.rank = i + 1);
+          
+          setDrivers(mappedDrivers);
+
+      } else {
+          // All Time - Use the cached aggregation in profiles
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .order('total_score', { ascending: false })
+            .limit(20);
+
+          if (error) throw error;
+
+          if (data) {
+            const mappedDrivers: Driver[] = data.map((p: any, index: number) => ({
+              rank: index + 1,
+              name: p.full_name || 'Driver',
+              team: p.region === 'MY' ? 'Malaysia' : 'Portugal',
+              score: p.total_score || 0,
+              streak: p.streak || 0,
+              trend: 'same',
+              trendValue: 0
+            }));
+            setDrivers(mappedDrivers);
+          }
+      }
+
     } catch (error) {
       console.error('Error loading leaderboard:', error);
     } finally {
@@ -485,14 +592,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.text.tertiary,
   },
-  retakeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.leaderboard.pitLane,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
+  needsTuneup: {
+    fontSize: 16,
+    marginLeft: 8,
   },
   pitLaneSection: {
     marginTop: 24,

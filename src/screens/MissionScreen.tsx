@@ -32,11 +32,11 @@ import { useEffect } from 'react';
 import { Alert, ActivityIndicator, Image } from 'react-native';
 
 const QUIZ_IMAGES: Record<string, any> = {
-  'stop_sign': require('../../assets/quiz/stop_sign.png'),
-  'pedestrian_crossing': require('../../assets/quiz/pedestrian_crossing.png'),
-  'no_entry': require('../../assets/quiz/no_entry.png'),
-  'turn_right': require('../../assets/quiz/turn_right.png'),
-  'warning': require('../../assets/quiz/warning.png'),
+  'stop_sign': require('../../assets/quiz/stop_sign.jpg'),
+  'pedestrian_crossing': require('../../assets/quiz/pedestrian_crossing.jpg'),
+  'no_entry': require('../../assets/quiz/no_entry.jpg'),
+  'turn_right': require('../../assets/quiz/turn_right.jpg'),
+  'warning': require('../../assets/quiz/warning.jpg'),
 };
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

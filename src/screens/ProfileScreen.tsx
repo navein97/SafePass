@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
-import { Shield, LogOut, User, Flame, Zap, Trophy, Settings, ChevronRight } from 'lucide-react-native';
+import { Shield, LogOut, User, Flame, Trophy, Globe, ChevronRight } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -36,8 +36,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   // Mock gamification data - Replace with real data
   const isManager = profile?.role === 'manager';
-  const streakDays = profile?.streak || 0;
-  const multiplier = streakDays >= 5 ? 2.0 : streakDays >= 3 ? 1.5 : 1.0;
+  const streakWeeks = profile?.streak || 0;
   const shieldHealth = profile?.shieldHealth || 100; // Percentage
 
   useEffect(() => {
@@ -120,7 +119,7 @@ export const ProfileScreen = ({ navigation }: any) => {
           <View style={styles.header}>
             <Text style={styles.title}>Profile</Text>
             <TouchableOpacity style={styles.settingsButton}>
-              <Settings color={colors.text.secondary} size={24} />
+              <Globe color={colors.text.secondary} size={24} />
             </TouchableOpacity>
           </View>
 
@@ -148,30 +147,19 @@ export const ProfileScreen = ({ navigation }: any) => {
           {/* Gamification Stats Row - Only for Staff */}
           {!isManager && (
           <>
-          <View style={styles.statsRow}>
-            {/* Flame / Streak */}
-            <GlassCard style={styles.statCard}>
-              <View style={styles.flameContainer}>
-                <LinearGradient
-                  colors={[colors.streak.flame, colors.streak.flameGlow]}
-                  style={styles.flameGlow}
-                >
-                  <Flame size={32} color="#FFF" fill="#FFF" />
-                </LinearGradient>
-              </View>
-              <Text style={styles.statValue}>{streakDays}</Text>
-              <Text style={styles.statLabel}>Day Streak</Text>
-            </GlassCard>
-
-            {/* Multiplier */}
-            <GlassCard style={styles.statCard}>
-              <View style={styles.multiplierContainer}>
-                <Zap size={28} color={colors.streak.multiplier} fill={colors.streak.multiplier} />
-              </View>
-              <Text style={[styles.statValue, styles.multiplierValue]}>{multiplier}x</Text>
-              <Text style={styles.statLabel}>Multiplier</Text>
-            </GlassCard>
-          </View>
+          {/* Weekly Streak Card */}
+          <GlassCard style={styles.streakCard}>
+            <View style={styles.flameContainer}>
+              <LinearGradient
+                colors={[colors.streak.flame, colors.streak.flameGlow]}
+                style={styles.flameGlow}
+              >
+                <Flame size={32} color="#FFF" fill="#FFF" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.statValue}>{streakWeeks}</Text>
+            <Text style={styles.statLabel}>Weekly Streak</Text>
+          </GlassCard>
 
           {/* Safety Shield - Only for Staff */}
           <GlassCard style={styles.shieldCard}>
@@ -381,6 +369,11 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: 4,
     textAlign: 'center',
+  },
+  streakCard: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginBottom: 16,
   },
   shieldCard: {
     alignItems: 'center',

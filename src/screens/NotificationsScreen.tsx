@@ -30,7 +30,7 @@ interface Notification {
 
 
 
-function NotificationItem({ notification }: { notification: Notification }) {
+function NotificationItem({ notification, onPress }: { notification: Notification; onPress: () => void }) {
   const getIcon = () => {
     switch (notification.type) {
       case 'streak':
@@ -56,6 +56,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
         styles.notificationItem,
         !notification.isRead && styles.notificationUnread,
       ]}
+      onPress={onPress}
     >
       <View style={styles.iconContainer}>
         {getIcon()}
@@ -126,6 +127,24 @@ export function NotificationsScreen() {
     }
   };
 
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notificationId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
@@ -157,7 +176,11 @@ export function NotificationsScreen() {
           </View>
         ) : (
           notifications.map(notification => (
-            <NotificationItem key={notification.id} notification={notification} />
+            <NotificationItem 
+              key={notification.id} 
+              notification={notification} 
+              onPress={() => markAsRead(notification.id)}
+            />
           ))
         )}
 

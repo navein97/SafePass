@@ -19,7 +19,7 @@ export const GradientBackground: React.FC<GradientBackgroundProps> = ({ children
       />
       
       <Image 
-        source={require('../../../assets/logistics-bg.png')} 
+        source={require('../../../assets/logistics-bg.jpg')} 
         style={[StyleSheet.absoluteFill, { opacity: 0.15, width: '100%', height: '100%' }]}
         resizeMode="cover"
       />

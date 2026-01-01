@@ -229,6 +229,121 @@ export const QuizService = {
                 .eq('id', userId);
             // ----------------------------------
 
+            // --- WEEKLY STREAK CALCULATION ---
+            // Get all compliance logs for this user (completed weeks)
+            const { data: complianceLogs } = await supabase
+                .from('compliance_logs')
+                .select('week_number, year')
+                .eq('user_id', userId)
+                .eq('status', 'COMPLIANT')
+                .order('year', { ascending: false })
+                .order('week_number', { ascending: false });
+
+            let streak = 0;
+            if (complianceLogs && complianceLogs.length > 0) {
+                // Calculate consecutive weeks
+                let currentWeek = weekNumber;
+                let currentYear = year;
+
+                for (const log of complianceLogs) {
+                    // Check if this log is for the expected week
+                    if (log.year === currentYear && log.week_number === currentWeek) {
+                        streak++;
+                        // Move to previous week
+                        currentWeek--;
+                        if (currentWeek < 1) {
+                            currentWeek = 52; // Approximate
+                            currentYear--;
+                        }
+                    } else if (log.year === currentYear && log.week_number === currentWeek - 1) {
+                        // Also check previous week if we haven't counted current yet
+                        streak++;
+                        currentWeek = log.week_number - 1;
+                        if (currentWeek < 1) {
+                            currentWeek = 52;
+                            currentYear--;
+                        }
+                    } else {
+                        break; // Gap found, streak ends
+                    }
+                }
+            }
+
+            // Update streak in profile
+            await supabase
+                .from('profiles')
+                .update({ streak })
+                .eq('id', userId);
+            // ----------------------------------
+
+            // --- AUTO-NOTIFICATIONS ---
+            const notificationsToCreate: any[] = [];
+
+            // 1. Quiz Completion Notification
+            notificationsToCreate.push({
+                user_id: userId,
+                type: 'shield',
+                title: 'Mission Complete! 🎯',
+                message: `You scored ${score}% on this week's quiz.`,
+                is_read: false
+            });
+
+            // 2. Streak Milestone Notifications
+            if (streak === 3) {
+                notificationsToCreate.push({
+                    user_id: userId,
+                    type: 'streak',
+                    title: 'Streak Milestone! 🔥',
+                    message: 'You\'ve completed 3 weeks in a row! Keep it up!',
+                    is_read: false
+                });
+            } else if (streak === 5) {
+                notificationsToCreate.push({
+                    user_id: userId,
+                    type: 'streak',
+                    title: 'On Fire! 🔥🔥',
+                    message: '5 week streak! You\'re unstoppable!',
+                    is_read: false
+                });
+            } else if (streak === 10) {
+                notificationsToCreate.push({
+                    user_id: userId,
+                    type: 'streak',
+                    title: 'LEGENDARY! 🏆🔥',
+                    message: '10 week streak achieved! You\'re a Safety Champion!',
+                    is_read: false
+                });
+            }
+
+            // 3. Check if user is now in Top 3
+            const { data: topDrivers } = await supabase
+                .from('profiles')
+                .select('id')
+                .order('safety_index', { ascending: false })
+                .limit(3);
+
+            if (topDrivers) {
+                const userRank = topDrivers.findIndex(d => d.id === userId);
+                if (userRank !== -1) {
+                    const placement = userRank + 1;
+                    notificationsToCreate.push({
+                        user_id: userId,
+                        type: 'leaderboard',
+                        title: `You're #${placement}! 🏆`,
+                        message: `Congratulations! You've reached ${placement === 1 ? '1st' : placement === 2 ? '2nd' : '3rd'} place on the leaderboard!`,
+                        is_read: false
+                    });
+                }
+            }
+
+            // Insert all notifications
+            if (notificationsToCreate.length > 0) {
+                await supabase
+                    .from('notifications')
+                    .insert(notificationsToCreate);
+            }
+            // ----------------------------------
+
             const attempt: QuizAttempt = {
                 id: attemptData.id,
                 driverId: userId,
@@ -359,55 +474,47 @@ export const QuizService = {
     async checkShieldDecay(userId: string) {
         try {
             console.log('🛡️ Checking shield decay for:', userId);
+
+            // First check if we already ran decay check today using AsyncStorage
+            const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+            const lastDecayCheck = await AsyncStorage.getItem(`decay_check_${userId}`);
+            const today = new Date().toDateString();
+
+            if (lastDecayCheck === today) {
+                console.log('📅 Decay already checked today. Skipping.');
+                return;
+            }
+
             const completed = await this.hasCompletedThisWeek(userId);
 
             // If they HAVE completed this week, no decay. Shield is safe.
             if (completed) {
                 console.log('✅ User is compliant. Shield is safe.');
+                // Still mark as checked today
+                await AsyncStorage.setItem(`decay_check_${userId}`, today);
                 return;
             }
 
             // If NOT completed, check if we are overdue (Today is NOT Monday)
             // Strategy: We penalize if today > Monday ("Deadline passed")
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat). Monday is 1.
+            const dayOfWeek = new Date().getDay(); // 0 (Sun) - 6 (Sat). Monday is 1.
 
-            // If it's Monday (1), we give them a grace period until end of day.
+            // If it's Monday (1) or Sunday (0), we give them a grace period.
             // Decay starts Tuesday (2).
             if (dayOfWeek <= 1) {
                 console.log('⏳ Grace period (Monday/Sunday). No decay yet.');
+                await AsyncStorage.setItem(`decay_check_${userId}`, today);
                 return;
             }
-
-            // Fetch current profile to check last_activity_date or just apply decay blindly?
-            // To prevent double-decaying on the same day, we really should check 'last_decay_date' 
-            // but we didn't add that column. 
-            // SIMPLIFIED LOGIC FOR MVP:
-            // We won't strictly enforce "once per day" in the DB structure right now without a new column.
-            // However, we can use 'updated_at' on the profile if it was updated today? 
-            // OR: Just assume the user opens the app once a day. 
-
-            // BETTER MVP STRATEGY: 
-            // Only decay if 'shield_health' > 0.
 
             // Fetch profile
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('shield_health, updated_at')
+                .select('shield_health')
                 .eq('id', userId)
                 .single();
 
             if (!profile) return;
-
-            // Rudimentary "Once per day" check using local storage or just updated_at
-            // If profile was updated TODAY, we assume we might have already decayed or they played.
-            const lastUpdate = new Date(profile.updated_at);
-            const isToday = lastUpdate.toDateString() === today.toDateString();
-
-            if (isToday) {
-                console.log('📅 Profile already updated today. Skipping decay to prevent double-dip.');
-                return;
-            }
 
             // Apply Decay: -10%
             const decayAmount = 10;
@@ -417,12 +524,12 @@ export const QuizService = {
                 console.log(`📉 Applying decay. ${profile.shield_health} -> ${newHealth}`);
                 await supabase
                     .from('profiles')
-                    .update({
-                        shield_health: newHealth,
-                        updated_at: new Date().toISOString() // Mark as updated so we don't do it again today
-                    })
+                    .update({ shield_health: newHealth })
                     .eq('id', userId);
             }
+
+            // Mark as checked today
+            await AsyncStorage.setItem(`decay_check_${userId}`, today);
 
         } catch (error) {
             console.error('Error processing shield decay:', error);
