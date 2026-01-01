@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import {
   View,
   Text,
@@ -27,56 +28,7 @@ interface Notification {
   isRead: boolean;
 }
 
-const SAMPLE_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    type: 'streak',
-    title: '🔥 Keep it going!',
-    message: 'You\'re on a 5-day streak! Complete today\'s mission to maintain it.',
-    timestamp: '2 min ago',
-    isRead: false,
-  },
-  {
-    id: '2',
-    type: 'like',
-    title: 'New Likes',
-    message: 'Driver Mike and 3 others liked your achievement post!',
-    timestamp: '1 hour ago',
-    isRead: false,
-  },
-  {
-    id: '3',
-    type: 'leaderboard',
-    title: '🏆 Climbing the ranks!',
-    message: 'You moved up 3 positions! Currently ranked #12.',
-    timestamp: '3 hours ago',
-    isRead: true,
-  },
-  {
-    id: '4',
-    type: 'comment',
-    title: 'New Comment',
-    message: 'Driver Sarah commented on your streak: "Amazing work! 👏"',
-    timestamp: '5 hours ago',
-    isRead: true,
-  },
-  {
-    id: '5',
-    type: 'shield',
-    title: '🛡️ Shield Alert',
-    message: 'Your Safety Shield dropped to 75%. Complete missions to recharge!',
-    timestamp: '1 day ago',
-    isRead: true,
-  },
-  {
-    id: '6',
-    type: 'mention',
-    title: 'You were mentioned!',
-    message: 'Your team lead mentioned you in a post about top performers.',
-    timestamp: '2 days ago',
-    isRead: true,
-  },
-];
+
 
 function NotificationItem({ notification }: { notification: Notification }) {
   const getIcon = () => {
@@ -121,7 +73,60 @@ function NotificationItem({ notification }: { notification: Notification }) {
 }
 
 export function NotificationsScreen() {
-  const unreadCount = SAMPLE_NOTIFICATIONS.filter(n => !n.isRead).length;
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        setNotifications(data.map((n: any) => ({
+          id: n.id,
+          type: n.type || 'system',
+          title: n.title,
+          message: n.message,
+          timestamp: new Date(n.created_at).toLocaleDateString() + ' ' + new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isRead: n.is_read,
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      
+      // Refresh local state
+      loadNotifications();
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -140,15 +145,21 @@ export function NotificationsScreen() {
       >
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickActionButton}>
+          <TouchableOpacity style={styles.quickActionButton} onPress={markAllRead}>
             <Text style={styles.quickActionText}>Mark all as read</Text>
           </TouchableOpacity>
         </View>
 
         {/* Notifications List */}
-        {SAMPLE_NOTIFICATIONS.map(notification => (
-          <NotificationItem key={notification.id} notification={notification} />
-        ))}
+        {notifications.length === 0 ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <Text style={{ color: colors.text.secondary }}>No notifications yet</Text>
+          </View>
+        ) : (
+          notifications.map(notification => (
+            <NotificationItem key={notification.id} notification={notification} />
+          ))
+        )}
 
         <View style={styles.bottomPadding} />
       </ScrollView>

@@ -8,6 +8,9 @@ export interface Driver {
     safetyIndex: number; // 0-100
     lastQuizDate?: string; // ISO string
     role?: 'staff' | 'manager';
+    streak?: number;
+    shieldHealth?: number;
+    totalScore?: number;
 }
 
 export interface Question {
@@ -44,4 +47,27 @@ export interface ComplianceRecord {
     completedAt?: string;
     score?: number;
     signature: string; // HMAC signature for tamper-proofing
+}
+
+export interface Notification {
+    id: string;
+    userId: string;
+    title: string;
+    message: string;
+    type: 'system' | 'achievement' | 'mission' | 'alert';
+    isRead: boolean;
+    createdAt: string;
+}
+
+export interface Post {
+    id: string;
+    userId: string;
+    user?: {
+        full_name: string;
+        region: Region;
+    };
+    content: string;
+    image_url?: string;
+    likes_count: number;
+    created_at: string;
 }

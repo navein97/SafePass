@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {
   Wrench,
 } from 'lucide-react-native';
 import { colors } from '../theme/colors';
+import { supabase } from '../lib/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -31,43 +32,35 @@ interface Driver {
   trendValue: number;
 }
 
-const LEADERBOARD_DATA: Driver[] = [
-  { rank: 1, name: 'Driver Mike', team: 'Team Alpha', score: 98, streak: 15, trend: 'up', trendValue: 2 },
-  { rank: 2, name: 'Driver Sarah', team: 'Team Beta', score: 95, streak: 12, trend: 'same', trendValue: 0 },
-  { rank: 3, name: 'Driver James', team: 'Team Alpha', score: 93, streak: 8, trend: 'up', trendValue: 1 },
-  { rank: 4, name: 'Driver Emma', team: 'Team Gamma', score: 91, streak: 10, trend: 'down', trendValue: 2 },
-  { rank: 5, name: 'Driver John', team: 'Team Beta', score: 89, streak: 6, trend: 'up', trendValue: 3 },
-  { rank: 6, name: 'Driver Lisa', team: 'Team Delta', score: 87, streak: 4, trend: 'same', trendValue: 0 },
-  { rank: 7, name: 'Driver Alex', team: 'Team Alpha', score: 85, streak: 7, trend: 'up', trendValue: 1 },
-  { rank: 8, name: 'Driver Kate', team: 'Team Gamma', score: 82, streak: 3, trend: 'down', trendValue: 1 },
-  { rank: 9, name: 'Driver Tom', team: 'Team Delta', score: 62, streak: 0, trend: 'down', trendValue: 4 },
-  { rank: 10, name: 'Driver Ben', team: 'Team Beta', score: 58, streak: 0, trend: 'down', trendValue: 3 },
-  { rank: 11, name: 'Driver Anna', team: 'Team Gamma', score: 55, streak: 0, trend: 'down', trendValue: 2 },
-];
+
 
 function TopThreePodium({ drivers }: { drivers: Driver[] }) {
   const [second, first, third] = [drivers[1], drivers[0], drivers[2]];
 
+  if (!first) return null;
+
   return (
     <View style={styles.podiumContainer}>
       {/* Second Place */}
-      <View style={styles.podiumItem}>
-        <View style={[styles.podiumAvatar, styles.podiumSecond]}>
-          <Text style={styles.avatarText}>{second.name.charAt(7)}</Text>
-        </View>
-        <View style={[styles.podiumBar, styles.podiumBarSecond]}>
-          <View style={[styles.medalBadge, { backgroundColor: colors.leaderboard.silver }]}>
-            <Text style={styles.medalNumber}>2</Text>
+      {second ? (
+        <View style={styles.podiumItem}>
+          <View style={[styles.podiumAvatar, styles.podiumSecond]}>
+            <Text style={styles.avatarText}>{second.name?.charAt(0) || '?'}</Text>
           </View>
+          <View style={[styles.podiumBar, styles.podiumBarSecond]}>
+            <View style={[styles.medalBadge, { backgroundColor: colors.leaderboard.silver }]}>
+              <Text style={styles.medalNumber}>2</Text>
+            </View>
+          </View>
+          <Text style={styles.podiumName}>{second.name.replace('Driver ', '')}</Text>
+          <Text style={styles.podiumScore}>{second.score}%</Text>
         </View>
-        <Text style={styles.podiumName}>{second.name.replace('Driver ', '')}</Text>
-        <Text style={styles.podiumScore}>{second.score}%</Text>
-      </View>
+      ) : <View style={styles.podiumItem} />}
 
       {/* First Place */}
       <View style={styles.podiumItem}>
         <View style={[styles.podiumAvatar, styles.podiumFirst]}>
-          <Text style={styles.avatarText}>{first.name.charAt(7)}</Text>
+          <Text style={styles.avatarText}>{first.name?.charAt(0) || '?'}</Text>
         </View>
         <LinearGradient
           colors={colors.gradients.gold as [string, string]}
@@ -82,18 +75,20 @@ function TopThreePodium({ drivers }: { drivers: Driver[] }) {
       </View>
 
       {/* Third Place */}
-      <View style={styles.podiumItem}>
-        <View style={[styles.podiumAvatar, styles.podiumThird]}>
-          <Text style={styles.avatarText}>{third.name.charAt(7)}</Text>
-        </View>
-        <View style={[styles.podiumBar, styles.podiumBarThird]}>
-          <View style={[styles.medalBadge, { backgroundColor: colors.leaderboard.bronze }]}>
-            <Text style={styles.medalNumber}>3</Text>
+      {third ? (
+        <View style={styles.podiumItem}>
+          <View style={[styles.podiumAvatar, styles.podiumThird]}>
+            <Text style={styles.avatarText}>{third.name?.charAt(0) || '?'}</Text>
           </View>
+          <View style={[styles.podiumBar, styles.podiumBarThird]}>
+            <View style={[styles.medalBadge, { backgroundColor: colors.leaderboard.bronze }]}>
+              <Text style={styles.medalNumber}>3</Text>
+            </View>
+          </View>
+          <Text style={styles.podiumName}>{third.name.replace('Driver ', '')}</Text>
+          <Text style={styles.podiumScore}>{third.score}%</Text>
         </View>
-        <Text style={styles.podiumName}>{third.name.replace('Driver ', '')}</Text>
-        <Text style={styles.podiumScore}>{third.score}%</Text>
-      </View>
+      ) : <View style={styles.podiumItem} />}
     </View>
   );
 }
@@ -114,7 +109,7 @@ function LeaderboardItem({ driver, isPitLane }: { driver: Driver; isPitLane?: bo
 
       <View style={styles.driverInfo}>
         <View style={[styles.avatar, isPitLane && styles.avatarPitLane]}>
-          <Text style={styles.avatarInitial}>{driver.name.charAt(7)}</Text>
+          <Text style={styles.avatarInitial}>{driver.name.charAt(0)}</Text>
         </View>
         <View style={styles.driverDetails}>
           <Text style={styles.driverName}>{driver.name}</Text>
@@ -158,10 +153,47 @@ function LeaderboardItem({ driver, isPitLane }: { driver: Driver; isPitLane?: bo
 
 export function LeaderboardScreen() {
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'allTime'>('weekly');
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadLeaderboard();
+  }, [activeTab]);
+
+  const loadLeaderboard = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order(activeTab === 'allTime' ? 'total_score' : 'safety_index', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      if (data) {
+        const mappedDrivers: Driver[] = data.map((p: any, index: number) => ({
+          rank: index + 1,
+          name: p.full_name || 'Driver',
+          team: p.region === 'MY' ? 'Malaysia' : 'Portugal',
+          score: activeTab === 'allTime' ? (p.total_score || 0) : (p.safety_index || 0),
+          streak: p.streak || 0,
+          trend: 'same',
+          trendValue: 0
+        }));
+        setDrivers(mappedDrivers);
+      }
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
-  const topThree = LEADERBOARD_DATA.slice(0, 3);
-  const restOfBoard = LEADERBOARD_DATA.slice(3, 8);
-  const pitLane = LEADERBOARD_DATA.slice(8);
+  const topThree = drivers.slice(0, 3);
+  const restOfBoard = drivers.slice(3, 10);
+  const pitLane = drivers.slice(10);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -37,6 +37,12 @@ export const HomeScreen = ({ navigation }: any) => {
         // Check if completed this week
         const completed = await QuizService.hasCompletedThisWeek(userProfile.id);
         setIsCompliant(completed);
+
+        // Run Decay Check (Side effect, don't await blocking UI)
+        QuizService.checkShieldDecay(userProfile.id).then(() => {
+           // Optional: Reload profile if decay happened? 
+           // For now, next load will show it.
+        });
       }
     } catch (error) {
       console.error('Error loading home data:', error);

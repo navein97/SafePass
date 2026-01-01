@@ -36,9 +36,9 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   // Mock gamification data - Replace with real data
   const isManager = profile?.role === 'manager';
-  const streakDays = profile?.streak || 7;
+  const streakDays = profile?.streak || 0;
   const multiplier = streakDays >= 5 ? 2.0 : streakDays >= 3 ? 1.5 : 1.0;
-  const shieldHealth = profile?.shieldHealth || 78; // Percentage
+  const shieldHealth = profile?.shieldHealth || 100; // Percentage
 
   useEffect(() => {
     loadProfile();
@@ -56,8 +56,8 @@ export const ProfileScreen = ({ navigation }: any) => {
 
       setProfile({
         ...userProfile,
-        streak: 7, // Mock data
-        shieldHealth: 78, // Mock data
+        streak: userProfile.streak || 0,
+        shieldHealth: userProfile.shield_health || 100,
       });
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -195,8 +195,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                   stroke={shieldHealth > 50 ? colors.status.success : shieldHealth > 25 ? colors.status.warning : colors.status.danger}
                   strokeWidth={SHIELD_STROKE_WIDTH}
                   fill="transparent"
-                  strokeDasharray={`${shieldProgress} ${SHIELD_CIRCUMFERENCE}`}
-                  strokeDashoffset={SHIELD_CIRCUMFERENCE * 0.25}
+                  strokeDasharray={`${SHIELD_CIRCUMFERENCE * (shieldHealth / 100)} ${SHIELD_CIRCUMFERENCE}`}
                   strokeLinecap="round"
                   rotation={-90}
                   origin={`${SHIELD_SIZE / 2}, ${SHIELD_SIZE / 2}`}

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import {
   View,
   Text,
@@ -23,65 +24,7 @@ interface FeedPost {
   isLiked: boolean;
 }
 
-// Sample feed data - Replace with real data
-const SAMPLE_FEED: FeedPost[] = [
-  {
-    id: '1',
-    type: 'leaderboard',
-    userName: 'SafePass',
-    content: '🏆 Weekly Top Performers:\n🥇 Driver Mike - 98%\n🥈 Driver Sarah - 95%\n🥉 Driver James - 93%',
-    timestamp: '2h ago',
-    likes: 45,
-    comments: 12,
-    isLiked: false,
-  },
-  {
-    id: '2',
-    type: 'streak',
-    userName: 'Driver Mike',
-    content: '🔥 Driver Mike hit a 10-day streak! Keep up the amazing work!',
-    timestamp: '3h ago',
-    likes: 32,
-    comments: 8,
-    isLiked: true,
-  },
-  {
-    id: '3',
-    type: 'shield',
-    userName: 'Logistics Team B',
-    content: '🛡️ Logistics Team B improved their Safety Shield by 15%! Team effort pays off!',
-    timestamp: '5h ago',
-    likes: 28,
-    comments: 5,
-    isLiked: false,
-  },
-  {
-    id: '4',
-    type: 'achievement',
-    userName: 'Driver Sarah',
-    content: '⭐ Driver Sarah completed 50 missions with a 95% accuracy rate!',
-    timestamp: '6h ago',
-    likes: 41,
-    comments: 14,
-    isLiked: false,
-  },
-  {
-    id: '5',
-    type: 'streak',
-    userName: 'Driver Alex',
-    content: '🔥 Driver Alex is on fire! 5-day streak activated - earning 1.5x points!',
-    timestamp: '8h ago',
-    likes: 19,
-    comments: 3,
-    isLiked: false,
-  },
-];
 
-const PIT_LANE_DRIVERS = [
-  { name: 'Driver Tom', message: 'Needs a tune-up! 📍', score: 62 },
-  { name: 'Driver Lisa', message: 'In the Pit Lane 🔧', score: 58 },
-  { name: 'Driver Ben', message: 'Ready for a comeback! 💪', score: 55 },
-];
 
 function FeedItem({ post, onLike }: { post: FeedPost; onLike: (id: string) => void }) {
   const getIcon = () => {
@@ -141,7 +84,9 @@ function FeedItem({ post, onLike }: { post: FeedPost; onLike: (id: string) => vo
   );
 }
 
-function PitLaneCard() {
+function PitLaneCard({ drivers }: { drivers: any[] }) {
+  if (drivers.length === 0) return null;
+
   return (
     <View style={styles.pitLaneCard}>
       <View style={styles.pitLaneHeader}>
@@ -149,11 +94,11 @@ function PitLaneCard() {
         <Text style={styles.pitLaneSubtitle}>These drivers need a tune-up!</Text>
       </View>
       
-      {PIT_LANE_DRIVERS.map((driver, index) => (
+      {drivers.map((driver, index) => (
         <View key={index} style={styles.pitLaneDriver}>
           <View style={styles.pitLaneInfo}>
-            <Text style={styles.pitLaneName}>{driver.name}</Text>
-            <Text style={styles.pitLaneMessage}>{driver.message}</Text>
+            <Text style={styles.pitLaneName}>{driver.full_name}</Text>
+            <Text style={styles.pitLaneMessage}>Score: {driver.safety_index}%</Text>
           </View>
           <TouchableOpacity style={styles.retakeButton}>
             <Text style={styles.retakeButtonText}>Retake Mission</Text>
@@ -165,20 +110,117 @@ function PitLaneCard() {
 }
 
 export function SocialScreen() {
-  const [feed, setFeed] = useState<FeedPost[]>(SAMPLE_FEED);
+  const [feed, setFeed] = useState<FeedPost[]>([]);
+  const [pitLaneDrivers, setPitLaneDrivers] = useState<any[]>([]);
+  const [topDrivers, setTopDrivers] = useState<any[]>([]);
 
-  const handleLike = (id: string) => {
-    setFeed(prevFeed =>
-      prevFeed.map(post =>
-        post.id === id
-          ? { 
-              ...post, 
-              isLiked: !post.isLiked, 
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1 
-            }
-          : post
-      )
-    );
+  useEffect(() => {
+    loadFeed();
+  }, []);
+
+  const loadFeed = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Fetch Posts
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles:user_id (full_name),
+          post_likes (user_id)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const mappedFeed: FeedPost[] = data.map((post: any) => ({
+          id: post.id,
+          type: 'achievement', // Default type
+          userName: post.profiles?.full_name || 'User',
+          content: post.content,
+          timestamp: new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          likes: post.likes_count || 0,
+          comments: 0,
+          isLiked: post.post_likes?.some((like: any) => like.user_id === user?.id) || false,
+        }));
+        setFeed(mappedFeed);
+      }
+
+      // Fetch Pit Lane (Drivers with < 70 safety index)
+      const { data: pitData } = await supabase
+        .from('profiles')
+        .select('full_name, safety_index')
+        .lt('safety_index', 70)
+        .order('safety_index', { ascending: true })
+        .limit(3);
+        
+      if (pitData) {
+        setPitLaneDrivers(pitData);
+      }
+
+      // Fetch Top 3 Drivers
+      const { data: topData } = await supabase
+        .from('profiles')
+        .select('full_name, total_score')
+        .order('total_score', { ascending: false })
+        .limit(3);
+      
+      if (topData) {
+        setTopDrivers(topData);
+      }
+    } catch (error) {
+       console.error('Error loading feed:', error);
+    }
+  };
+
+  const handleLike = async (id: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const post = feed.find(p => p.id === id);
+      if (!post) return;
+
+      const newIsLiked = !post.isLiked;
+      const newLikesCount = newIsLiked ? post.likes + 1 : post.likes - 1;
+
+      // Optimistic update
+      setFeed(prevFeed =>
+        prevFeed.map(p =>
+          p.id === id
+            ? { 
+                ...p, 
+                isLiked: newIsLiked, 
+                likes: newLikesCount
+              }
+            : p
+        )
+      );
+
+      if (newIsLiked) {
+        // Add like
+        const { error } = await supabase
+          .from('post_likes')
+          .insert({ post_id: id, user_id: user.id });
+        
+        if (error) throw error;
+      } else {
+        // Remove like
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      // Revert optimistic update on error
+      loadFeed();
+    }
   };
 
   return (
@@ -195,39 +237,60 @@ export function SocialScreen() {
         <View style={styles.topThreeCard}>
           <Text style={styles.topThreeTitle}>🏆 Top Performers</Text>
           <View style={styles.topThreeContainer}>
+            {/* 2nd Place */}
             <View style={styles.topThreeItem}>
               <View style={[styles.medalBadge, { backgroundColor: colors.leaderboard.silver }]}>
                 <Text style={styles.medalText}>2</Text>
               </View>
-              <Text style={styles.topThreeName}>Sarah</Text>
-              <Text style={styles.topThreeScore}>95%</Text>
+              <Text style={styles.topThreeName}>
+                {topDrivers[1]?.full_name?.split(' ')[0] || '---'}
+              </Text>
+              <Text style={styles.topThreeScore}>
+                {topDrivers[1]?.total_score || 0}%
+              </Text>
             </View>
             
+            {/* 1st Place */}
             <View style={[styles.topThreeItem, styles.topThreeFirst]}>
               <View style={[styles.medalBadge, styles.medalBadgeGold]}>
                 <Text style={styles.medalText}>1</Text>
               </View>
-              <Text style={styles.topThreeName}>Mike</Text>
-              <Text style={styles.topThreeScore}>98%</Text>
+              <Text style={styles.topThreeName}>
+                 {topDrivers[0]?.full_name?.split(' ')[0] || '---'}
+              </Text>
+              <Text style={styles.topThreeScore}>
+                 {topDrivers[0]?.total_score || 0}%
+              </Text>
             </View>
             
+            {/* 3rd Place */}
             <View style={styles.topThreeItem}>
               <View style={[styles.medalBadge, { backgroundColor: colors.leaderboard.bronze }]}>
                 <Text style={styles.medalText}>3</Text>
               </View>
-              <Text style={styles.topThreeName}>James</Text>
-              <Text style={styles.topThreeScore}>93%</Text>
+              <Text style={styles.topThreeName}>
+                 {topDrivers[2]?.full_name?.split(' ')[0] || '---'}
+              </Text>
+              <Text style={styles.topThreeScore}>
+                 {topDrivers[2]?.total_score || 0}%
+              </Text>
             </View>
           </View>
         </View>
 
         {/* Feed Items */}
-        {feed.map(post => (
-          <FeedItem key={post.id} post={post} onLike={handleLike} />
-        ))}
+        {feed.length === 0 ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <Text style={{ color: colors.text.secondary }}>No posts yet. Be the first!</Text>
+          </View>
+        ) : (
+          feed.map(post => (
+            <FeedItem key={post.id} post={post} onLike={handleLike} />
+          ))
+        )}
 
         {/* Pit Lane Section */}
-        <PitLaneCard />
+        <PitLaneCard drivers={pitLaneDrivers} />
         
         <View style={styles.bottomPadding} />
       </ScrollView>
