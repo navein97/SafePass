@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     padding: 24,
+    paddingBottom: 100, // Extra padding for scrolling
   },
   header: {
     marginBottom: 32,

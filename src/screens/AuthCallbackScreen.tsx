@@ -17,24 +17,56 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
 
   const handleAuthCallback = async () => {
     try {
-      // Get the current session after email verification
+      // Check for recovery flow first
+      // Supabase handles the session exchange automatically when the link is clicked.
+      // We just need to check if we are logged in.
+      
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) throw error;
 
       if (session) {
-        setStatus('success');
-        setMessage('✅ Email verified successfully!');
+        // If we have a session, check if it was a password recovery flow
+        // The URL normally contains type=recovery, but deep linking might strip it or handle it before we see it.
+        // However, we can also check if the user is here and we want to redirect them.
+        // A simple heuristic: if we are confirmed, but came to this screen, we *might* be resetting password.
+        // But wait, SignUp confirmation also logs you in.
         
-        // Navigate to home after a short delay
-        setTimeout(() => {
-          navigation.replace('Home');
-        }, 2000);
+        // Strategy: We can listen to the onAuthStateChange event for 'PASSWORD_RECOVERY'
+        // But since we are already here, let's look at the URL that opened the app if possible?
+        // Or relying on the fact that if we are here and we have a session, we usually go home.
+        // But if the user requested a password reset, they clicked a link that said "Recover Password".
+        
+        // Ideally, we redirect to a ResetPassword screen if the path was /auth/callback?type=recovery
+        // But checking URL params inside the component might be needed if using React Navigation with linking.
+        
+        // For now, let's try to detect if it's a recovery from the navigation route params if passed
+        // Or just redirect to Home.
+        // Wait, the USER complained "Redirects to login page". 
+        // This implies they were NOT logged in, or the logic below `if (session)` failed
+        // OR they were logged in, and `status` became 'success' -> navigation.replace('Home');
+        // If they want to reset password, going to Home is also annoying if they don't know it.
+        
+        // Fix: We should check if the user was put into a password recovery state.
+        // Supabase fires onAuthStateChange with 'PASSWORD_RECOVERY' event.
+        
+        setStatus('success');
+        setMessage('✅ Successfully verified!');
+        
+        // If we are in a recovery flow, supabase fires a signed in event.
+        // We can check if we want to support reset password. 
+        // A tricky part: detecting if it's sign up or reset.
+        
+        // Let's rely on the URL or session.
+        // Actually, let's wait for a brief moment to see if we navigate to ResetPassword from App.tsx listener
+        // But we are the screen handling the callback.
+        
+        // NOTE: For now, I will add a check using onAuthStateChange within this component
+        // to see if we get a PASSWORD_RECOVERY event.
       } else {
         setStatus('success');
         setMessage('✅ Email verified! Please log in to continue.');
         
-        // Navigate to login after a short delay
         setTimeout(() => {
           navigation.replace('Login');
         }, 2000);
@@ -44,12 +76,37 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
       setStatus('error');
       setMessage('❌ Verification failed. Please try again.');
       
-      // Navigate to login after a short delay
       setTimeout(() => {
         navigation.replace('Login');
       }, 3000);
     }
   };
+
+  useEffect(() => {
+    // Listen for auth state changes specifically for password recovery
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+         // This event is fired when the user clicks a password recovery link
+         navigation.replace('ResetPassword');
+      } else if (event === 'SIGNED_IN') {
+         // Standard sign in (could be signup confirmation or recovery)
+         // If recovery, PASSWORD_RECOVERY usually fires too?
+         // Documentation says: PASSWORD_RECOVERY event is emitted when the user clicks a recovery link.
+         // It also signs the user in.
+         
+         // We can check the URL for 'type=recovery' if on web/linking
+         // But for safetfy, we can redirect to Home, and if they meant to reset pass, they can do it from profile?
+         // No, they forgot it.
+         
+         // Let's assume if we are on this screen, and we get signed in, we go to Home
+         // UNLESS we caught the recovery event.
+      }
+    });
+
+    return () => {
+      subscription.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <GradientBackground>

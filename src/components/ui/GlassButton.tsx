@@ -35,7 +35,8 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
       case 'secondary':
         return ['#3A3A3C', '#2C2C2E']; // Dark gray gradient
       case 'outline':
-        return ['transparent', 'transparent'];
+        // Use fully transparent white to avoid Android black artifact issues
+        return ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)'] as const;
       default:
         return colors.gradients.primary;
     }
@@ -59,7 +60,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
       ]}
     >
       <LinearGradient
-        colors={getGradientColors()}
+        colors={getGradientColors() as any}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={[styles.gradient, variant === 'outline' && styles.outlineGradient]}

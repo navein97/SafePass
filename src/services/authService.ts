@@ -83,6 +83,29 @@ export const AuthService = {
     },
 
     /**
+     * Send password reset email
+     */
+    async resetPassword(email: string) {
+        try {
+            const redirectUrl = Platform.OS === 'web'
+                ? 'https://safepass-kappa.vercel.app/auth/callback' // Update with your actual reset password page URL if different
+                : 'safepass://auth/callback'; // Deep link for mobile app handling
+
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: redirectUrl,
+            });
+
+            if (error) throw error;
+
+            console.log('✅ Password reset email sent to:', email);
+            return { error: null };
+        } catch (error: any) {
+            console.error('Reset password error:', error);
+            return { error: error.message };
+        }
+    },
+
+    /**
      * Sign in existing user
      */
     async signIn(data: SignInData) {
@@ -98,6 +121,24 @@ export const AuthService = {
         } catch (error: any) {
             console.error('Sign in error:', error);
             return { session: null, user: null, error: error.message };
+        }
+    },
+
+    /**
+     * Update user password
+     */
+    async updatePassword(password: string) {
+        try {
+            const { data, error } = await supabase.auth.updateUser({
+                password: password
+            });
+
+            if (error) throw error;
+
+            return { data, error: null };
+        } catch (error: any) {
+            console.error('Update password error:', error);
+            return { data: null, error: error.message };
         }
     },
 

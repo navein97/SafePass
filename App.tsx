@@ -15,6 +15,7 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
 import { AuthCallbackScreen } from './src/screens/AuthCallbackScreen';
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
+import { ResetPasswordScreen } from './src/screens/ResetPasswordScreen';
 
 // Other Screens
 import { QuizScreen } from './src/screens/QuizScreen';
@@ -51,6 +52,7 @@ const linking = {
       Quiz: 'quiz',
       Review: 'review',
       ManagerQuickView: 'manager',
+      ResetPassword: 'reset-password',
     },
   },
 };
@@ -98,6 +100,7 @@ export default function App() {
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
             
             {/* Main App - Tab Navigator */}
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />

@@ -22,11 +22,11 @@ export const GlassInput: React.FC<GlassInputProps> = ({
 }) => {
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={styles.inputWrapper}>
         <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={styles.contentContainer}>
-          {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
+          {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
           <TextInput
             style={[
               styles.input, 
@@ -38,10 +38,10 @@ export const GlassInput: React.FC<GlassInputProps> = ({
             selectionColor={colors.primary.DEFAULT}
             {...props}
           />
-          {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
+          {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
         </View>
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 };
