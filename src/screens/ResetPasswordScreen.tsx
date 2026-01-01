@@ -10,6 +10,7 @@ import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
+import { Toast } from '../components/Toast';
 
 export const ResetPasswordScreen = ({ navigation }: any) => {
   const [password, setPassword] = useState('');
@@ -17,6 +18,11 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Toast state
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
   const handleUpdatePassword = async () => {
     if (!password) {
@@ -44,16 +50,13 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
     if (updateError) {
       setError(updateError);
     } else {
-      Alert.alert(
-        'Success',
-        'Your password has been updated successfully.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.replace('Login'),
-          },
-        ]
-      );
+        setToastType('success');
+        setToastMessage('✅ Your password has been updated successfully.');
+        setToastVisible(true);
+
+        setTimeout(() => {
+          navigation.replace('Login');
+        }, 2000);
     }
   };
 
@@ -61,6 +64,12 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <Toast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+          onHide={() => setToastVisible(false)}
+        />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
