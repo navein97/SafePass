@@ -7,13 +7,39 @@ import { supabase } from '../lib/supabase';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 
+import * as Linking from 'expo-linking';
+
 export const AuthCallbackScreen = ({ navigation }: any) => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Verifying your email...');
 
   useEffect(() => {
+    // Check initial URL
+    Linking.getInitialURL().then(url => {
+      if (url) checkUrlForRecovery(url);
+    });
+
+    // Listen to incoming URLs
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      checkUrlForRecovery(url);
+    });
+
     handleAuthCallback();
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
+
+  const checkUrlForRecovery = (url: string) => {
+    // Check if the URL contains type=recovery
+    // Supabase usually sends it in the hash fragment: #access_token=...&type=recovery...
+    // Or sometimes query params.
+    if (url.includes('type=recovery')) {
+       console.log('✅ Detected recovery flow from URL!');
+       navigation.replace('ResetPassword');
+    }
+  };
 
   const handleAuthCallback = async () => {
     try {
