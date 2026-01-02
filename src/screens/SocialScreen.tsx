@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, MessageCircle, Share2, Flame, Shield, Trophy } from 'lucide-react-native';
@@ -114,9 +115,16 @@ export function SocialScreen() {
   const [feed, setFeed] = useState<FeedPost[]>([]);
   const [pitLaneDrivers, setPitLaneDrivers] = useState<any[]>([]);
   const [topDrivers, setTopDrivers] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadFeed();
+  }, []);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([loadFeed(), checkAndCreateWeeklyPosts()]);
+    setRefreshing(false);
   }, []);
 
   const loadFeed = async () => {
@@ -325,6 +333,9 @@ export function SocialScreen() {
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary.DEFAULT} />
+        }
       >
         {/* Top 3 Highlight - Pinned */}
         <View style={styles.topThreeCard}>
