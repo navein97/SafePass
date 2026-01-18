@@ -366,7 +366,7 @@ export function SocialScreen() {
           postsToCreate.push({
             user_id: driver.id,
             content: message,
-            type: 'leaderboard'
+            // Removed 'type' field - column doesn't exist in posts table
           });
         });
       }
@@ -377,7 +377,7 @@ export function SocialScreen() {
           postsToCreate.push({
             user_id: driver.id,
             content: `🔧 Heading to the Pit Lane. My Safety Index is ${driver.safety_index}%. Time to focus and improve! ${weekTag}`,
-            type: 'pitlane'
+            // Removed 'type' field - column doesn't exist in posts table
           });
         });
       }
@@ -388,8 +388,9 @@ export function SocialScreen() {
           .from('posts')
           .insert(postsToCreate);
         
-        if (error) console.error('Error creating auto-posts:', error);
-        else {
+        if (error) {
+          console.error('Error creating auto-posts:', error);
+        } else {
            // Reload feed to show new posts
            loadFeed();
         }

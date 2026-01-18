@@ -172,7 +172,7 @@ export const QuizService = {
             const year = getYear(now);
 
             // Check if there's already a quiz attempt this week
-            const { data: existingAttempt } = await supabase
+            const { data: existingAttempt, error: existingError } = await supabase
                 .from('quiz_attempts')
                 .select('id, score')
                 .eq('user_id', userId)
@@ -180,7 +180,10 @@ export const QuizService = {
                 .eq('year', year)
                 .order('score', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle(); // Use maybeSingle to return null if no rows (not an error)
+
+            // Log for debugging
+            console.log(`📋 Existing attempt check: ${existingAttempt ? `Found with score ${existingAttempt.score}%` : 'None found (first attempt this week)'}`);
 
             // If existing score is higher or equal, don't overwrite
             if (existingAttempt && existingAttempt.score >= rawScore) {
@@ -413,11 +416,16 @@ export const QuizService = {
                 }
             }
 
-            // Insert all notifications
+            // Insert all notifications (wrapped in try-catch to not fail quiz submission)
             if (notificationsToCreate.length > 0) {
-                await supabase
-                    .from('notifications')
-                    .insert(notificationsToCreate);
+                try {
+                    await supabase
+                        .from('notifications')
+                        .insert(notificationsToCreate);
+                } catch (notifError) {
+                    console.warn('⚠️ Failed to create notifications (non-critical):', notifError);
+                    // Don't throw - notifications are not critical to quiz submission
+                }
             }
             // ----------------------------------
 

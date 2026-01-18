@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -27,6 +27,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { GlassCard } from '../components/ui/GlassCard';
+import { useFocusEffect } from '@react-navigation/native';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -218,9 +219,12 @@ export function LeaderboardScreen() {
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  useEffect(() => {
-    loadLeaderboard();
-  }, [activeTab]);
+  // Refresh leaderboard when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadLeaderboard();
+    }, [activeTab])
+  );
 
   const loadLeaderboard = async () => {
     try {
