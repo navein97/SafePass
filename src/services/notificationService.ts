@@ -15,6 +15,11 @@ Notifications.setNotificationHandler({
 
 export const NotificationService = {
     async registerForPushNotificationsAsync() {
+        if (Platform.OS === 'web') {
+            console.log('Push notifications are not fully supported on web without service workers.');
+            return;
+        }
+
         let token;
 
         if (Platform.OS === 'android') {
@@ -44,6 +49,11 @@ export const NotificationService = {
     },
 
     async scheduleWeeklyReminder() {
+        if (Platform.OS === 'web') {
+            // Web doesn't support scheduleNotificationAsync consistently locally
+            return;
+        }
+
         // Cancel existing to avoid duplicates
         await Notifications.cancelAllScheduledNotificationsAsync();
 

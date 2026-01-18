@@ -6,32 +6,26 @@ import {
   StyleSheet,
   Dimensions,
   TouchableOpacity,
-  Pressable,
   Alert, 
   ActivityIndicator, 
-  Image
+  Image,
+  ScrollView,
+  StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
-import { RotateCcw, Check, X } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Check, X, Heart, Clock, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { useNavigation } from '@react-navigation/native';
+import { GlassCard } from '../components/ui/GlassCard';
+import { GlassButton } from '../components/ui/GlassButton';
+import { GradientBackground } from '../components/ui/GradientBackground';
+import { typography } from '../theme/typography';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const QUIZ_IMAGES: Record<string, any> = {
   'stop_sign': require('../../assets/quiz/stop_sign.jpg'),
@@ -41,295 +35,68 @@ const QUIZ_IMAGES: Record<string, any> = {
   'warning': require('../../assets/quiz/warning.jpg'),
 };
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.9;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.65;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
-
-// Local extended interface that satisfies models.Question but adds UI specific fields if needed
 interface Question {
   id: string;
-  question: string; // Used in UI
-  text: string;     // Required by service
+  question: string;
+  text: string;
   options: string[];
-  correctIndex: number; // Used in UI
-  correctOptionIndex: number; // Required by service
+  correctIndex: number;
+  correctOptionIndex: number;
   imageUrl?: string;
   explanation: string;
   region: any;
   category: string;
 }
 
-interface SwipeCardProps {
-  question: Question;
-  currentOptionIndex: number;
-  onSwipeRight: () => void;
-  onRewind: () => void;
-  canRewind: boolean;
-  showCheckmark: boolean;
-}
-
-function SwipeCard({ 
-  question, 
-  currentOptionIndex, 
-  onSwipeRight, 
-  canRewind,
-  onRewind,
-  showCheckmark,
-}: SwipeCardProps) {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  
-  // Create styles inside component to use colors
-  const styles = useMemo(() => StyleSheet.create({
-    card: {
-      width: CARD_WIDTH,
-      height: CARD_HEIGHT,
-      borderRadius: 24,
-      overflow: 'hidden',
-      borderWidth: 2,
-      borderColor: colors.border,
-    },
-    cardGradient: {
-      flex: 1,
-      padding: 24,
-    },
-    rewindButton: {
-      position: 'absolute',
-      top: 16,
-      right: 16,
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.background.glass,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.primary.DEFAULT,
-    },
-    questionContainer: {
-      marginBottom: 16,
-    },
-    questionLabel: {
-      fontFamily: 'Inter-Bold',
-      fontSize: 12,
-      color: colors.primary.DEFAULT,
-      letterSpacing: 2,
-      marginBottom: 8,
-    },
-    questionImage: {
-      width: '100%',
-      height: 120,
-      marginBottom: 12,
-      borderRadius: 12,
-    },
-    questionText: {
-      fontFamily: 'Inter-Bold',
-      fontSize: 22,
-      color: colors.text.primary,
-      lineHeight: 32,
-    },
-    optionContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      backgroundColor: colors.background.glass,
-      borderRadius: 16,
-      padding: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    optionLabel: {
-      fontFamily: 'Inter-Medium',
-      fontSize: 14,
-      color: colors.primary.DEFAULT,
-      marginBottom: 8,
-    },
-    optionText: {
-      fontFamily: 'Inter-Medium',
-      fontSize: 18,
-      color: colors.text.primary,
-      lineHeight: 26,
-    },
-    dotsContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      marginTop: 20,
-      gap: 8,
-    },
-    dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.text.tertiary,
-    },
-    dotActive: {
-      backgroundColor: colors.primary.DEFAULT,
-      width: 24,
-    },
-    instructionContainer: {
-      marginTop: 16,
-      alignItems: 'center',
-    },
-    instructionText: {
-      fontFamily: 'Inter-Regular',
-      fontSize: 12,
-      color: colors.text.secondary,
-    },
-    checkmarkOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    },
-    checkmarkCircle: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: colors.primary.DEFAULT,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-  }), [colors]);
-
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const rotation = useSharedValue(0);
-  const checkmarkOpacity = useSharedValue(0);
-
-  const panGesture = Gesture.Pan()
-    .onUpdate((event) => {
-      translateX.value = event.translationX;
-      translateY.value = event.translationY * 0.5;
-      rotation.value = interpolate(
-        event.translationX,
-        [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-        [-15, 0, 15],
-        Extrapolation.CLAMP
-      );
-      
-      // Show checkmark when swiping right
-      if (event.translationX > 50) {
-        checkmarkOpacity.value = interpolate(
-          event.translationX,
-          [50, SWIPE_THRESHOLD],
-          [0, 1],
-          Extrapolation.CLAMP
-        );
-      } else {
-        checkmarkOpacity.value = 0;
-      }
-    })
-    .onEnd((event) => {
-      if (event.translationX > SWIPE_THRESHOLD) {
-        // Swipe right - select answer
-        translateX.value = withTiming(SCREEN_WIDTH * 1.5, { duration: 300 });
-        checkmarkOpacity.value = withTiming(1, { duration: 150 });
-        runOnJS(onSwipeRight)();
-      } else {
-        // Reset position
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
-        rotation.value = withSpring(0);
-        checkmarkOpacity.value = withTiming(0);
-      }
-    });
-
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { rotate: `${rotation.value}deg` },
-    ],
-  }));
-
-  const checkmarkStyle = useAnimatedStyle(() => ({
-    opacity: checkmarkOpacity.value,
-    transform: [{ scale: interpolate(checkmarkOpacity.value, [0, 1], [0.5, 1]) }],
-  }));
-
-  return (
-    <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.card, cardStyle]}>
-        <LinearGradient
-          colors={[colors.background.card, colors.background.subtle]}
-          style={styles.cardGradient}
-        >
-
-          {/* Question */}
-          <View style={styles.questionContainer}>
-            <Text style={styles.questionLabel}>{t('mission.dailyMission', 'DAILY MISSION')}</Text>
-            {question.imageUrl && QUIZ_IMAGES[question.imageUrl] && (
-              <Image 
-                source={QUIZ_IMAGES[question.imageUrl]}
-                style={styles.questionImage}
-                resizeMode="contain"
-              />
-            )}
-            <Text style={styles.questionText}>{question.question}</Text>
-          </View>
-
-          <View style={styles.optionContainer}>
-            <Text style={styles.optionLabel}>
-              {t('quiz.option', 'Option')} {String.fromCharCode(65 + currentOptionIndex)}
-            </Text>
-            <Text style={styles.optionText}>
-              {question.options[currentOptionIndex]}
-            </Text>
-          </View>
-
-          {/* Option Navigation Dots */}
-          <View style={styles.dotsContainer}>
-            {question.options.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  index === currentOptionIndex && styles.dotActive,
-                ]}
-              />
-            ))}
-          </View>
-
-          {/* Swipe Instruction */}
-          <View style={styles.instructionContainer}>
-            <Text style={styles.instructionText}>
-              {t('mission.instruction', 'Tap edges to browse • Swipe right to select')}
-            </Text>
-          </View>
-
-          {/* Checkmark Overlay */}
-          <Animated.View style={[styles.checkmarkOverlay, checkmarkStyle]}>
-            <View style={styles.checkmarkCircle}>
-              <Check color={colors.text.inverse} size={48} strokeWidth={3} />
-            </View>
-          </Animated.View>
-        </LinearGradient>
-      </Animated.View>
-    </GestureDetector>
-  );
-}
-
 export function MissionScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const navigation = useNavigation();
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
-  const [answers, setAnswers] = useState<{questionId: string, selectedOptionIndex: number, isCorrect: boolean}[]>([]);
-  const answersRef = useRef<{questionId: string, selectedOptionIndex: number, isCorrect: boolean}[]>([]);
-  const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
-  const [isComplete, setIsComplete] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string>('');
-
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string>('');
+  
+  // Game State
+  const [lives, setLives] = useState(3);
+  const [timeLeft, setTimeLeft] = useState(120); // Default 2 mins
+  const [timerActive, setTimerActive] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [gameResult, setGameResult] = useState<'win' | 'lose' | null>(null);
+  
+  const [answers, setAnswers] = useState<{questionId: string, selectedOptionIndex: number, isCorrect: boolean}[]>([]);
+  
+  // Refs
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    loadQuiz();
+    loadMission();
+    return () => stopTimer();
   }, []);
 
-  const loadQuiz = async () => {
+  useEffect(() => {
+    if (timerActive && timeLeft > 0) {
+      timerRef.current = setTimeout(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && timerActive) {
+      handleGameOver('lose');
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [timeLeft, timerActive]);
+
+  const stopTimer = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setTimerActive(false);
+  };
+
+  const loadMission = async () => {
     try {
       setLoading(true);
       const { profile, error } = await AuthService.getUserProfile();
@@ -339,7 +106,6 @@ export function MissionScreen() {
         return;
       }
 
-      // Redirect managers to Team Performance
       if (profile.role === 'manager') {
         navigation.navigate('ManagerQuickView' as never);
         return;
@@ -347,22 +113,81 @@ export function MissionScreen() {
 
       setUserId(profile.id);
 
-      const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region);
+      // Load specific manager settings or defaults
+      const savedCount = await AsyncStorage.getItem('QUIZ_QUESTION_COUNT');
+      const savedTimer = await AsyncStorage.getItem('QUIZ_TIMER_DURATION');
       
-      if (loadedQuestions.length === 0) {
+      const targetCount = savedCount ? parseInt(savedCount, 10) : 5;
+      const durationMinutes = savedTimer ? parseInt(savedTimer, 10) : 2;
+      
+      setTimeLeft(durationMinutes * 60);
+
+      // Fetch questions
+      // Let's use getQuestionsForRegion to get a larger pool, then filter.
+      let allQuestions = await QuizService.getQuestionsForRegion(profile.region);
+      
+      // Get previously answered correct questions IDs
+      const attempts = await QuizService.getQuizAttempts(profile.id);
+      const correctQuestionIds = new Set<string>();
+      attempts.forEach(a => {
+         a.answers.forEach(ans => {
+             if (ans.isCorrect) correctQuestionIds.add(ans.questionId);
+         });
+      });
+
+      // Filter into New and Old
+      const newQuestions = allQuestions.filter(q => !correctQuestionIds.has(q.id));
+      const oldQuestions = allQuestions.filter(q => correctQuestionIds.has(q.id));
+
+      console.log(`Pool Stats - Total: ${allQuestions.length}, New: ${newQuestions.length}, Old: ${oldQuestions.length}`);
+      
+      let finalSelection: typeof allQuestions = [];
+
+      // Helper for Fisher-Yates Shuffle
+      const shuffleArray = <T,>(array: T[]): T[] => {
+          const arr = [...array];
+          for (let i = arr.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+          return arr;
+      };
+
+      // 1. Shuffle both pools
+      const shuffledNew = shuffleArray(newQuestions);
+      const shuffledOld = shuffleArray(oldQuestions);
+
+      // 2. Logic to fill target count
+      if (shuffledNew.length >= targetCount) {
+          // We have enough new questions
+          finalSelection = shuffledNew.slice(0, targetCount);
+      } else {
+          // We need to fill with old questions
+          finalSelection = [...shuffledNew];
+          const needed = targetCount - finalSelection.length;
+          
+          if (shuffledOld.length > 0) {
+             const filled = shuffledOld.slice(0, needed);
+             finalSelection = [...finalSelection, ...filled];
+          }
+      }
+
+      // 3. Final Shuffle
+      finalSelection = shuffleArray(finalSelection);
+
+      if (finalSelection.length === 0) {
         Alert.alert(t('mission.noQuestions', 'No Questions'), t('mission.noQuestionsRegion', 'No questions found for your region.'));
         navigation.goBack();
         return;
       }
 
-      // Map to MissionScreen format but keeping all necessary fields for submission service
-      const mappedQuestions: Question[] = loadedQuestions.map(q => ({
+      const mappedQuestions: Question[] = finalSelection.map(q => ({
         id: q.id,
-        question: q.text, // Keep for UI compatibility
-        text: q.text,     // Required by type
+        question: q.text,
+        text: q.text,
         options: q.options,
-        correctIndex: q.correctOptionIndex, // Keep for UI compatibility
-        correctOptionIndex: q.correctOptionIndex, // Required by type
+        correctIndex: q.correctOptionIndex,
+        correctOptionIndex: q.correctOptionIndex,
         imageUrl: q.imageUrl,
         explanation: q.explanation,
         region: q.region,
@@ -370,339 +195,446 @@ export function MissionScreen() {
       }));
 
       setQuestions(mappedQuestions);
+      setTimerActive(true);
+
     } catch (error) {
-      console.error('Error loading quiz:', error);
-      Alert.alert(t('common.error', 'Error'), t('mission.loadError', 'Failed to load quiz'));
+      console.error('Error loading mission:', error);
+      Alert.alert(t('common.error', 'Error'), t('mission.loadError', 'Failed to load mission'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTapLeft = useCallback(() => {
-    if (currentOptionIndex > 0) {
-      setCurrentOptionIndex(prev => prev - 1);
-    }
-  }, [currentOptionIndex]);
+  const handleOptionSelect = (index: number) => {
+    if (isAnswered || isGameOver) return;
 
-  const handleTapRight = useCallback(() => {
-    if (questions.length > 0 && currentOptionIndex < questions[currentQuestionIndex].options.length - 1) {
-      setCurrentOptionIndex(prev => prev + 1);
-    }
-  }, [currentOptionIndex, questions, currentQuestionIndex]);
+    setSelectedOption(index);
+    setIsAnswered(true);
 
-  const handleSubmit = async (finalAnswers: typeof answers) => {
-    try {
-      const { score, attempt } = await QuizService.submitQuiz(userId, finalAnswers, questions);
-      // Navigate to review or show breakdown
-      setIsComplete(true);
-    } catch (error) {
-      console.error('Error submitting quiz:', error);
-      Alert.alert(t('common.error', 'Error'), t('mission.submitError', 'Failed to submit quiz results'));
+    const currentQuestion = questions[currentQuestionIndex];
+    const isCorrect = index === currentQuestion.correctIndex;
+
+    const newAnswer = {
+      questionId: currentQuestion.id,
+      selectedOptionIndex: index,
+      isCorrect
+    };
+
+    setAnswers([...answers, newAnswer]);
+
+    if (!isCorrect) {
+      setLives(prev => {
+        const newLives = prev - 1;
+        if (newLives === 0) {
+           stopTimer();
+           setTimeout(() => handleGameOver('lose'), 1500); // Delay to show wrong answer feedback
+        }
+        return newLives;
+      });
     }
   };
 
-  const handleSwipeRight = useCallback(() => {
-    if (questions.length === 0) return;
-    
-    const currentQuestion = questions[currentQuestionIndex];
-    const isCorrect = currentOptionIndex === currentQuestion.correctIndex;
-    
-    const newAnswers = [...answers, {
-      questionId: currentQuestion.id,
-      selectedOptionIndex: currentOptionIndex,
-      isCorrect
-    }];
-    
-    setAnswers(newAnswers);
-    // Keep ref in sync for reliable access in event handlers
-    answersRef.current = newAnswers;
-    setShowFeedback(isCorrect ? 'correct' : 'wrong');
-
-    // Only auto-advance for correct answers; wrong answers require manual "Next" press
-    if (isCorrect) {
-      setTimeout(() => {
-        setShowFeedback(null);
-        if (currentQuestionIndex < questions.length - 1) {
-          setCurrentQuestionIndex(prev => prev + 1);
-          setCurrentOptionIndex(0);
-        } else {
-          // Last question - show completion immediately, submit in background
-          setIsComplete(true);
-          QuizService.submitQuiz(userId, newAnswers, questions).catch(err => {
-            console.error('Error submitting quiz:', err);
-          });
-        }
-      }, 1500);
+  const handleNext = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setSelectedOption(null);
+      setIsAnswered(false);
+    } else {
+      handleGameOver('win');
     }
-  }, [currentOptionIndex, questions, currentQuestionIndex, answers, userId]);
+  };
 
-  const handleRewind = useCallback(() => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-      setCurrentOptionIndex(0);
-      setAnswers(prev => prev.slice(0, -1));
+  const handleGameOver = async (result: 'win' | 'lose') => {
+    stopTimer();
+    setIsGameOver(true);
+    setGameResult(result);
+
+    if (result === 'win') {
+       // Submit Score if Win (or partial?)
+       // Usually we submit whatever we have.
+       try {
+         await QuizService.submitQuiz(userId, answers, questions);
+       } catch (error) {
+         console.error('Submit error', error);
+       }
     }
-  }, [currentQuestionIndex]);
+  };
 
-  const resetMission = useCallback(() => {
-    setLoading(true);
-    loadQuiz();
+  const handleRetry = () => {
+    // Reset state
+    setLives(3);
     setCurrentQuestionIndex(0);
-    setCurrentOptionIndex(0);
     setAnswers([]);
-    answersRef.current = [];
-    setIsComplete(false);
-  }, []);
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setIsGameOver(false);
+    setGameResult(null);
+    loadMission(); // Reload to get fresh shuffle/timer/etc
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   if (loading) {
-    return (
-      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-        <Text style={{ color: colors.text.secondary, marginTop: 20 }}>{t('mission.loading', 'Loading Mission...')}</Text>
-      </SafeAreaView>
-    );
+     return (
+       <GradientBackground>
+         <SafeAreaView style={styles.loadingContainer}>
+           <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+           <Text style={styles.loadingText}>{t('mission.loading', 'Loading Mission...')}</Text>
+         </SafeAreaView>
+       </GradientBackground>
+     );
   }
 
-  if (questions.length === 0) return null;
+  // Crash prevent check
+  if (!questions || questions.length === 0) {
+      return null;
+  }
+
+  if (isGameOver) {
+      return (
+        <GradientBackground>
+            <SafeAreaView style={styles.gameOverContainer}>
+                {gameResult === 'win' ? (
+                    <View style={styles.resultCard}>
+                        <Check size={80} color={colors.status.success} style={{ marginBottom: 20 }} />
+                        <Text style={[styles.resultTitle, { color: colors.status.success }]}>{t('mission.missionAccomplished', 'MISSION ACCOMPLISHED!')}</Text>
+                        <Text style={styles.resultScore}>{t('mission.score', 'Score')}: {Math.round((answers.filter(a => a.isCorrect).length / questions.length) * 100)}%</Text>
+                        <GlassButton 
+                            title={t('common.done', 'Done')}
+                            onPress={() => navigation.goBack()}
+                            style={styles.actionButton}
+                        />
+                        <TouchableOpacity 
+                            onPress={handleRetry}
+                            style={[styles.actionButton, { marginTop: 12, backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]}
+                        >
+                            <Text style={{ 
+                                color: colors.text.primary, 
+                                fontFamily: typography.fonts.medium, 
+                                textAlign: 'center',
+                                padding: 12
+                            }}>
+                                {t('common.tryAgain', 'Try Again')}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={styles.resultCard}>
+                        <X size={80} color={colors.status.danger} style={{ marginBottom: 20 }} />
+                        <Text style={[styles.resultTitle, { color: colors.status.danger }]}>{t('mission.missionFailed', 'MISSION FAILED')}</Text>
+                        <Text style={styles.resultReason}>
+                            {lives === 0 ? t('mission.outOfLives', 'You ran out of lives.') : t('mission.outOfTime', 'Time ran out.')}
+                        </Text>
+                         <GlassButton 
+                            title={t('common.tryAgain', 'Try Again')}
+                            onPress={handleRetry}
+                            style={styles.actionButton}
+                        />
+                    </View>
+                )}
+            </SafeAreaView>
+        </GradientBackground>
+      );
+  }
 
   const currentQuestion = questions[currentQuestionIndex];
 
-  if (isComplete) {
-    const correctCount = answers.filter(a => a.isCorrect).length;
-
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.completeContainer}>
-          <Text style={styles.completeTitle}>{t('mission.complete', 'Mission Complete!')}</Text>
-          <Text style={styles.completeScore}>
-            {correctCount}/{questions.length}
-          </Text>
-          <Text style={styles.completeSubtitle}>{t('mission.correctAnswers', 'Correct Answers')}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={resetMission}>
-            <Text style={styles.retryButtonText}>{t('common.tryAgain', 'Try Again')}</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <GradientBackground>
       <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t('mission.dailyMissionTitle', 'Daily Mission')}</Text>
-          <Text style={styles.headerProgress}>
-            {currentQuestionIndex + 1}/{questions.length}
-          </Text>
+        <StatusBar barStyle="light-content" />
+        
+        {/* Top Bar: Lives & Timer */}
+        <View style={styles.topBar}>
+           <View style={styles.livesContainer}>
+              {[1, 2, 3].map((i) => (
+                  <Heart 
+                    key={i} 
+                    size={24} 
+                    fill={i <= lives ? colors.status.danger : 'transparent'} 
+                    color={colors.status.danger} 
+                    style={{ marginRight: 4 }}
+                  />
+              ))}
+           </View>
+           <View style={[styles.timerContainer, timeLeft < 30 && styles.timerWarning]}>
+              <Clock size={20} color={timeLeft < 30 ? colors.status.danger : colors.text.primary} style={{ marginRight: 8 }} />
+              <Text style={[styles.timerText, timeLeft < 30 && { color: colors.status.danger }]}>{formatTime(timeLeft)}</Text>
+           </View>
         </View>
 
-        {/* Card Stack */}
-        <View style={styles.cardContainer}>
-          {/* Tap Zones */}
-          <Pressable style={styles.tapZoneLeft} onPress={handleTapLeft} />
-          <Pressable style={styles.tapZoneRight} onPress={handleTapRight} />
+        <ScrollView contentContainerStyle={styles.content}>
+           {/* Question */}
+           <View style={styles.questionHeader}>
+              <Text style={styles.progressText}>{t('quiz.question')} {currentQuestionIndex + 1} / {questions.length}</Text>
+           </View>
 
-          <SwipeCard
-            key={currentQuestion.id}
-            question={currentQuestion}
-            currentOptionIndex={currentOptionIndex}
-            onSwipeRight={handleSwipeRight}
-            onRewind={handleRewind}
-            canRewind={currentQuestionIndex > 0}
-            showCheckmark={false}
-          />
-        </View>
-
-        {/* Feedback Overlay */}
-        {showFeedback && (
-          <View style={styles.feedbackOverlay}>
-            <LinearGradient
-              colors={
-                showFeedback === 'correct'
-                  ? colors.gradients.success as any
-                  : colors.gradients.danger as any
-              }
-              style={styles.feedbackGradient}
-            >
-              {showFeedback === 'correct' ? (
-                <>
-                  <Check color={colors.text.primary} size={80} strokeWidth={3} />
-                  <Text style={styles.feedbackText}>{t('quiz.correct', 'CORRECT!')}</Text>
-                </>
-              ) : (
-                <>
-                  <X color={colors.text.primary} size={80} strokeWidth={3} />
-                  <Text style={styles.feedbackText}>{t('quiz.wrong', 'WRONG!')}</Text>
-                  
-                  {/* Correct Answer Box */}
-                  <View style={styles.correctAnswerBox}>
-                    <Text style={styles.correctAnswerText}>
-                      {t('quiz.correctAnswerIs', 'The correct answer is')} {String.fromCharCode(65 + currentQuestion.correctIndex)}. {currentQuestion.options[currentQuestion.correctIndex]}
-                    </Text>
-                  </View>
-                  
-                  {/* Next Button */}
-                  <TouchableOpacity 
-                    style={styles.nextButton}
-                    onPress={() => {
-                      setShowFeedback(null);
-                      if (currentQuestionIndex < questions.length - 1) {
-                        setCurrentQuestionIndex(prev => prev + 1);
-                        setCurrentOptionIndex(0);
-                      } else {
-                        // Last question - submit using ref for guaranteed latest answers
-                        const finalAnswers = answersRef.current;
-                        console.log('📤 Submitting quiz with', finalAnswers.length, 'answers');
-                        setIsComplete(true);
-                        QuizService.submitQuiz(userId, finalAnswers, questions)
-                          .then(() => console.log('✅ Quiz submitted successfully'))
-                          .catch(err => {
-                            console.error('❌ Error submitting quiz:', err);
-                            Alert.alert('Error', 'Failed to save quiz results. Please try again.');
-                          });
-                      }
-                    }}
-                  >
-                    <Text style={styles.nextButtonText}>{t('common.next', 'NEXT')}</Text>
-                  </TouchableOpacity>
-                </>
+           <GlassCard style={styles.questionCard}>
+              {currentQuestion.imageUrl && QUIZ_IMAGES[currentQuestion.imageUrl] && (
+                 <Image 
+                   source={QUIZ_IMAGES[currentQuestion.imageUrl]}
+                   style={styles.questionImage}
+                   resizeMode="contain"
+                 />
               )}
-            </LinearGradient>
-          </View>
-        )}
+              <Text style={styles.questionText}>{currentQuestion.question}</Text>
+           </GlassCard>
+
+           {/* Options */}
+           <View style={styles.optionsContainer}>
+             {currentQuestion.options.map((opt, idx) => {
+                let optionStyle = styles.optionButton;
+                let textStyle = styles.optionText;
+                let icon = null;
+
+                if (isAnswered) {
+                    if (idx === currentQuestion.correctIndex) {
+                        optionStyle = styles.optionCorrect;
+                        textStyle = styles.optionTextCorrect;
+                        icon = <Check size={20} color={colors.status.success} />;
+                    } else if (idx === selectedOption) {
+                        optionStyle = styles.optionWrong;
+                        textStyle = styles.optionTextWrong;
+                        icon = <X size={20} color={colors.status.danger} />;
+                    } else {
+                        optionStyle = styles.optionDisabled;
+                    }
+                } else if (selectedOption === idx) {
+                    optionStyle = styles.optionSelected;
+                }
+
+                return (
+                   <TouchableOpacity 
+                      key={idx}
+                      style={[styles.optionButtonBase, optionStyle]}
+                      onPress={() => handleOptionSelect(idx)}
+                      disabled={isAnswered}
+                   >
+                     <View style={styles.optionRow}>
+                        <View style={styles.optionLetterContainer}>
+                           <Text style={[styles.optionLetter, textStyle]}>{String.fromCharCode(65 + idx)}</Text>
+                        </View>
+                        <Text style={[styles.optionContentText, textStyle]}>{opt}</Text>
+                        {icon}
+                     </View>
+                   </TouchableOpacity>
+                );
+             })}
+           </View>
+
+           {/* Feedback / Next */}
+           {isAnswered && (
+               <View style={styles.footer}>
+                   {selectedOption !== currentQuestion.correctIndex && (
+                       <View style={styles.feedbackBox}>
+                          <AlertCircle size={20} color={colors.status.danger} style={{ marginRight: 8 }} />
+                          <Text style={styles.feedbackText}>{t('quiz.correctAnswerIs', 'Correct answer is')} {String.fromCharCode(65 + currentQuestion.correctIndex)}</Text>
+                       </View>
+                   )}
+                   <GlassButton 
+                      title={currentQuestionIndex < questions.length - 1 ? t('common.next', 'Next') : t('quiz.finish', 'Finish')}
+                      onPress={handleNext}
+                      style={{ marginTop: 16 }}
+                   />
+               </View>
+           )}
+        </ScrollView>
       </SafeAreaView>
-    </GestureHandlerRootView>
+    </GradientBackground>
   );
 }
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.default,
   },
-  header: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: colors.text.secondary,
+    fontFamily: typography.fonts.medium,
+  },
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
   },
-  headerTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 24,
+  livesContainer: {
+    flexDirection: 'row',
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  timerWarning: {
+    backgroundColor: 'rgba(255, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: colors.status.danger,
+  },
+  timerText: {
+    fontFamily: typography.fonts.bold,
     color: colors.text.primary,
-  },
-  headerProgress: {
-    fontFamily: 'Inter-Medium',
     fontSize: 16,
-    color: colors.primary.DEFAULT,
   },
-  cardContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  content: {
+    padding: 20,
+    paddingBottom: 40,
   },
-  tapZoneLeft: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '25%',
-    zIndex: 10,
+  questionHeader: {
+    marginBottom: 16,
   },
-  tapZoneRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: '25%',
-    zIndex: 10,
-  },
-  feedbackOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-  },
-  feedbackGradient: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  feedbackText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 48,
-    color: colors.text.primary,
-    marginTop: 20,
-    letterSpacing: 4,
-  },
-  completeContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  completeTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 32,
-    color: colors.primary.DEFAULT,
-    marginBottom: 20,
-  },
-  completeScore: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 72,
-    color: colors.text.primary,
-  },
-  completeSubtitle: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 18,
+  progressText: {
     color: colors.text.secondary,
-    marginBottom: 40,
-  },
-  retryButton: {
-    backgroundColor: colors.primary.DEFAULT,
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 30,
-  },
-  retryButtonText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 18,
-    color: colors.text.inverse,
-  },
-  correctAnswerBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    marginTop: 32,
-    marginHorizontal: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  correctAnswerText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 18,
-    color: '#1A1A1A',
+    fontFamily: typography.fonts.medium,
+    fontSize: 14,
     textAlign: 'center',
   },
-  nextButton: {
-    position: 'absolute',
-    bottom: 50,
-    right: 30,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 8,
+  questionCard: {
+    padding: 24,
+    marginBottom: 24,
   },
-  nextButtonText: {
-    fontFamily: 'Inter-Bold',
+  questionImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  questionText: {
+    fontSize: 20,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    lineHeight: 28,
+  },
+  optionsContainer: {
+    gap: 12,
+  },
+  optionButtonBase: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 4,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  optionLetterContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  optionLetter: {
+    fontFamily: typography.fonts.bold,
+    fontSize: 14,
+    color: colors.text.primary,
+  },
+  optionContentText: {
+    flex: 1,
+    fontFamily: typography.fonts.medium,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: colors.text.primary,
+  },
+  // States
+  optionButton: {
+    borderColor: colors.border,
+    backgroundColor: colors.background.glass,
+  },
+  optionText: {
+    color: colors.text.primary,
+  },
+  optionSelected: {
+    borderColor: colors.primary.DEFAULT,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  optionCorrect: {
+    borderColor: colors.status.success,
+    backgroundColor: 'rgba(0, 200, 83, 0.2)',
+  },
+  optionTextCorrect: {
+    color: colors.status.success,
+  },
+  optionWrong: {
+    borderColor: colors.status.danger,
+    backgroundColor: 'rgba(255, 61, 0, 0.2)',
+  },
+  optionTextWrong: {
+    color: colors.text.primary, 
+  },
+  optionDisabled: {
+    opacity: 0.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background.glass,
+  },
+  footer: {
+    marginTop: 24,
+  },
+  feedbackBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 61, 0, 0.1)',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.status.danger,
+    marginBottom: 8,
+  },
+  feedbackText: {
+    color: colors.status.danger,
+    fontFamily: typography.fonts.medium,
+  },
+  gameOverContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  resultCard: {
+    backgroundColor: colors.background.card,
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  resultTitle: {
+    fontSize: 24,
+    fontFamily: typography.fonts.bold,
+    marginBottom: 16,
+  },
+  resultScore: {
+    fontSize: 18,
+    color: colors.text.primary,
+    fontFamily: typography.fonts.medium,
+    marginBottom: 32,
+  },
+  resultReason: {
+    fontSize: 16,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  actionButton: {
+    width: '100%',
   },
 });
+

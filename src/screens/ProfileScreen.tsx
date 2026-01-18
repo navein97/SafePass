@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, StatusBar, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, StatusBar, Dimensions, TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Slider from '@react-native-community/slider';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { Shield, LogOut, User, Flame, Globe, Moon, Sun } from 'lucide-react-native';
+import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -19,6 +21,7 @@ const SHIELD_RADIUS = (SHIELD_SIZE - SHIELD_STROKE_WIDTH) / 2;
 const SHIELD_CIRCUMFERENCE = 2 * Math.PI * SHIELD_RADIUS;
 
 interface ProfileData {
+  id: string;
   full_name?: string;
   employee_id?: string;
   region?: string;
@@ -27,6 +30,8 @@ interface ProfileData {
   multiplier?: number;
   shieldHealth?: number;
   role?: 'staff' | 'manager';
+  age?: string;
+  vehicleType?: string;
 }
 
 export const ProfileScreen = ({ navigation }: any) => {
@@ -34,6 +39,14 @@ export const ProfileScreen = ({ navigation }: any) => {
   const { colors, theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  
+  // Staff State
+  const [age, setAge] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
+  
+  // Manager State
+  const [questionCount, setQuestionCount] = useState(5);
+  const [timerDuration, setTimerDuration] = useState(2); // minutes
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -60,10 +73,57 @@ export const ProfileScreen = ({ navigation }: any) => {
         streak: userProfile.streak || 0,
         shieldHealth: userProfile.shield_health || 100,
       });
+
+      // Load local settings/data
+      if (userProfile.role === 'manager') {
+        const savedCount = await AsyncStorage.getItem('QUIZ_QUESTION_COUNT');
+        const savedTimer = await AsyncStorage.getItem('QUIZ_TIMER_DURATION');
+        if (savedCount) setQuestionCount(parseInt(savedCount, 10));
+        if (savedTimer) setTimerDuration(parseInt(savedTimer, 10));
+      } else {
+        const savedAge = await AsyncStorage.getItem(`USER_AGE_${userProfile.id}`);
+        const savedVehicle = await AsyncStorage.getItem(`USER_VEHICLE_${userProfile.id}`);
+        if (savedAge) setAge(savedAge);
+        if (savedVehicle) setVehicleType(savedVehicle);
+      }
+
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAgeChange = async (text: string) => {
+    setAge(text);
+    if (profile?.id) {
+        await AsyncStorage.setItem(`USER_AGE_${profile.id}`, text);
+    }
+  };
+
+  const handleVehicleSelect = async (vehicle: string) => {
+    setVehicleType(vehicle);
+    if (profile?.id) {
+        await AsyncStorage.setItem(`USER_VEHICLE_${profile.id}`, vehicle);
+    }
+  };
+
+  const handleSettingChange = (key: string, value: number) => {
+    if (key === 'count') {
+        setQuestionCount(value);
+    } else {
+        setTimerDuration(value);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+        await AsyncStorage.setItem('QUIZ_QUESTION_COUNT', questionCount.toString());
+        await AsyncStorage.setItem('QUIZ_TIMER_DURATION', timerDuration.toString());
+        Alert.alert(t('common.success', 'Success'), t('profile.settingsSaved', 'Quiz settings have been saved.'));
+    } catch (error) {
+        console.error('Save error:', error);
+        Alert.alert(t('common.error', 'Error'), t('profile.settingsSaveError', 'Failed to save settings.'));
     }
   };
 
@@ -166,7 +226,101 @@ export const ProfileScreen = ({ navigation }: any) => {
             </View>
           </GlassCard>
 
-          {/* Gamification Stats Row - Only for Staff */}
+          {/* Manager Settings */}
+          {isManager ? (
+            <GlassCard style={styles.inputCard}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                  <Settings size={24} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
+                  <Text style={styles.sectionTitle}>{t('profile.settings', 'Team Quiz Settings')}</Text>
+               </View>
+
+               {/* Question Count Slider */}
+               <View style={styles.sliderContainer}>
+                 <View style={styles.sliderLabelContainer}>
+                   <Text style={styles.inputLabel}>{t('profile.questionsCount', 'Questions to Answer')}</Text>
+                   <Text style={styles.sliderValue}>{questionCount}</Text>
+                 </View>
+                 <Slider
+                   style={styles.slider}
+                   minimumValue={5}
+                   maximumValue={20}
+                   step={1}
+                   value={questionCount}
+                   onValueChange={(val) => handleSettingChange('count', val)}
+                   minimumTrackTintColor={colors.primary.DEFAULT}
+                   maximumTrackTintColor={colors.border}
+                   thumbTintColor={colors.primary.DEFAULT}
+                 />
+               </View>
+
+               {/* Timer Slider */}
+               <View style={styles.sliderContainer}>
+                 <View style={styles.sliderLabelContainer}>
+                   <Text style={styles.inputLabel}>{t('profile.timerDuration', 'Timer (Minutes)')}</Text>
+                   <Text style={styles.sliderValue}>{timerDuration} min</Text>
+                 </View>
+                 <Slider
+                   style={styles.slider}
+                   minimumValue={1}
+                   maximumValue={10}
+                   step={1}
+                   value={timerDuration}
+                   onValueChange={(val) => handleSettingChange('timer', val)}
+                   minimumTrackTintColor={colors.primary.DEFAULT}
+                   maximumTrackTintColor={colors.border}
+                   thumbTintColor={colors.primary.DEFAULT}
+                 />
+               </View>
+
+               {/* Save Button */}
+               <GlassButton
+                 title={t('common.save', 'Save Settings')}
+                 onPress={handleSaveSettings}
+                 style={{ marginTop: 8 }}
+               />
+            </GlassCard>
+          ) : (
+             /* Staff Inputs */
+             <GlassCard style={styles.inputCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                   <User size={24} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
+                   <Text style={styles.sectionTitle}>{t('profile.personalDetails', 'Personal Details')}</Text>
+                </View>
+
+                {/* Age Input */}
+                <Text style={styles.inputLabel}>{t('profile.age', 'Age')}</Text>
+                <TextInput 
+                   style={styles.textInput}
+                   placeholder="Enter your age"
+                   placeholderTextColor={colors.text.tertiary}
+                   keyboardType="numeric"
+                   value={age}
+                   onChangeText={handleAgeChange}
+                />
+
+                {/* Vehicle Selection */}
+                <Text style={styles.inputLabel}>{t('profile.vehicleType', 'Vehicle Type')}</Text>
+                <View style={styles.vehicleOptions}>
+                   {['Motorcycle', 'Car', 'Bus', 'Truck'].map((v) => (
+                      <TouchableOpacity
+                        key={v}
+                        style={[
+                          styles.vehicleOption,
+                          vehicleType === v && styles.vehicleOptionSelected
+                        ]}
+                        onPress={() => handleVehicleSelect(v)}
+                      >
+                         <Text style={[
+                           styles.vehicleText,
+                           vehicleType === v && styles.vehicleTextSelected
+                         ]}>{v}</Text>
+                      </TouchableOpacity>
+                   ))}
+                </View>
+             </GlassCard>
+          )}
+
+          {/* Gamification Stats Row - Only for Staff and NOT Manager (redundant check but safe) */}
           {!isManager && (
           <>
           {/* Weekly Streak Card */}
@@ -413,6 +567,76 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   logoutButton: {
     marginTop: 8,
+  },
+  inputCard: {
+    marginBottom: 20,
+    padding: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontFamily: typography.fonts.medium,
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: colors.background.subtle,
+    borderRadius: 12,
+    padding: 12,
+    color: colors.text.primary,
+    fontFamily: typography.fonts.medium,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+  },
+  vehicleOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  vehicleOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background.subtle,
+  },
+  vehicleOptionSelected: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.DEFAULT,
+  },
+  vehicleText: {
+    color: colors.text.secondary,
+    fontFamily: typography.fonts.medium,
+  },
+  vehicleTextSelected: {
+    color: colors.text.inverse,
+    fontFamily: typography.fonts.bold,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  sliderContainer: {
+    marginBottom: 24,
+  },
+  sliderLabelContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  sliderValue: {
+    fontSize: 16,
+    fontFamily: typography.fonts.bold,
+    color: colors.primary.DEFAULT,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
   },
 });
 

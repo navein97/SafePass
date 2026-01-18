@@ -55,35 +55,14 @@ export function MainTabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
-        name="Social"
-        component={SocialScreen}
-        options={{
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Users color={color} size={size} />
-          ),
-        }}
-      />
+
       <Tab.Screen
         name="Mission"
         component={MissionScreen}
         options={{
-          tabBarIcon: ({ focused, size }: TabIconProps) => (
-            <View style={[
-              styles.centerIcon, 
-              { 
-                backgroundColor: colors.background.card,
-                borderColor: colors.primary.DEFAULT 
-              },
-              focused && { backgroundColor: colors.primary.DEFAULT }
-            ]}>
-              <Target 
-                color={focused ? colors.text.inverse : colors.primary.DEFAULT} 
-                size={size + 4} 
-              />
-            </View>
+          tabBarIcon: ({ color, size }: TabIconProps) => (
+            <Target color={color} size={size} />
           ),
-          tabBarLabel: () => null,
         }}
       />
       <Tab.Screen

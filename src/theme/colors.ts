@@ -103,4 +103,4 @@ export const lightColors = {
 };
 
 // Default export for backward compatibility during refactor
-export const colors = darkColors;
+export const colors = lightColors;

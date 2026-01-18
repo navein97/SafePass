@@ -13,15 +13,15 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
-  colors: defaultColors,
+  theme: 'light',
+  colors: lightColors, // Ensure this matches light default
   toggleTheme: () => {},
   setTheme: () => {},
 });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const systemScheme = useColorScheme();
-  const [theme, setThemeState] = useState<ThemeType>('dark'); // Default to dark as per original design
+  const [theme, setThemeState] = useState<ThemeType>('light'); // Default to light
 
   useEffect(() => {
     loadTheme();
@@ -32,12 +32,9 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       const savedTheme = await AsyncStorage.getItem('user_theme');
       if (savedTheme) {
         setThemeState(savedTheme as ThemeType);
-      } else if (systemScheme) {
-        // If no saved preference, respect system but default to dark if undefined
-        // actually, let's Stick to Dark as default as per user request "Dark mode is our current mode"
-        // But if they want to support system switch, we can. 
-        // For now, let's trust saved or default to dark.
-        setThemeState('dark');
+      } else {
+        // Force default to light regardless of system setting
+        setThemeState('light');
       }
     } catch (error) {
       console.error('Failed to load theme:', error);

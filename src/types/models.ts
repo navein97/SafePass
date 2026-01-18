@@ -16,6 +16,8 @@ export interface Driver {
     streak?: number;
     shieldHealth?: number;
     totalScore?: number;
+    age?: number;
+    vehicleType?: 'Motorcycle' | 'Car' | 'Truck' | 'Bus';
 }
 
 export interface Question {
