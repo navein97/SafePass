@@ -332,12 +332,12 @@ export function LeaderboardScreen() {
           setDrivers(mappedDrivers);
 
       } else {
-          // All Time
+          // All Time - use safety_index as the score
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
-            .order('total_score', { ascending: false }) // Should probably filter by role='sender'?
-            .limit(50); // Increased limit since we have search now
+            .order('safety_index', { ascending: false })
+            .limit(50);
 
           if (error) throw error;
 
@@ -346,7 +346,7 @@ export function LeaderboardScreen() {
               rank: index + 1,
               name: p.full_name || 'Driver',
               team: p.region === 'MY' ? 'Malaysia' : 'Portugal',
-              score: p.total_score || 0,
+              score: p.safety_index || p.total_score || 0,
               streak: p.streak || 0,
               trend: 'same',
               trendValue: 0,
@@ -373,7 +373,8 @@ export function LeaderboardScreen() {
   );
 
   const topThree = filteredDrivers.slice(0, 3);
-  const restOfBoard = filteredDrivers.slice(3, 10);
+  // Include ALL drivers in the list (including top 3) so they can be expanded
+  const allDriversForList = filteredDrivers;
   const pitLane = filteredDrivers.slice(10); // Display logic might need adjustment if search is active
 
   const handleExpand = (rank: number) => {
@@ -424,9 +425,9 @@ export function LeaderboardScreen() {
           {/* Top 3 Podium - Only show if no search filter or matches top 3 */}
           {!searchQuery && <TopThreePodium drivers={topThree} colors={colors} />}
 
-          {/* Rest of Leaderboard */}
+          {/* Rest of Leaderboard - Include ALL drivers for expandable list */}
           <View style={styles.leaderboardList}>
-            {(searchQuery ? filteredDrivers : restOfBoard).map(driver => (
+            {(searchQuery ? filteredDrivers : allDriversForList.slice(0, 10)).map(driver => (
               <LeaderboardItem 
                 key={driver.rank} 
                 driver={driver} 

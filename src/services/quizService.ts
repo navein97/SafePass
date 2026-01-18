@@ -171,7 +171,46 @@ export const QuizService = {
             const weekNumber = getWeek(now);
             const year = getYear(now);
 
-            // Save quiz attempt to database
+            // Check if there's already a quiz attempt this week
+            const { data: existingAttempt } = await supabase
+                .from('quiz_attempts')
+                .select('id, score')
+                .eq('user_id', userId)
+                .eq('week_number', weekNumber)
+                .eq('year', year)
+                .order('score', { ascending: false })
+                .limit(1)
+                .single();
+
+            // If existing score is higher or equal, don't overwrite
+            if (existingAttempt && existingAttempt.score >= rawScore) {
+                console.log(`📊 Previous best (${existingAttempt.score}%) is higher than current (${rawScore}%). Keeping best score.`);
+                return {
+                    score: rawScore,
+                    attempt: {
+                        id: 'not-saved',
+                        driverId: userId,
+                        date: now.toISOString(),
+                        score: rawScore,
+                        answers,
+                        weekNumber,
+                        year,
+                    },
+                    wasSaved: false,
+                    bestScore: existingAttempt.score
+                };
+            }
+
+            // If we have an existing attempt with lower score, delete it first
+            if (existingAttempt) {
+                console.log(`🔄 New score (${rawScore}%) beats previous (${existingAttempt.score}%). Updating best score.`);
+                await supabase
+                    .from('quiz_attempts')
+                    .delete()
+                    .eq('id', existingAttempt.id);
+            }
+
+            // Save new quiz attempt (either first attempt or better score)
             const { data: attemptData, error: attemptError } = await supabase
                 .from('quiz_attempts')
                 .insert({
@@ -180,7 +219,7 @@ export const QuizService = {
                     answers: answers,
                     week_number: weekNumber,
                     year,
-                    component_scores: componentScores, // Store in history too
+                    component_scores: componentScores,
                 })
                 .select()
                 .single();
@@ -227,12 +266,13 @@ export const QuizService = {
             // Update user's safety index AND component scores
             await this.updateSafetyIndex(userId, weightedSafetyIndex);
 
-            // Update profile with component scores
+            // Update profile with component scores AND total_score for All Time leaderboard
             await supabase
                 .from('profiles')
                 .update({
                     safety_index: weightedSafetyIndex,
-                    component_scores: componentScores
+                    component_scores: componentScores,
+                    total_score: weightedSafetyIndex // Use safety_index as total_score for leaderboard
                 })
                 .eq('id', userId);
 

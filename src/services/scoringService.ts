@@ -7,6 +7,29 @@ interface ComponentScore {
 }
 
 export const ScoringService = {
+    // Default component weights by category
+    getDefaultWeights(category?: string): { operation: number; professionalism: number; discipline: number } {
+        switch (category?.toLowerCase()) {
+            case 'safety':
+            case 'road_safety':
+                return { operation: 40, professionalism: 30, discipline: 30 };
+            case 'traffic':
+            case 'traffic_rules':
+                return { operation: 50, professionalism: 20, discipline: 30 };
+            case 'vehicle':
+            case 'vehicle_maintenance':
+                return { operation: 60, professionalism: 20, discipline: 20 };
+            case 'conduct':
+            case 'professional_conduct':
+                return { operation: 20, professionalism: 50, discipline: 30 };
+            case 'compliance':
+                return { operation: 30, professionalism: 30, discipline: 40 };
+            default:
+                // Equal distribution as fallback
+                return { operation: 34, professionalism: 33, discipline: 33 };
+        }
+    },
+
     calculateComponentScores(
         questions: Question[],
         answers: { questionId: string; isCorrect: boolean }[]
@@ -16,9 +39,10 @@ export const ScoringService = {
 
         answers.forEach((answer) => {
             const question = questions.find((q) => q.id === answer.questionId);
-            if (!question || !question.componentWeights) return;
+            if (!question) return;
 
-            const weights = question.componentWeights;
+            // Use componentWeights if available, otherwise use defaults based on category
+            const weights = question.componentWeights || this.getDefaultWeights(question.category);
 
             // Add to possible totals
             if (weights.operation) totalPossible.operation += weights.operation;

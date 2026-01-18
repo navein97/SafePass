@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -317,6 +317,7 @@ export function MissionScreen() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
   const [answers, setAnswers] = useState<{questionId: string, selectedOptionIndex: number, isCorrect: boolean}[]>([]);
+  const answersRef = useRef<{questionId: string, selectedOptionIndex: number, isCorrect: boolean}[]>([]);
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -413,6 +414,8 @@ export function MissionScreen() {
     }];
     
     setAnswers(newAnswers);
+    // Keep ref in sync for reliable access in event handlers
+    answersRef.current = newAnswers;
     setShowFeedback(isCorrect ? 'correct' : 'wrong');
 
     // Only auto-advance for correct answers; wrong answers require manual "Next" press
@@ -423,7 +426,11 @@ export function MissionScreen() {
           setCurrentQuestionIndex(prev => prev + 1);
           setCurrentOptionIndex(0);
         } else {
-          handleSubmit(newAnswers);
+          // Last question - show completion immediately, submit in background
+          setIsComplete(true);
+          QuizService.submitQuiz(userId, newAnswers, questions).catch(err => {
+            console.error('Error submitting quiz:', err);
+          });
         }
       }, 1500);
     }
@@ -443,6 +450,7 @@ export function MissionScreen() {
     setCurrentQuestionIndex(0);
     setCurrentOptionIndex(0);
     setAnswers([]);
+    answersRef.current = [];
     setIsComplete(false);
   }, []);
 
@@ -543,12 +551,16 @@ export function MissionScreen() {
                         setCurrentQuestionIndex(prev => prev + 1);
                         setCurrentOptionIndex(0);
                       } else {
-                        // Last question - submit with current answers state
-                        // answers state should be updated by now since user had to read feedback
+                        // Last question - submit using ref for guaranteed latest answers
+                        const finalAnswers = answersRef.current;
+                        console.log('📤 Submitting quiz with', finalAnswers.length, 'answers');
                         setIsComplete(true);
-                        QuizService.submitQuiz(userId, answers, questions).catch(err => {
-                          console.error('Error submitting quiz:', err);
-                        });
+                        QuizService.submitQuiz(userId, finalAnswers, questions)
+                          .then(() => console.log('✅ Quiz submitted successfully'))
+                          .catch(err => {
+                            console.error('❌ Error submitting quiz:', err);
+                            Alert.alert('Error', 'Failed to save quiz results. Please try again.');
+                          });
                       }
                     }}
                   >
