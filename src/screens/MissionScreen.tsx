@@ -421,15 +421,18 @@ export function MissionScreen() {
     setAnswers(newAnswers);
     setShowFeedback(isCorrect ? 'correct' : 'wrong');
 
-    setTimeout(() => {
-      setShowFeedback(null);
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-        setCurrentOptionIndex(0);
-      } else {
-        handleSubmit(newAnswers);
-      }
-    }, 1500);
+    // Only auto-advance for correct answers; wrong answers require manual "Next" press
+    if (isCorrect) {
+      setTimeout(() => {
+        setShowFeedback(null);
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+          setCurrentOptionIndex(0);
+        } else {
+          handleSubmit(newAnswers);
+        }
+      }, 1500);
+    }
   }, [currentOptionIndex, questions, currentQuestionIndex, answers, userId]);
 
   const handleRewind = useCallback(() => {
@@ -529,6 +532,34 @@ export function MissionScreen() {
                 <>
                   <X color={colors.text.primary} size={80} strokeWidth={3} />
                   <Text style={styles.feedbackText}>{t('quiz.wrong', 'WRONG!')}</Text>
+                  
+                  {/* Correct Answer Box */}
+                  <View style={styles.correctAnswerBox}>
+                    <Text style={styles.correctAnswerText}>
+                      {t('quiz.correctAnswerIs', 'The correct answer is')} {String.fromCharCode(65 + currentQuestion.correctIndex)}. {currentQuestion.options[currentQuestion.correctIndex]}
+                    </Text>
+                  </View>
+                  
+                  {/* Next Button */}
+                  <TouchableOpacity 
+                    style={styles.nextButton}
+                    onPress={() => {
+                      setShowFeedback(null);
+                      if (currentQuestionIndex < questions.length - 1) {
+                        setCurrentQuestionIndex(prev => prev + 1);
+                        setCurrentOptionIndex(0);
+                      } else {
+                        // Last question - submit with current answers state
+                        // answers state should be updated by now since user had to read feedback
+                        setIsComplete(true);
+                        QuizService.submitQuiz(userId, answers, questions).catch(err => {
+                          console.error('Error submitting quiz:', err);
+                        });
+                      }
+                    }}
+                  >
+                    <Text style={styles.nextButtonText}>{t('common.next', 'NEXT')}</Text>
+                  </TouchableOpacity>
                 </>
               )}
             </LinearGradient>
@@ -634,5 +665,38 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 18,
     color: colors.text.inverse,
+  },
+  correctAnswerBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    marginTop: 32,
+    marginHorizontal: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  correctAnswerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 18,
+    color: '#1A1A1A',
+    textAlign: 'center',
+  },
+  nextButton: {
+    position: 'absolute',
+    bottom: 50,
+    right: 30,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  nextButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: '#1A1A1A',
   },
 });
