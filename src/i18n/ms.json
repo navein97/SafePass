@@ -1,40 +1,126 @@
 {
   "common": {
     "loading": "Memuatkan...",
-    "error": "Ralat berlaku",
+    "initializing": "Memulakan...",
+    "fetchingProfile": "Mengambil profil pengguna...",
+    "error": "Ralat",
     "save": "Simpan",
     "cancel": "Batal",
     "back": "Kembali",
     "next": "Seterusnya",
-    "submit": "Hantar"
+    "submit": "Hantar",
+    "retry": "Cuba Lagi",
+    "goBack": "Kembali",
+    "tryAgain": "Cuba Lagi",
+    "errorLoading": "Gagal memuatkan",
+    "backToHome": "Kembali ke Laman Utama",
+    "score": "Markah",
+    "you": "Anda",
+    "malaysia": "Malaysia",
+    "portugal": "Portugal"
   },
   "auth": {
     "login": "Log Masuk",
     "employeeId": "ID Pekerja",
     "password": "Kata Laluan",
-    "welcome": "Selamat Datang ke SafePass"
+    "welcome": "Selamat Datang ke SafePass",
+    "logout": "Log Keluar",
+    "logoutConfirm": "Adakah anda pasti mahu log keluar?",
+    "sessionError": "Tidak dapat memuatkan profil pengguna. Sila cuba lagi atau log masuk semula.",
+    "loadProfileError": "Tidak dapat memuatkan profil pengguna"
   },
   "home": {
+    "hello": "Apa Khabar",
     "safetyIndex": "Indeks Keselamatan Pemandu",
     "weeklyStatus": "Status Mingguan",
     "compliant": "PATUH",
     "overdue": "TERLEWAT",
     "startQuiz": "Mula Kuiz Mingguan",
-    "quizDue": "Kuiz perlu disiapkan sebelum Ahad 11:59 PM"
+    "practiceQuiz": "Latihan Kuiz",
+    "quizDue": "Kuiz perlu disiapkan sebelum Ahad 11:59 PM",
+    "greatJob": "Syabas! Anda telah melengkapkan tugasan.",
+    "rollingAverage": "Purata berterusan 90-hari"
+  },
+  "social": {
+    "title": "Suapan Sosial",
+    "topPerformers": "Prestasi Terbaik",
+    "pitLane": "Lorong Pit",
+    "pitLaneSubtitle": "Pemandu ini perlukan perhatian!",
+    "needsImprovement": "Perlu Pembaikan",
+    "noPosts": "Tiada siaran lagi. Jadilah yang pertama!"
+  },
+  "leaderboard": {
+    "title": "Papan Pendahulu",
+    "weekly": "Mingguan",
+    "monthly": "Bulanan",
+    "allTime": "Sepanjang Masa",
+    "searchPlaceholder": "Cari pemandu...",
+    "tuneUp": "Perlukan Tune-up",
+    "operation": "Operasi",
+    "professionalism": "Prof.",
+    "discipline": "Disiplin"
+  },
+  "notifications": {
+    "title": "Notifikasi",
+    "markAllRead": "Tanda semua dibaca",
+    "empty": "Tiada notifikasi lagi"
+  },
+  "mission": {
+    "dailyMission": "MISI HARIAN",
+    "dailyMissionTitle": "Misi Harian",
+    "tapEdges": "Ketik tepi untuk semak",
+    "swipeRight": "Leret kanan untuk pilih",
+    "instruction": "Ketik tepi untuk semak • Leret kanan untuk pilih",
+    "loading": "Memuatkan Misi...",
+    "complete": "Misi Selesai!",
+    "correctAnswers": "Jawapan Betul",
+    "noQuestions": "Tiada Soalan",
+    "noQuestionsRegion": "Tiada soalan ditemui untuk wilayah anda.",
+    "loadError": "Gagal memuatkan kuiz",
+    "submitError": "Gagal menghantar keputusan kuiz"
+  },
+  "manager": {
+    "dashboardTitle": "Papan Pemuka Pengurusan",
+    "teamOverview": "Gambaran Keseluruhan Pasukan",
+    "monitorCompliance": "Pantau pematuhan pasukan dan prestasi keselamatan.",
+    "viewTeamStats": "Lihat statistik Pasukan",
+    "weeklyLeaderboard": "Papan Pendahulu Mingguan",
+    "safetyChampions": "Juara Keselamatan",
+    "week": "Minggu",
+    "noQuizzesCompleted": "Tiada kuiz diselesaikan minggu ini.",
+    "beFirst": "Jadilah yang pertama menyelesaikan kuiz!"
   },
   "quiz": {
     "question": "Soalan",
     "of": "daripada",
     "correct": "Betul!",
+    "wrong": "SALAH!",
     "incorrect": "Salah",
     "explanation": "Penjelasan",
     "finish": "Tamat Kuiz",
-    "score": "Markah Anda"
+    "score": "Markah Anda",
+    "review": "Semakan",
+    "submitting": "Menghantar keputusan...",
+    "loadingQuestionsFor": "Memuatkan soalan untuk {{region}}...",
+    "noQuestionsTitle": "Tiada Soalan",
+    "noQuestionsMessage": "Tiada soalan ditemui untuk wilayah anda ({{region}}).",
+    "loadFailed": "Gagal memuatkan kuiz. Sila cuba lagi.",
+    "submitFailed": "Gagal menghantar kuiz. Sila cuba lagi.",
+    "unableToLoad": "Tidak dapat memuatkan kuiz",
+    "noQuestionsFound": "Kami tidak dapat mencari sebarang soalan untuk wilayah anda, atau terdapat ralat sambungan.",
+    "correctAnswerIs": "Jawapan yang betul ialah",
+    "correctAnswer": "Jawapan Betul",
+    "option": "Pilihan"
   },
   "profile": {
-    "title": "Profil Pemandu",
+    "title": "Profil",
     "managerView": "Paparan Pantas Pengurus",
-    "region": "Wilayah"
+    "region": "Wilayah",
+    "weeklyStreak": "Minggu Berturut-turut",
+    "safetyShield": "Perisai Keselamatan",
+    "shieldStrong": "🛡️ Perisai kuat! Teruskan usaha!",
+    "shieldWarn": "⚠️ Perisai memerlukan perhatian",
+    "shieldCritical": "🚨 Perisai kritikal rendah! Selesaikan misi!"
   },
   "audit": {
     "title": "Audit Pematuhan",

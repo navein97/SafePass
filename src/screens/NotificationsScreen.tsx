@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import {
   View,
@@ -18,7 +19,7 @@ import {
   Bell,
   Star,
 } from 'lucide-react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface Notification {
   id: string;
@@ -29,9 +30,69 @@ interface Notification {
   isRead: boolean;
 }
 
-
-
 function NotificationItem({ notification, onPress }: { notification: Notification; onPress: () => void }) {
+  const { colors } = useTheme();
+
+  // Create styles specific to item inside component
+  const styles = useMemo(() => StyleSheet.create({
+    notificationItem: {
+      flexDirection: 'row',
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 8,
+      backgroundColor: colors.background.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    notificationUnread: {
+      borderColor: colors.primary.DEFAULT,
+      borderWidth: 2,
+    },
+    iconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.background.subtle,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    contentContainer: {
+      flex: 1,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    title: {
+      fontFamily: 'Inter-Bold',
+      fontSize: 15,
+      color: colors.text.primary,
+      flex: 1,
+    },
+    unreadDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary.DEFAULT,
+      marginLeft: 8,
+    },
+    message: {
+      fontFamily: 'Inter-Regular',
+      fontSize: 14,
+      color: colors.text.secondary,
+      lineHeight: 20,
+      marginBottom: 6,
+    },
+    timestamp: {
+      fontFamily: 'Inter-Regular',
+      fontSize: 12,
+      color: colors.text.tertiary,
+    },
+  }), [colors]);
+
   const getIcon = () => {
     switch (notification.type) {
       case 'streak':
@@ -75,8 +136,12 @@ function NotificationItem({ notification, onPress }: { notification: Notificatio
 }
 
 export function NotificationsScreen() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     loadNotifications();
@@ -154,11 +219,11 @@ export function NotificationsScreen() {
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
-
+  
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>{t('notifications.title', 'Notifications')}</Text>
         {unreadCount > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -176,14 +241,14 @@ export function NotificationsScreen() {
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickActionButton} onPress={markAllRead}>
-            <Text style={styles.quickActionText}>Mark all as read</Text>
+            <Text style={styles.quickActionText}>{t('notifications.markAllRead', 'Mark all as read')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Notifications List */}
         {notifications.length === 0 ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ color: colors.text.secondary }}>No notifications yet</Text>
+            <Text style={{ color: colors.text.secondary }}>{t('notifications.empty', 'No notifications yet')}</Text>
           </View>
         ) : (
           notifications.map(notification => (
@@ -201,7 +266,7 @@ export function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.default,
@@ -248,62 +313,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 13,
     color: colors.primary.DEFAULT,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: colors.background.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  notificationUnread: {
-    borderColor: colors.primary.DEFAULT,
-    borderWidth: 2,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background.subtle,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  title: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 15,
-    color: colors.text.primary,
-    flex: 1,
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary.DEFAULT,
-    marginLeft: 8,
-  },
-  message: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: colors.text.secondary,
-    lineHeight: 20,
-    marginBottom: 6,
-  },
-  timestamp: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: colors.text.tertiary,
   },
   bottomPadding: {
     height: 100,

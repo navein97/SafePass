@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -6,6 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  TextInput,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,12 +20,27 @@ import {
   TrendingUp, 
   TrendingDown,
   ChevronRight,
+  ChevronDown,
   Wrench,
+  Search,
 } from 'lucide-react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
+import { GlassCard } from '../components/ui/GlassCard';
+
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface ComponentScores {
+  operation: number;
+  professionalism: number;
+  discipline: number;
+}
 
 interface Driver {
   rank: number;
@@ -30,14 +50,15 @@ interface Driver {
   streak: number;
   trend: 'up' | 'down' | 'same';
   trendValue: number;
+  componentScores?: ComponentScores;
 }
 
-
-
-function TopThreePodium({ drivers }: { drivers: Driver[] }) {
+function TopThreePodium({ drivers, colors }: { drivers: Driver[], colors: any }) {
   const [second, first, third] = [drivers[1], drivers[0], drivers[2]];
 
   if (!first) return null;
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={styles.podiumContainer}>
@@ -52,7 +73,7 @@ function TopThreePodium({ drivers }: { drivers: Driver[] }) {
               <Text style={styles.medalNumber}>2</Text>
             </View>
           </View>
-          <Text style={styles.podiumName}>{second.name.replace('Driver ', '')}</Text>
+          <Text style={styles.podiumName} numberOfLines={1}>{second.name.replace('Driver ', '')}</Text>
           <Text style={styles.podiumScore}>{second.score}%</Text>
         </View>
       ) : <View style={styles.podiumItem} />}
@@ -70,7 +91,7 @@ function TopThreePodium({ drivers }: { drivers: Driver[] }) {
             <Trophy color={colors.text.inverse} size={20} />
           </View>
         </LinearGradient>
-        <Text style={[styles.podiumName, styles.podiumNameFirst]}>{first.name.replace('Driver ', '')}</Text>
+        <Text style={[styles.podiumName, styles.podiumNameFirst]} numberOfLines={1}>{first.name.replace('Driver ', '')}</Text>
         <Text style={[styles.podiumScore, styles.podiumScoreFirst]}>{first.score}%</Text>
       </View>
 
@@ -85,7 +106,7 @@ function TopThreePodium({ drivers }: { drivers: Driver[] }) {
               <Text style={styles.medalNumber}>3</Text>
             </View>
           </View>
-          <Text style={styles.podiumName}>{third.name.replace('Driver ', '')}</Text>
+          <Text style={styles.podiumName} numberOfLines={1}>{third.name.replace('Driver ', '')}</Text>
           <Text style={styles.podiumScore}>{third.score}%</Text>
         </View>
       ) : <View style={styles.podiumItem} />}
@@ -93,64 +114,109 @@ function TopThreePodium({ drivers }: { drivers: Driver[] }) {
   );
 }
 
-function LeaderboardItem({ driver, isPitLane }: { driver: Driver; isPitLane?: boolean }) {
+function LeaderboardItem({ driver, isPitLane, colors, isExpanded, onPress }: { driver: Driver; isPitLane?: boolean; colors: any; isExpanded: boolean; onPress: () => void }) {
+  const { t } = useTranslation();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
-    <View 
+    <TouchableOpacity 
+      activeOpacity={0.8}
+      onPress={onPress}
       style={[
         styles.leaderboardItem,
         isPitLane && styles.leaderboardItemPitLane,
       ]}
     >
-      <View style={styles.rankContainer}>
-        <Text style={[styles.rankText, isPitLane && styles.rankTextPitLane]}>
-          #{driver.rank}
-        </Text>
+      <View style={styles.itemMainRow}>
+        <View style={styles.rankContainer}>
+          <Text style={[styles.rankText, isPitLane && styles.rankTextPitLane]}>
+            #{driver.rank}
+          </Text>
+        </View>
+
+        <View style={styles.driverInfo}>
+          <View style={[styles.avatar, isPitLane && styles.avatarPitLane]}>
+            <Text style={styles.avatarInitial}>{driver.name.charAt(0)}</Text>
+          </View>
+          <View style={styles.driverDetails}>
+            <Text style={styles.driverName}>{driver.name}</Text>
+            <Text style={styles.teamName}>{driver.team}</Text>
+          </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <Text style={[styles.scoreText, isPitLane && styles.scoreTextPitLane]}>
+            {driver.score}%
+          </Text>
+          <View style={styles.trendContainer}>
+            {driver.trend === 'up' && (
+              <>
+                <TrendingUp color={colors.status.success} size={14} />
+                <Text style={styles.trendUp}>+{driver.trendValue}</Text>
+              </>
+            )}
+            {driver.trend === 'down' && (
+              <>
+                <TrendingDown color={colors.status.danger} size={14} />
+                <Text style={styles.trendDown}>-{driver.trendValue}</Text>
+              </>
+            )}
+            {driver.trend === 'same' && (
+              <Text style={styles.trendSame}>—</Text>
+            )}
+          </View>
+        </View>
+
+        <View style={{ marginLeft: 8 }}>
+            {isExpanded ? (
+                <ChevronDown color={colors.text.tertiary} size={20} />
+            ) : (
+                <ChevronRight color={colors.text.tertiary} size={20} />
+            )}
+        </View>
       </View>
 
-      <View style={styles.driverInfo}>
-        <View style={[styles.avatar, isPitLane && styles.avatarPitLane]}>
-          <Text style={styles.avatarInitial}>{driver.name.charAt(0)}</Text>
-        </View>
-        <View style={styles.driverDetails}>
-          <Text style={styles.driverName}>{driver.name}</Text>
-          <Text style={styles.teamName}>{driver.team}</Text>
-        </View>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <Text style={[styles.scoreText, isPitLane && styles.scoreTextPitLane]}>
-          {driver.score}%
-        </Text>
-        <View style={styles.trendContainer}>
-          {driver.trend === 'up' && (
-            <>
-              <TrendingUp color={colors.status.success} size={14} />
-              <Text style={styles.trendUp}>+{driver.trendValue}</Text>
-            </>
-          )}
-          {driver.trend === 'down' && (
-            <>
-              <TrendingDown color={colors.status.danger} size={14} />
-              <Text style={styles.trendDown}>-{driver.trendValue}</Text>
-            </>
-          )}
-          {driver.trend === 'same' && (
-            <Text style={styles.trendSame}>—</Text>
-          )}
-        </View>
-      </View>
-
-      {isPitLane && (
-        <Text style={styles.needsTuneup}>🔧</Text>
+      {isExpanded && driver.componentScores && (
+          <View style={styles.expandedContent}>
+              <View style={styles.paramsContainer}>
+                  <View style={styles.paramItem}>
+                      <Text style={styles.paramLabel}>{t('leaderboard.operation', 'Operation')}</Text>
+                      <View style={styles.paramBarBg}>
+                          <View style={[styles.paramBarFill, { width: `${driver.componentScores.operation}%`, backgroundColor: colors.primary.DEFAULT }]} />
+                      </View>
+                      <Text style={styles.paramValue}>{driver.componentScores.operation}%</Text>
+                  </View>
+                  <View style={styles.paramItem}>
+                      <Text style={styles.paramLabel}>{t('leaderboard.professionalism', 'Prof.')}</Text>
+                      <View style={styles.paramBarBg}>
+                          <View style={[styles.paramBarFill, { width: `${driver.componentScores.professionalism}%`, backgroundColor: colors.leaderboard.purple }]} />
+                      </View>
+                      <Text style={styles.paramValue}>{driver.componentScores.professionalism}%</Text>
+                  </View>
+                  <View style={styles.paramItem}>
+                      <Text style={styles.paramLabel}>{t('leaderboard.discipline', 'Discipline')}</Text>
+                      <View style={styles.paramBarBg}>
+                          <View style={[styles.paramBarFill, { width: `${driver.componentScores.discipline}%`, backgroundColor: colors.leaderboard.gold }]} />
+                      </View>
+                      <Text style={styles.paramValue}>{driver.componentScores.discipline}%</Text>
+                  </View>
+              </View>
+          </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export function LeaderboardScreen() {
+  const { t } = useTranslation();
+  const { colors, theme } = useTheme();
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'allTime'>('weekly');
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedDriverId, setExpandedDriverId] = useState<number | null>(null);
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     loadLeaderboard();
@@ -167,13 +233,10 @@ export function LeaderboardScreen() {
       let startDate = new Date();
       
       if (activeTab === 'weekly') {
-        // Last 7 days
         startDate.setDate(now.getDate() - 7);
       } else if (activeTab === 'monthly') {
-        // Last 30 days
         startDate.setDate(now.getDate() - 30);
       } else {
-        // All Time (Arbitrary old date)
         startDate = new Date(0); 
       }
 
@@ -181,71 +244,75 @@ export function LeaderboardScreen() {
       if (activeTab === 'weekly' || activeTab === 'monthly') {
           const { data: attempts, error } = await supabase
             .from('quiz_attempts')
-            .select('user_id, score, profiles(full_name, region, streak)')
+            .select('user_id, score, component_scores, profiles(full_name, region, streak)')
             .gte('completed_at', startDate.toISOString());
 
           if (error) throw error;
 
           // Aggregate scores by user
-          const userScores: Record<string, { total: number, count: number, profile: any }> = {};
+          const userScores: Record<string, { total: number, count: number, profile: any, components: ComponentScores }> = {};
           
           attempts?.forEach((attempt: any) => {
               if (!userScores[attempt.user_id]) {
                   userScores[attempt.user_id] = { 
                       total: 0, 
                       count: 0, 
-                      profile: attempt.profiles 
+                      profile: attempt.profiles,
+                      components: { operation: 0, professionalism: 0, discipline: 0 }
                   };
               }
               userScores[attempt.user_id].total += attempt.score;
               userScores[attempt.user_id].count += 1;
-          });
-
-          // Also fetch previous period data for trend calculation
-          const previousStartDate = new Date(startDate);
-          const previousEndDate = new Date(startDate);
-          if (activeTab === 'weekly') {
-              previousStartDate.setDate(previousStartDate.getDate() - 7);
-          } else {
-              previousStartDate.setDate(previousStartDate.getDate() - 30);
-          }
-
-          const { data: prevAttempts } = await supabase
-            .from('quiz_attempts')
-            .select('user_id, score')
-            .gte('completed_at', previousStartDate.toISOString())
-            .lt('completed_at', startDate.toISOString());
-
-          // Calculate previous averages
-          const prevScores: Record<string, { total: number, count: number }> = {};
-          prevAttempts?.forEach((attempt: any) => {
-              if (!prevScores[attempt.user_id]) {
-                  prevScores[attempt.user_id] = { total: 0, count: 0 };
+              
+              if (attempt.component_scores) {
+                   userScores[attempt.user_id].components.operation += (attempt.component_scores.operation || 0);
+                   userScores[attempt.user_id].components.professionalism += (attempt.component_scores.professionalism || 0);
+                   userScores[attempt.user_id].components.discipline += (attempt.component_scores.discipline || 0);
               }
-              prevScores[attempt.user_id].total += attempt.score;
-              prevScores[attempt.user_id].count += 1;
           });
 
-          // Convert to Driver array with trend
+          // Fetch previous period for trend
+           const previousStartDate = new Date(startDate);
+           if (activeTab === 'weekly') {
+               previousStartDate.setDate(previousStartDate.getDate() - 7);
+           } else {
+                previousStartDate.setDate(previousStartDate.getDate() - 30);
+           }
+ 
+           const { data: prevAttempts } = await supabase
+             .from('quiz_attempts')
+             .select('user_id, score')
+             .gte('completed_at', previousStartDate.toISOString())
+             .lt('completed_at', startDate.toISOString());
+ 
+            const prevScores: Record<string, { total: number, count: number }> = {};
+            prevAttempts?.forEach((attempt: any) => {
+                if (!prevScores[attempt.user_id]) {
+                    prevScores[attempt.user_id] = { total: 0, count: 0 };
+                }
+                prevScores[attempt.user_id].total += attempt.score;
+                prevScores[attempt.user_id].count += 1;
+            });
+
           const mappedDrivers: Driver[] = Object.keys(userScores).map((userId) => {
               const u = userScores[userId];
               const currentAvg = Math.round(u.total / u.count);
+
+              // Calculate average component scores
+              const compAvg = {
+                  operation: Math.round(u.components.operation / u.count),
+                  professionalism: Math.round(u.components.professionalism / u.count),
+                  discipline: Math.round(u.components.discipline / u.count),
+              };
               
-              // Calculate trend
               let trend: 'up' | 'down' | 'same' = 'same';
               let trendValue = 0;
-              
               const prev = prevScores[userId];
               if (prev && prev.count > 0) {
-                  const prevAvg = Math.round(prev.total / prev.count);
-                  const diff = currentAvg - prevAvg;
-                  if (diff > 0) {
-                      trend = 'up';
-                      trendValue = diff;
-                  } else if (diff < 0) {
-                      trend = 'down';
-                      trendValue = Math.abs(diff);
-                  }
+                   const prevAvg = Math.round(prev.total / prev.count);
+                   const diff = currentAvg - prevAvg;
+                   if (diff > 0) { trend = 'up'; trendValue = diff; }
+                   else if (diff < 0) { trend = 'down'; trendValue = Math.abs(diff); }
               }
               
               return {
@@ -255,25 +322,22 @@ export function LeaderboardScreen() {
                   score: currentAvg,
                   streak: u.profile?.streak || 0,
                   trend,
-                  trendValue
+                  trendValue,
+                  componentScores: compAvg
               };
           });
 
-          // Sort by Score DESC
           mappedDrivers.sort((a, b) => b.score - a.score);
-          
-          // Assign Ranks
           mappedDrivers.forEach((d, i) => d.rank = i + 1);
-          
           setDrivers(mappedDrivers);
 
       } else {
-          // All Time - Use the cached aggregation in profiles
+          // All Time
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
-            .order('total_score', { ascending: false })
-            .limit(20);
+            .order('total_score', { ascending: false }) // Should probably filter by role='sender'?
+            .limit(50); // Increased limit since we have search now
 
           if (error) throw error;
 
@@ -285,8 +349,14 @@ export function LeaderboardScreen() {
               score: p.total_score || 0,
               streak: p.streak || 0,
               trend: 'same',
-              trendValue: 0
+              trendValue: 0,
+              componentScores: p.component_scores || { operation: 0, professionalism: 0, discipline: 0 }
             }));
+            
+            // Re-sort just in case
+            mappedDrivers.sort((a, b) => b.score - a.score);
+            mappedDrivers.forEach((d, i) => d.rank = i + 1);
+            
             setDrivers(mappedDrivers);
           }
       }
@@ -298,68 +368,111 @@ export function LeaderboardScreen() {
     }
   };
   
-  const topThree = drivers.slice(0, 3);
-  const restOfBoard = drivers.slice(3, 10);
-  const pitLane = drivers.slice(10);
+  const filteredDrivers = drivers.filter(d => 
+    d.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const topThree = filteredDrivers.slice(0, 3);
+  const restOfBoard = filteredDrivers.slice(3, 10);
+  const pitLane = filteredDrivers.slice(10); // Display logic might need adjustment if search is active
+
+  const handleExpand = (rank: number) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpandedDriverId(expandedDriverId === rank ? null : rank);
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Leaderboard</Text>
-      </View>
-
-      {/* Tab Selector */}
-      <View style={styles.tabContainer}>
-        {(['weekly', 'monthly', 'allTime'] as const).map(tab => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.tabActive]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === 'allTime' ? 'All Time' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Top 3 Podium */}
-        <TopThreePodium drivers={topThree} />
-
-        {/* Rest of Leaderboard */}
-        <View style={styles.leaderboardList}>
-          {restOfBoard.map(driver => (
-            <LeaderboardItem key={driver.rank} driver={driver} />
-          ))}
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t('leaderboard.title', 'Leaderboard')}</Text>
         </View>
 
-        {/* Pit Lane Section */}
-        <View style={styles.pitLaneSection}>
-          <View style={styles.pitLaneHeader}>
-            <Wrench color={colors.leaderboard.pitLane} size={24} />
-            <Text style={styles.pitLaneTitle}>Pit Lane</Text>
-            <Text style={styles.pitLaneSubtitle}>Need a Tune-up</Text>
+        {/* Tab Selector */}
+        <View style={styles.tabContainer}>
+          {(['weekly', 'monthly', 'allTime'] as const).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                {tab === 'allTime' ? t('leaderboard.allTime', 'All Time') : t(`leaderboard.${tab}`, tab.charAt(0).toUpperCase() + tab.slice(1))}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+                <Search color={colors.text.tertiary} size={20} />
+                <TextInput 
+                    placeholder={t('leaderboard.searchPlaceholder', 'Search driver...')} 
+                    placeholderTextColor={colors.text.tertiary}
+                    style={styles.searchInput}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+            </View>
+        </View>
+
+        <ScrollView 
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Top 3 Podium - Only show if no search filter or matches top 3 */}
+          {!searchQuery && <TopThreePodium drivers={topThree} colors={colors} />}
+
+          {/* Rest of Leaderboard */}
+          <View style={styles.leaderboardList}>
+            {(searchQuery ? filteredDrivers : restOfBoard).map(driver => (
+              <LeaderboardItem 
+                key={driver.rank} 
+                driver={driver} 
+                colors={colors}
+                isExpanded={expandedDriverId === driver.rank}
+                onPress={() => handleExpand(driver.rank)}
+              />
+            ))}
           </View>
           
-          {pitLane.map(driver => (
-            <LeaderboardItem key={driver.rank} driver={driver} isPitLane />
-          ))}
-        </View>
+          {/* Pit Lane Section - Only show if not searching (or decide logic) */}
+          {!searchQuery && drivers.length > 10 && (
+              <View style={styles.pitLaneSection}>
+                <View style={styles.pitLaneHeader}>
+                    <Wrench color={colors.leaderboard.pitLane} size={24} />
+                    <Text style={styles.pitLaneTitle}>{t('social.pitLane', 'Pit Lane')}</Text>
+                    <Text style={styles.pitLaneSubtitle}>{t('leaderboard.tuneUp', 'Need a Tune-up')}</Text>
+                </View>
+                {/* Just show a few from pit lane or allow expansion? For now show all pit lane if scrollable */}
+                {pitLane.map(driver => (
+                    <LeaderboardItem 
+                        key={driver.rank} 
+                        driver={driver} 
+                        isPitLane 
+                        colors={colors}
+                        isExpanded={expandedDriverId === driver.rank}
+                        onPress={() => handleExpand(driver.rank)}
+                    />
+                ))}
+              </View>
+          )}
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.default,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
     paddingHorizontal: 20,
@@ -373,7 +486,7 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     backgroundColor: colors.background.card,
     borderRadius: 12,
     padding: 4,
@@ -394,6 +507,27 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: colors.text.inverse,
+  },
+  searchContainer: {
+      paddingHorizontal: 16,
+      marginBottom: 16,
+  },
+  searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.background.card,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+  },
+  searchInput: {
+      flex: 1,
+      marginLeft: 10,
+      color: colors.text.primary,
+      fontFamily: 'Inter-Medium',
+      fontSize: 14,
   },
   scrollView: {
     flex: 1,
@@ -477,6 +611,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text.primary,
     marginTop: 8,
+    textAlign: 'center',
   },
   podiumNameFirst: {
     fontFamily: 'Inter-Bold',
@@ -496,14 +631,52 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   leaderboardItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
     marginBottom: 8,
     backgroundColor: colors.background.card,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    padding: 12,
+  },
+  itemMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  expandedContent: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+  },
+  paramsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+  },
+  paramItem: {
+      flex: 1,
+      alignItems: 'center',
+  },
+  paramLabel: {
+      fontSize: 11,
+      color: colors.text.tertiary,
+      marginBottom: 4,
+      fontFamily: 'Inter-Medium',
+  },
+  paramBarBg: {
+      width: '80%',
+      height: 4,
+      backgroundColor: colors.background.subtle,
+      borderRadius: 2,
+      marginBottom: 4,
+  },
+  paramBarFill: {
+      height: '100%',
+      borderRadius: 2,
+  },
+  paramValue: {
+      fontSize: 12,
+      color: colors.text.primary,
+      fontFamily: 'Inter-Bold',
   },
   leaderboardItemPitLane: {
     borderColor: colors.leaderboard.pitLane,
@@ -591,10 +764,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 11,
     color: colors.text.tertiary,
-  },
-  needsTuneup: {
-    fontSize: 16,
-    marginLeft: 8,
   },
   pitLaneSection: {
     marginTop: 24,

@@ -57,36 +57,32 @@ const linking = {
   },
 };
 
-export default function App() {
-  const [fontsLoaded] = useFonts({
-    'Inter-Regular': Inter_400Regular,
-    'Inter-Medium': Inter_500Medium,
-    'Inter-Bold': Inter_700Bold,
-  });
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
-  useEffect(() => {
-    async function setupNotifications() {
-      await NotificationService.registerForPushNotificationsAsync();
-      await NotificationService.scheduleWeeklyReminder();
-    }
-    setupNotifications();
-  }, []);
-
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-
-  if (!fontsLoaded) {
-    return null;
-  }
+function AppContent() {
+  const { colors, theme } = useTheme();
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <SafeAreaProvider onLayout={onLayoutRootView}>
-        <StatusBar style="light" backgroundColor={colors.background.default} />
-        <NavigationContainer linking={linking}>
+      <SafeAreaProvider>
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background.default} />
+        <NavigationContainer linking={linking} theme={{
+          dark: theme === 'dark',
+          colors: {
+            primary: colors.primary.DEFAULT,
+            background: colors.background.default,
+            card: colors.background.card,
+            text: colors.text.primary,
+            border: colors.border,
+            notification: colors.status.info,
+          },
+          fonts: {
+             regular: { fontFamily: 'Inter-Regular', fontWeight: '400' },
+             medium: { fontFamily: 'Inter-Medium', fontWeight: '500' },
+             bold: { fontFamily: 'Inter-Bold', fontWeight: '700' },
+             heavy: { fontFamily: 'Inter-Bold', fontWeight: '900' },
+          }
+        }}>
           <Stack.Navigator
             initialRouteName="Login"
             screenOptions={{
@@ -113,6 +109,40 @@ export default function App() {
         </NavigationContainer>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+export default function App() {
+  const [fontsLoaded] = useFonts({
+    'Inter-Regular': Inter_400Regular,
+    'Inter-Medium': Inter_500Medium,
+    'Inter-Bold': Inter_700Bold,
+  });
+
+  useEffect(() => {
+    async function setupNotifications() {
+      await NotificationService.registerForPushNotificationsAsync();
+      await NotificationService.scheduleWeeklyReminder();
+    }
+    setupNotifications();
+  }, []);
+
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  return (
+    <ThemeProvider>
+      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <AppContent />
+      </View>
+    </ThemeProvider>
   );
 }
 

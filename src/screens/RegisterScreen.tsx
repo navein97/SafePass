@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Eye, EyeOff, User, Mail, Lock, Briefcase, MapPin } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthService } from '../services/authService';
@@ -16,6 +16,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 
 export const RegisterScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
+  const { colors, theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -37,6 +38,8 @@ export const RegisterScreen = ({ navigation }: any) => {
     employeeId: '',
     general: ''
   });
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
     let isValid = true;
@@ -110,7 +113,7 @@ export const RegisterScreen = ({ navigation }: any) => {
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <Toast
           visible={toastVisible}
           message={toastMessage}
@@ -245,7 +248,7 @@ export const RegisterScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -262,7 +265,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontFamily: typography.fonts.bold,
-    color: colors.primary.DEFAULT,
+    color: colors.mode === 'light' ? colors.primary.dark : colors.primary.DEFAULT,
     marginBottom: 8,
     textAlign: 'center',
     textShadowColor: colors.primary.dark,
@@ -309,7 +312,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
   },
   linkTextBold: {
-    color: colors.primary.light,
+    color: colors.mode === 'light' ? colors.primary.dark : colors.primary.light,
     fontFamily: typography.fonts.bold,
   },
   errorBanner: {

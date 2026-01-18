@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { Question, Region, QuizAttempt } from '../types/models';
 import { getWeek, getYear } from 'date-fns';
 import * as Crypto from 'expo-crypto';
+import { ScoringService } from './scoringService';
 
 export const QuizService = {
     /**
@@ -52,6 +53,7 @@ export const QuizService = {
                     region: q.regions,
                     category: q.category,
                     imageUrl: q.image_url,
+                    componentWeights: q.component_weights,
                 };
             });
 
@@ -147,12 +149,24 @@ export const QuizService = {
     /**
      * Submit quiz to database
      */
+    /**
+     * Submit quiz to database
+     */
     async submitQuiz(
         userId: string,
-        answers: { questionId: string; selectedOptionIndex: number; isCorrect: boolean }[]
+        answers: { questionId: string; selectedOptionIndex: number; isCorrect: boolean }[],
+        questions: Question[]
     ) {
         try {
-            const score = this.calculateScore(answers.map(a => ({ questionId: a.questionId, isCorrect: a.isCorrect })));
+            // Calculate Standard Score
+            const rawScore = this.calculateScore(answers.map(a => ({ questionId: a.questionId, isCorrect: a.isCorrect })));
+
+            // Calculate Component Scores
+            const componentScores = ScoringService.calculateComponentScores(questions, answers.map(a => ({
+                questionId: a.questionId,
+                isCorrect: a.isCorrect
+            })));
+
             const now = new Date();
             const weekNumber = getWeek(now);
             const year = getYear(now);
@@ -162,10 +176,11 @@ export const QuizService = {
                 .from('quiz_attempts')
                 .insert({
                     user_id: userId,
-                    score,
+                    score: rawScore,
                     answers: answers,
                     week_number: weekNumber,
                     year,
+                    component_scores: componentScores, // Store in history too
                 })
                 .select()
                 .single();
@@ -173,7 +188,7 @@ export const QuizService = {
             if (attemptError) throw attemptError;
 
             // Generate HMAC signature for compliance log
-            const dataToSign = JSON.stringify({ userId, weekNumber, year, score });
+            const dataToSign = JSON.stringify({ userId, weekNumber, year, score: rawScore });
             const signature = await Crypto.digestStringAsync(
                 Crypto.CryptoDigestAlgorithm.SHA256,
                 dataToSign + 'safe-pass-secret-key-v1'
@@ -187,7 +202,7 @@ export const QuizService = {
                     week_number: weekNumber,
                     year,
                     status: 'COMPLIANT',
-                    score,
+                    score: rawScore,
                     signature,
                     completed_at: now.toISOString(),
                 }, {
@@ -196,8 +211,30 @@ export const QuizService = {
 
             if (complianceError) throw complianceError;
 
-            // Update user's safety index
-            await this.updateSafetyIndex(userId);
+            // --- WEIGHTED SAFETY INDEX ---
+            // Get previous scores for weighting (last 5 attempts)
+            const { data: recentAttempts } = await supabase
+                .from('quiz_attempts')
+                .select('score')
+                .eq('user_id', userId)
+                .order('completed_at', { ascending: false })
+                .limit(5);
+
+            const history = recentAttempts?.map(a => a.score) || [];
+            // Calculate new weighted Safety Index
+            const weightedSafetyIndex = ScoringService.calculateWeightedAverage(rawScore, history);
+
+            // Update user's safety index AND component scores
+            await this.updateSafetyIndex(userId, weightedSafetyIndex);
+
+            // Update profile with component scores
+            await supabase
+                .from('profiles')
+                .update({
+                    safety_index: weightedSafetyIndex,
+                    component_scores: componentScores
+                })
+                .eq('id', userId);
 
             // --- SAFETY SHIELD GAMIFICATION ---
             // 1. Get current shield health
@@ -210,7 +247,7 @@ export const QuizService = {
             let currentShield = profile?.shield_health || 100;
             let shieldChange = 0;
 
-            if (score < 80) {
+            if (rawScore < 80) {
                 // Penalty for poor performance
                 shieldChange = -20;
             } else {
@@ -284,7 +321,7 @@ export const QuizService = {
                 user_id: userId,
                 type: 'shield',
                 title: 'Mission Complete! 🎯',
-                message: `You scored ${score}% on this week's quiz.`,
+                message: `You scored ${rawScore}% on this week's quiz.`,
                 is_read: false
             });
 
@@ -348,13 +385,13 @@ export const QuizService = {
                 id: attemptData.id,
                 driverId: userId,
                 date: attemptData.completed_at,
-                score,
+                score: rawScore,
                 answers,
                 weekNumber,
                 year,
             };
 
-            return { score, attempt };
+            return { score: rawScore, attempt };
         } catch (error) {
             console.error('Error submitting quiz:', error);
             throw error;
@@ -364,7 +401,7 @@ export const QuizService = {
     /**
      * Update driver's safety index (90-day rolling average)
      */
-    async updateSafetyIndex(userId: string) {
+    async updateSafetyIndex(userId: string, overrideIndex?: number) {
         try {
             // Get all attempts from last 90 days
             const ninetyDaysAgo = new Date();
@@ -385,7 +422,7 @@ export const QuizService = {
                 // Update profile
                 await supabase
                     .from('profiles')
-                    .update({ safety_index: safetyIndex })
+                    .update({ safety_index: overrideIndex ?? safetyIndex })
                     .eq('id', userId);
             }
         } catch (error) {

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { Trophy, ChevronLeft, AlertTriangle } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
@@ -10,7 +10,6 @@ import { supabase } from '../lib/supabase';
 import { getWeek, getYear } from 'date-fns';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
-import { LinearGradient } from 'expo-linear-gradient';
 
 interface LeaderboardEntry {
   id: string;
@@ -24,10 +23,13 @@ interface LeaderboardEntry {
 
 export const ManagerQuickViewScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
+  const { colors, theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     loadData();
@@ -55,7 +57,6 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
       const currentYear = getYear(now);
 
       // Fetch all compliance logs for this week
-      // Note: This requires RLS policies to be updated to allow public viewing
       const { data: logs, error } = await supabase
         .from('compliance_logs')
         .select(`
@@ -110,12 +111,12 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <ChevronLeft color={colors.text.primary} size={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Weekly Leaderboard</Text>
+          <Text style={styles.headerTitle}>{t('manager.weeklyLeaderboard', 'Weekly Leaderboard')}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -126,15 +127,15 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
         >
           <GlassCard style={styles.banner}>
             <Trophy size={48} color="#FFD700" />
-            <Text style={styles.bannerTitle}>Safety Champions</Text>
-            <Text style={styles.bannerSubtitle}>Week {getWeek(new Date())}</Text>
+            <Text style={styles.bannerTitle}>{t('manager.safetyChampions', 'Safety Champions')}</Text>
+            <Text style={styles.bannerSubtitle}>{t('manager.week', 'Week')} {getWeek(new Date())}</Text>
           </GlassCard>
 
           {leaderboard.length === 0 ? (
             <View style={styles.emptyState}>
               <AlertTriangle size={48} color={colors.text.tertiary} />
-              <Text style={styles.emptyText}>No quizzes completed this week yet.</Text>
-              <Text style={styles.emptySubtext}>Be the first to complete the quiz!</Text>
+              <Text style={styles.emptyText}>{t('manager.noQuizzesCompleted', 'No quizzes completed this week yet.')}</Text>
+              <Text style={styles.emptySubtext}>{t('manager.beFirst', 'Be the first to complete the quiz!')}</Text>
             </View>
           ) : (
             leaderboard.map((entry, index) => {
@@ -158,7 +159,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
                     
                     <View style={styles.infoContainer}>
                       <Text style={[styles.name, isMe && styles.myName]}>
-                        {entry.full_name} {isMe ? '(You)' : ''}
+                        {entry.full_name} {isMe ? `(${t('common.you', 'You')})` : ''}
                       </Text>
                       <Text style={[styles.id, isMe && styles.myId]}>{entry.employee_id}</Text>
                     </View>
@@ -178,7 +179,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -224,6 +225,8 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 12,
+    borderColor: colors.border,
+    borderWidth: 1,
   },
   cardContent: {
     flexDirection: 'row',
@@ -231,7 +234,7 @@ const styles = StyleSheet.create({
   },
   myCard: {
     borderColor: colors.primary.light,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: colors.background.subtle, // More subtle bg
   },
   goldCard: {
     borderColor: '#FFD700',

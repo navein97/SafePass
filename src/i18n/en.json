@@ -1,40 +1,126 @@
 {
   "common": {
     "loading": "Loading...",
-    "error": "An error occurred",
+    "initializing": "Initializing...",
+    "fetchingProfile": "Fetching user profile...",
+    "error": "Error",
     "save": "Save",
     "cancel": "Cancel",
     "back": "Back",
     "next": "Next",
-    "submit": "Submit"
+    "submit": "Submit",
+    "retry": "Retry",
+    "goBack": "Go Back",
+    "tryAgain": "Try Again",
+    "errorLoading": "Failed to load",
+    "backToHome": "Back to Home",
+    "score": "Score",
+    "you": "You",
+    "malaysia": "Malaysia",
+    "portugal": "Portugal"
   },
   "auth": {
     "login": "Login",
     "employeeId": "Employee ID",
     "password": "Password",
-    "welcome": "Welcome to SafePass"
+    "welcome": "Welcome to SafePass",
+    "logout": "Logout",
+    "logoutConfirm": "Are you sure you want to logout?",
+    "sessionError": "Could not load user profile. Please try again or re-login.",
+    "loadProfileError": "Could not load user profile"
   },
   "home": {
+    "hello": "Hello",
     "safetyIndex": "Driver Safety Index",
     "weeklyStatus": "Weekly Status",
     "compliant": "COMPLIANT",
     "overdue": "OVERDUE",
     "startQuiz": "Start Weekly Quiz",
-    "quizDue": "Quiz due by Sunday 11:59 PM"
+    "practiceQuiz": "Practice Quiz",
+    "quizDue": "Quiz due by Sunday 11:59 PM",
+    "greatJob": "Great job! You are up to date.",
+    "rollingAverage": "90-day rolling average"
+  },
+  "social": {
+    "title": "Social Feed",
+    "topPerformers": "Top Performers",
+    "pitLane": "Pit Lane",
+    "pitLaneSubtitle": "These drivers need a tune-up!",
+    "needsImprovement": "Needs improvement",
+    "noPosts": "No posts yet. Be the first!"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "allTime": "All Time",
+    "searchPlaceholder": "Search driver...",
+    "tuneUp": "Need a Tune-up",
+    "operation": "Operation",
+    "professionalism": "Prof.",
+    "discipline": "Discipline"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet"
+  },
+  "mission": {
+    "dailyMission": "DAILY MISSION",
+    "dailyMissionTitle": "Daily Mission",
+    "tapEdges": "Tap edges to browse",
+    "swipeRight": "Swipe right to select",
+    "instruction": "Tap edges to browse • Swipe right to select",
+    "loading": "Loading Mission...",
+    "complete": "Mission Complete!",
+    "correctAnswers": "Correct Answers",
+    "noQuestions": "No Questions",
+    "noQuestionsRegion": "No questions found for your region.",
+    "loadError": "Failed to load quiz",
+    "submitError": "Failed to submit quiz results"
+  },
+  "manager": {
+    "dashboardTitle": "Management Dashboard",
+    "teamOverview": "Team Overview",
+    "monitorCompliance": "Monitor team compliance and safety performance.",
+    "viewTeamStats": "View Team stats",
+    "weeklyLeaderboard": "Weekly Leaderboard",
+    "safetyChampions": "Safety Champions",
+    "week": "Week",
+    "noQuizzesCompleted": "No quizzes completed this week yet.",
+    "beFirst": "Be the first to complete the quiz!"
   },
   "quiz": {
     "question": "Question",
     "of": "of",
     "correct": "Correct!",
+    "wrong": "WRONG!",
     "incorrect": "Incorrect",
     "explanation": "Explanation",
     "finish": "Finish Quiz",
-    "score": "Your Score"
+    "score": "Your Score",
+    "review": "Review",
+    "submitting": "Submitting results...",
+    "loadingQuestionsFor": "Loading questions for {{region}}...",
+    "noQuestionsTitle": "No Questions",
+    "noQuestionsMessage": "No questions found for your region ({{region}}).",
+    "loadFailed": "Failed to load quiz. Please try again.",
+    "submitFailed": "Failed to submit quiz. Please try again.",
+    "unableToLoad": "Unable to load quiz",
+    "noQuestionsFound": "We couldn't find any questions for your region, or there was a connection error.",
+    "correctAnswerIs": "The correct answer is",
+    "correctAnswer": "Correct Answer",
+    "option": "Option"
   },
   "profile": {
-    "title": "Driver Profile",
+    "title": "Profile",
     "managerView": "Manager Quick View",
-    "region": "Region"
+    "region": "Region",
+    "weeklyStreak": "Weekly Streak",
+    "safetyShield": "Safety Shield",
+    "shieldStrong": "🛡️ Shield is strong! Keep it up!",
+    "shieldWarn": "⚠️ Shield needs attention",
+    "shieldCritical": "🚨 Shield critically low! Complete missions!"
   },
   "audit": {
     "title": "Compliance Audit",

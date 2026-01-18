@@ -8,7 +8,7 @@ import {
   Bell, 
   Trophy 
 } from 'lucide-react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 // Screens
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -26,11 +26,20 @@ interface TabIconProps {
 }
 
 export function MainTabNavigator() {
+  const { colors, theme } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: {
+          backgroundColor: colors.background.subtle,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          height: 80,
+          paddingBottom: 12,
+          paddingTop: 8,
+        },
         tabBarActiveTintColor: colors.primary.DEFAULT,
         tabBarInactiveTintColor: colors.text.tertiary,
         tabBarShowLabel: true,
@@ -60,8 +69,18 @@ export function MainTabNavigator() {
         component={MissionScreen}
         options={{
           tabBarIcon: ({ focused, size }: TabIconProps) => (
-            <View style={[styles.centerIcon, focused && styles.centerIconActive]}>
-              <Target color={focused ? colors.text.inverse : colors.primary.DEFAULT} size={size + 4} />
+            <View style={[
+              styles.centerIcon, 
+              { 
+                backgroundColor: colors.background.card,
+                borderColor: colors.primary.DEFAULT 
+              },
+              focused && { backgroundColor: colors.primary.DEFAULT }
+            ]}>
+              <Target 
+                color={focused ? colors.text.inverse : colors.primary.DEFAULT} 
+                size={size + 4} 
+              />
             </View>
           ),
           tabBarLabel: () => null,
@@ -90,14 +109,6 @@ export function MainTabNavigator() {
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: colors.background.subtle,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    height: 80,
-    paddingBottom: 12,
-    paddingTop: 8,
-  },
   tabLabel: {
     fontFamily: 'Inter-Medium',
     fontSize: 11,
@@ -108,14 +119,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.background.card,
     borderWidth: 2,
-    borderColor: colors.primary.DEFAULT,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
-  centerIconActive: {
-    backgroundColor: colors.primary.DEFAULT,
-  },
 });
+

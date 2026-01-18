@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 interface GlassButtonProps {
   onPress: () => void;
@@ -24,6 +24,8 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
   textStyle,
   icon,
 }) => {
+  const { colors, theme } = useTheme();
+
   const getGradientColors = () => {
     if (disabled) return ['#3A3A3C', '#2C2C2E'];
     
@@ -44,7 +46,10 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
 
   const getTextColor = () => {
     if (disabled) return colors.text.tertiary;
-    if (variant === 'outline') return colors.primary.DEFAULT;
+    if (variant === 'outline') {
+        // Darker gold/primary for visibility on light backgrounds
+        return theme === 'light' ? colors.primary.dark : colors.primary.DEFAULT;
+    }
     return colors.text.primary;
   };
 
@@ -56,6 +61,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
       style={[
         styles.container,
         variant === 'outline' && styles.outlineContainer,
+        variant === 'outline' && { borderColor: colors.primary.DEFAULT },
         style
       ]}
     >
@@ -96,7 +102,9 @@ const styles = StyleSheet.create({
   },
   outlineContainer: {
     borderWidth: 1,
-    borderColor: colors.primary.DEFAULT,
+    // colors is not available here, so we use a style prop injection or move this style to dynamic styles
+    // Simpler: use the color prop in the component render
+    borderColor: '#FFD700', // Default gold, overwritten dynamically if needed? No, 'outline' variant expects border.
     shadowOpacity: 0,
     elevation: 0,
   },

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, StatusBar, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { Shield, LogOut, User, Flame, Trophy, Globe, ChevronRight } from 'lucide-react-native';
+import { Shield, LogOut, User, Flame, Globe, Moon, Sun } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -30,11 +30,13 @@ interface ProfileData {
 }
 
 export const ProfileScreen = ({ navigation }: any) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { colors, theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
 
-  // Mock gamification data - Replace with real data
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const isManager = profile?.role === 'manager';
   const streakWeeks = profile?.streak || 0;
   const shieldHealth = profile?.shieldHealth || 100; // Percentage
@@ -49,7 +51,7 @@ export const ProfileScreen = ({ navigation }: any) => {
       const { profile: userProfile, error } = await AuthService.getUserProfile();
       
       if (error) {
-        Alert.alert('Error', 'Failed to load profile');
+        Alert.alert('Error', t('common.errorLoading', 'Failed to load profile'));
         return;
       }
 
@@ -65,9 +67,14 @@ export const ProfileScreen = ({ navigation }: any) => {
     }
   };
 
+  const toggleLanguage = () => {
+    const nextLang = i18n.language === 'en' ? 'ms' : 'en';
+    i18n.changeLanguage(nextLang);
+  };
+
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Are you sure you want to logout?');
+      const confirmed = window.confirm(t('auth.logoutConfirm', 'Are you sure you want to logout?'));
       if (confirmed) {
         await AuthService.signOut();
         navigation.reset({
@@ -77,12 +84,12 @@ export const ProfileScreen = ({ navigation }: any) => {
       }
     } else {
       Alert.alert(
-        t('auth.logout'),
-        'Are you sure you want to logout?',
+        t('auth.logout', 'Logout'),
+        t('auth.logoutConfirm', 'Are you sure you want to logout?'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel', 'Cancel'), style: 'cancel' },
           { 
-            text: 'Logout', 
+            text: t('auth.logout', 'Logout'), 
             style: 'destructive',
             onPress: async () => {
               await AuthService.signOut();
@@ -112,15 +119,30 @@ export const ProfileScreen = ({ navigation }: any) => {
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
           
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Profile</Text>
-            <TouchableOpacity style={styles.settingsButton}>
-              <Globe color={colors.text.secondary} size={24} />
-            </TouchableOpacity>
+            <Text style={styles.title}>{t('profile.title', 'Profile')}</Text>
+            <View style={styles.headerActions}>
+               <TouchableOpacity 
+                style={styles.settingsButton}
+                onPress={toggleTheme}
+              >
+                {theme === 'dark' ? (
+                  <Sun color={colors.text.accent} size={24} />
+                ) : (
+                  <Moon color={colors.text.accent} size={24} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.languageButton}
+                onPress={toggleLanguage}
+              >
+                 <Text style={styles.languageText}>{i18n.language === 'en' ? 'EN' : 'BM'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Profile Card */}
@@ -137,7 +159,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                 <Text style={styles.id}>{profile?.employee_id || 'EMP-001'}</Text>
                 <View style={styles.regionBadge}>
                   <Text style={styles.regionText}>
-                    {profile?.region === 'MY' ? '🇲🇾 Malaysia' : '🇵🇹 Portugal'}
+                    {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia', 'Malaysia')}` : `🇵🇹 ${t('common.portugal', 'Portugal')}`}
                   </Text>
                 </View>
               </View>
@@ -158,12 +180,12 @@ export const ProfileScreen = ({ navigation }: any) => {
               </LinearGradient>
             </View>
             <Text style={styles.statValue}>{streakWeeks}</Text>
-            <Text style={styles.statLabel}>Weekly Streak</Text>
+            <Text style={styles.statLabel}>{t('profile.weeklyStreak', 'Weekly Streak')}</Text>
           </GlassCard>
 
           {/* Safety Shield - Only for Staff */}
           <GlassCard style={styles.shieldCard}>
-            <Text style={styles.shieldTitle}>Safety Shield</Text>
+            <Text style={styles.shieldTitle}>{t('profile.safetyShield', 'Safety Shield')}</Text>
             <View style={styles.shieldContainer}>
               <Svg width={SHIELD_SIZE} height={SHIELD_SIZE} style={styles.shieldSvg}>
                 {/* Background Circle */}
@@ -199,43 +221,18 @@ export const ProfileScreen = ({ navigation }: any) => {
             </View>
             <Text style={styles.shieldDescription}>
               {shieldHealth > 75 
-                ? '🛡️ Shield is strong! Keep it up!'
+                ? t('profile.shieldStrong', '🛡️ Shield is strong! Keep it up!')
                 : shieldHealth > 50 
-                  ? '⚠️ Shield needs attention'
-                  : '🚨 Shield critically low! Complete missions!'}
+                  ? t('profile.shieldWarn', '⚠️ Shield needs attention')
+                  : t('profile.shieldCritical', '🚨 Shield critically low! Complete missions!')}
             </Text>
           </GlassCard>
           </>
           )}
 
-          {/* Quick Actions */}
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionItem}>
-              <View style={styles.actionIcon}>
-                <Trophy color={colors.primary.DEFAULT} size={24} />
-              </View>
-              <View style={styles.actionInfo}>
-                <Text style={styles.actionTitle}>Achievements</Text>
-                <Text style={styles.actionSubtitle}>12 badges earned</Text>
-              </View>
-              <ChevronRight color={colors.text.tertiary} size={20} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('ManagerQuickView')}>
-              <View style={styles.actionIcon}>
-                <User color={colors.primary.DEFAULT} size={24} />
-              </View>
-              <View style={styles.actionInfo}>
-                <Text style={styles.actionTitle}>Manager View</Text>
-                <Text style={styles.actionSubtitle}>Team performance</Text>
-              </View>
-              <ChevronRight color={colors.text.tertiary} size={20} />
-            </TouchableOpacity>
-          </View>
-
           {/* Logout */}
           <GlassButton
-            title="Logout"
+            title={t('auth.logout', 'Logout')}
             onPress={handleLogout}
             variant="danger"
             icon={<LogOut color={colors.text.primary} size={20} />}
@@ -247,7 +244,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -265,6 +262,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+    marginTop: 10,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
   },
   title: {
     fontSize: 28,
@@ -278,6 +280,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.card,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  languageButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.background.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  languageText: {
+    fontFamily: typography.fonts.bold,
+    fontSize: 14,
+    color: colors.text.primary,
   },
   profileCard: {
     marginBottom: 20,
@@ -322,46 +341,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.medium,
     textAlign: 'center',
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-  },
-  flameContainer: {
-    marginBottom: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flameGlow: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  multiplierContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
   statValue: {
     fontSize: 28,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
     textAlign: 'center',
-  },
-  multiplierValue: {
-    color: colors.streak.multiplier,
   },
   statLabel: {
     fontSize: 12,
@@ -374,6 +358,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 20,
     marginBottom: 16,
+  },
+  flameContainer: {
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flameGlow: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   shieldCard: {
     alignItems: 'center',
@@ -414,42 +410,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     marginTop: 16,
-  },
-  actionsContainer: {
-    backgroundColor: colors.background.card,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 20,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.background.subtle,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  actionInfo: {
-    flex: 1,
-  },
-  actionTitle: {
-    fontSize: 15,
-    fontFamily: typography.fonts.medium,
-    color: colors.text.primary,
-  },
-  actionSubtitle: {
-    fontSize: 13,
-    fontFamily: typography.fonts.regular,
-    color: colors.text.tertiary,
-    marginTop: 2,
   },
   logoutButton: {
     marginTop: 8,

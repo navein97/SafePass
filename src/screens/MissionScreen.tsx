@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -6,6 +7,9 @@ import {
   Dimensions,
   TouchableOpacity,
   Pressable,
+  Alert, 
+  ActivityIndicator, 
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,12 +28,10 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
 import { RotateCcw, Check, X } from 'lucide-react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { useNavigation } from '@react-navigation/native';
-import { useEffect } from 'react';
-import { Alert, ActivityIndicator, Image } from 'react-native';
 
 const QUIZ_IMAGES: Record<string, any> = {
   'stop_sign': require('../../assets/quiz/stop_sign.jpg'),
@@ -44,12 +46,18 @@ const CARD_WIDTH = SCREEN_WIDTH * 0.9;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.65;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 
+// Local extended interface that satisfies models.Question but adds UI specific fields if needed
 interface Question {
   id: string;
-  question: string;
+  question: string; // Used in UI
+  text: string;     // Required by service
   options: string[];
-  correctIndex: number;
+  correctIndex: number; // Used in UI
+  correctOptionIndex: number; // Required by service
   imageUrl?: string;
+  explanation: string;
+  region: any;
+  category: string;
 }
 
 interface SwipeCardProps {
@@ -69,6 +77,120 @@ function SwipeCard({
   onRewind,
   showCheckmark,
 }: SwipeCardProps) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  
+  // Create styles inside component to use colors
+  const styles = useMemo(() => StyleSheet.create({
+    card: {
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+      borderRadius: 24,
+      overflow: 'hidden',
+      borderWidth: 2,
+      borderColor: colors.border,
+    },
+    cardGradient: {
+      flex: 1,
+      padding: 24,
+    },
+    rewindButton: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.background.glass,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.primary.DEFAULT,
+    },
+    questionContainer: {
+      marginBottom: 16,
+    },
+    questionLabel: {
+      fontFamily: 'Inter-Bold',
+      fontSize: 12,
+      color: colors.primary.DEFAULT,
+      letterSpacing: 2,
+      marginBottom: 8,
+    },
+    questionImage: {
+      width: '100%',
+      height: 120,
+      marginBottom: 12,
+      borderRadius: 12,
+    },
+    questionText: {
+      fontFamily: 'Inter-Bold',
+      fontSize: 22,
+      color: colors.text.primary,
+      lineHeight: 32,
+    },
+    optionContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      backgroundColor: colors.background.glass,
+      borderRadius: 16,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    optionLabel: {
+      fontFamily: 'Inter-Medium',
+      fontSize: 14,
+      color: colors.primary.DEFAULT,
+      marginBottom: 8,
+    },
+    optionText: {
+      fontFamily: 'Inter-Medium',
+      fontSize: 18,
+      color: colors.text.primary,
+      lineHeight: 26,
+    },
+    dotsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: 20,
+      gap: 8,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.text.tertiary,
+    },
+    dotActive: {
+      backgroundColor: colors.primary.DEFAULT,
+      width: 24,
+    },
+    instructionContainer: {
+      marginTop: 16,
+      alignItems: 'center',
+    },
+    instructionText: {
+      fontFamily: 'Inter-Regular',
+      fontSize: 12,
+      color: colors.text.secondary,
+    },
+    checkmarkOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    checkmarkCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: colors.primary.DEFAULT,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+  }), [colors]);
+
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const rotation = useSharedValue(0);
@@ -141,7 +263,7 @@ function SwipeCard({
 
           {/* Question */}
           <View style={styles.questionContainer}>
-            <Text style={styles.questionLabel}>DAILY MISSION</Text>
+            <Text style={styles.questionLabel}>{t('mission.dailyMission', 'DAILY MISSION')}</Text>
             {question.imageUrl && QUIZ_IMAGES[question.imageUrl] && (
               <Image 
                 source={QUIZ_IMAGES[question.imageUrl]}
@@ -152,10 +274,9 @@ function SwipeCard({
             <Text style={styles.questionText}>{question.question}</Text>
           </View>
 
-          {/* Current Option Display */}
           <View style={styles.optionContainer}>
             <Text style={styles.optionLabel}>
-              Option {String.fromCharCode(65 + currentOptionIndex)}
+              {t('quiz.option', 'Option')} {String.fromCharCode(65 + currentOptionIndex)}
             </Text>
             <Text style={styles.optionText}>
               {question.options[currentOptionIndex]}
@@ -178,7 +299,7 @@ function SwipeCard({
           {/* Swipe Instruction */}
           <View style={styles.instructionContainer}>
             <Text style={styles.instructionText}>
-              Tap edges to browse • Swipe right to select
+              {t('mission.instruction', 'Tap edges to browse • Swipe right to select')}
             </Text>
           </View>
 
@@ -195,6 +316,8 @@ function SwipeCard({
 }
 
 export function MissionScreen() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
   const navigation = useNavigation();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -204,6 +327,8 @@ export function MissionScreen() {
   const [isComplete, setIsComplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string>('');
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     loadQuiz();
@@ -215,7 +340,7 @@ export function MissionScreen() {
       const { profile, error } = await AuthService.getUserProfile();
       
       if (error || !profile) {
-        Alert.alert('Error', 'Could not load user profile');
+        Alert.alert(t('common.error', 'Error'), t('auth.loadProfileError', 'Could not load user profile'));
         return;
       }
 
@@ -230,24 +355,29 @@ export function MissionScreen() {
       const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region);
       
       if (loadedQuestions.length === 0) {
-        Alert.alert('No Questions', 'No questions found for your region.');
+        Alert.alert(t('mission.noQuestions', 'No Questions'), t('mission.noQuestionsRegion', 'No questions found for your region.'));
         navigation.goBack();
         return;
       }
 
-      // Map to MissionScreen format
+      // Map to MissionScreen format but keeping all necessary fields for submission service
       const mappedQuestions: Question[] = loadedQuestions.map(q => ({
         id: q.id,
-        question: q.text,
+        question: q.text, // Keep for UI compatibility
+        text: q.text,     // Required by type
         options: q.options,
-        correctIndex: q.correctOptionIndex,
-        imageUrl: q.imageUrl
+        correctIndex: q.correctOptionIndex, // Keep for UI compatibility
+        correctOptionIndex: q.correctOptionIndex, // Required by type
+        imageUrl: q.imageUrl,
+        explanation: q.explanation,
+        region: q.region,
+        category: q.category
       }));
 
       setQuestions(mappedQuestions);
     } catch (error) {
       console.error('Error loading quiz:', error);
-      Alert.alert('Error', 'Failed to load quiz');
+      Alert.alert(t('common.error', 'Error'), t('mission.loadError', 'Failed to load quiz'));
     } finally {
       setLoading(false);
     }
@@ -267,12 +397,12 @@ export function MissionScreen() {
 
   const handleSubmit = async (finalAnswers: typeof answers) => {
     try {
-      const { score, attempt } = await QuizService.submitQuiz(userId, finalAnswers);
+      const { score, attempt } = await QuizService.submitQuiz(userId, finalAnswers, questions);
       // Navigate to review or show breakdown
       setIsComplete(true);
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      Alert.alert('Error', 'Failed to submit quiz results');
+      Alert.alert(t('common.error', 'Error'), t('mission.submitError', 'Failed to submit quiz results'));
     }
   };
 
@@ -323,7 +453,7 @@ export function MissionScreen() {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-        <Text style={{ color: colors.text.secondary, marginTop: 20 }}>Loading Mission...</Text>
+        <Text style={{ color: colors.text.secondary, marginTop: 20 }}>{t('mission.loading', 'Loading Mission...')}</Text>
       </SafeAreaView>
     );
   }
@@ -338,13 +468,13 @@ export function MissionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.completeContainer}>
-          <Text style={styles.completeTitle}>Mission Complete!</Text>
+          <Text style={styles.completeTitle}>{t('mission.complete', 'Mission Complete!')}</Text>
           <Text style={styles.completeScore}>
             {correctCount}/{questions.length}
           </Text>
-          <Text style={styles.completeSubtitle}>Correct Answers</Text>
+          <Text style={styles.completeSubtitle}>{t('mission.correctAnswers', 'Correct Answers')}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={resetMission}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
+            <Text style={styles.retryButtonText}>{t('common.tryAgain', 'Try Again')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -356,7 +486,7 @@ export function MissionScreen() {
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Daily Mission</Text>
+          <Text style={styles.headerTitle}>{t('mission.dailyMissionTitle', 'Daily Mission')}</Text>
           <Text style={styles.headerProgress}>
             {currentQuestionIndex + 1}/{questions.length}
           </Text>
@@ -393,12 +523,12 @@ export function MissionScreen() {
               {showFeedback === 'correct' ? (
                 <>
                   <Check color={colors.text.primary} size={80} strokeWidth={3} />
-                  <Text style={styles.feedbackText}>CORRECT!</Text>
+                  <Text style={styles.feedbackText}>{t('quiz.correct', 'CORRECT!')}</Text>
                 </>
               ) : (
                 <>
                   <X color={colors.text.primary} size={80} strokeWidth={3} />
-                  <Text style={styles.feedbackText}>WRONG!</Text>
+                  <Text style={styles.feedbackText}>{t('quiz.wrong', 'WRONG!')}</Text>
                 </>
               )}
             </LinearGradient>
@@ -409,7 +539,7 @@ export function MissionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.default,
@@ -435,113 +565,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  card: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  cardGradient: {
-    flex: 1,
-    padding: 24,
-  },
-  rewindButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.glass,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.primary.DEFAULT,
-  },
-  questionContainer: {
-    marginBottom: 16, // Reduced margin
-  },
-  questionLabel: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 12,
-    color: colors.primary.DEFAULT,
-    letterSpacing: 2,
-    marginBottom: 8, // Reduced margin
-  },
-  questionImage: {
-    width: '100%',
-    height: 120, // Reduced height
-    marginBottom: 12, // Reduced margin
-    borderRadius: 12,
-  },
-  questionText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 22,
-    color: colors.text.primary,
-    lineHeight: 32,
-  },
-  optionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: colors.background.glass,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  optionLabel: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: colors.primary.DEFAULT,
-    marginBottom: 8,
-  },
-  optionText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 18,
-    color: colors.text.primary,
-    lineHeight: 26,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.text.tertiary,
-  },
-  dotActive: {
-    backgroundColor: colors.primary.DEFAULT,
-    width: 24,
-  },
-  instructionContainer: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  instructionText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: colors.text.secondary,
-  },
-  checkmarkOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  checkmarkCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.primary.DEFAULT,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   tapZoneLeft: {
     position: 'absolute',

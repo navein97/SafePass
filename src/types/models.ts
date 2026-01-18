@@ -6,6 +6,11 @@ export interface Driver {
     employeeId: string;
     region: Region;
     safetyIndex: number; // 0-100
+    componentScores?: {
+        operation: number;
+        professionalism: number;
+        discipline: number;
+    };
     lastQuizDate?: string; // ISO string
     role?: 'staff' | 'manager';
     streak?: number;
@@ -22,6 +27,11 @@ export interface Question {
     region: Region[]; // Applicable regions
     category: string;
     imageUrl?: string; // Optional image URL for visual questions
+    componentWeights?: {
+        operation?: number; // e.g. 70
+        professionalism?: number;
+        discipline?: number; // e.g. 30
+    };
 }
 
 export interface QuizAttempt {

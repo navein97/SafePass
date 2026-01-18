@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { CheckCircle, XCircle, Home } from 'lucide-react-native';
 import { Question, QuizAttempt } from '../types/models';
@@ -12,19 +12,22 @@ import { GlassButton } from '../components/ui/GlassButton';
 
 export const ReviewScreen = ({ route, navigation }: any) => {
   const { t } = useTranslation();
+  const { colors, theme } = useTheme();
   const { attempt, questions } = route.params as { attempt: QuizAttempt; questions: Question[] };
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
           <GlassCard style={styles.scoreHeader}>
             <Text style={styles.scoreTitle}>{t('quiz.score')}</Text>
             <Text style={styles.scoreValue}>{attempt.score}%</Text>
           </GlassCard>
 
-          <Text style={styles.sectionTitle}>Review</Text>
+          <Text style={styles.sectionTitle}>{t('quiz.review', 'Review')}</Text>
 
           {questions.map((question, index) => {
             const answer = attempt.answers.find(a => a.questionId === question.id);
@@ -53,7 +56,7 @@ export const ReviewScreen = ({ route, navigation }: any) => {
 
                 {!isCorrect && (
                   <View style={styles.correctionBox}>
-                    <Text style={styles.correctionLabel}>Correct Answer:</Text>
+                    <Text style={styles.correctionLabel}>{t('quiz.correctAnswer', 'Correct Answer')}:</Text>
                     <Text style={styles.correctionText}>
                       {question.options[question.correctOptionIndex]}
                     </Text>
@@ -69,7 +72,7 @@ export const ReviewScreen = ({ route, navigation }: any) => {
           })}
 
           <GlassButton
-            title="Back to Home"
+            title={t('common.backToHome', 'Back to Home')}
             onPress={() => navigation.navigate('MainTabs')}
             icon={<Home color={colors.text.primary} size={20} />}
             style={styles.homeButton}
@@ -80,7 +83,7 @@ export const ReviewScreen = ({ route, navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -102,7 +105,7 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: typography.fonts.bold,
     color: colors.primary.light,
-    textShadowColor: 'rgba(0, 122, 255, 0.5)',
+    textShadowColor: colors.mode === 'dark' ? 'rgba(0, 122, 255, 0.5)' : 'rgba(0,0,0,0.1)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
@@ -139,12 +142,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.bold,
   },
   correctionBox: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: colors.mode === 'dark' ? 'rgba(0, 200, 83, 0.15)' : 'rgba(0, 200, 83, 0.1)',
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: colors.status.success,
   },
   correctionLabel: {
     color: colors.status.success,
@@ -157,9 +160,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.medium,
   },
   explanationBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.background.subtle,
     padding: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   explanationLabel: {
     color: colors.text.secondary,

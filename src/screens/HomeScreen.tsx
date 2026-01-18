@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { Shield, AlertCircle, CheckCircle, User, Users } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
@@ -14,11 +14,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export const HomeScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
+  const { colors, theme } = useTheme();
   
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [safetyIndex, setSafetyIndex] = useState(0);
   const [isCompliant, setIsCompliant] = useState(false);
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     loadData();
@@ -58,7 +61,7 @@ export const HomeScreen = ({ navigation }: any) => {
       <GradientBackground>
         <SafeAreaView style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('common.loading', 'Loading...')}</Text>
         </SafeAreaView>
       </GradientBackground>
     );
@@ -67,7 +70,7 @@ export const HomeScreen = ({ navigation }: any) => {
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <ScrollView 
           contentContainerStyle={styles.scrollContent} 
           bounces={true}
@@ -76,7 +79,7 @@ export const HomeScreen = ({ navigation }: any) => {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.greeting}>Hello, {profile?.full_name || 'Driver'}</Text>
+              <Text style={styles.greeting}>{t('home.hello', 'Hello')}, {profile?.full_name || 'Driver'}</Text>
               <Text style={styles.date}>{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
             </View>
             <TouchableOpacity 
@@ -87,7 +90,7 @@ export const HomeScreen = ({ navigation }: any) => {
                 colors={colors.gradients.primary as any}
                 style={styles.avatar}
               >
-                <User size={24} color={colors.text.primary} />
+                <User size={24} color={colors.text.inverse} />
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -95,16 +98,16 @@ export const HomeScreen = ({ navigation }: any) => {
           {isManager ? (
             /* Manager Dashboard View */
             <GlassCard style={styles.card}>
-              <Text style={styles.cardTitle}>Management Dashboard</Text>
+              <Text style={styles.cardTitle}>{t('manager.dashboardTitle', 'Management Dashboard')}</Text>
               <View style={{ alignItems: 'center', paddingVertical: 30 }}>
                 <Users size={64} color={colors.primary.DEFAULT} />
-                <Text style={[styles.statusText, { textAlign: 'center', marginTop: 16 }]}>Team Overview</Text>
+                <Text style={[styles.statusText, { textAlign: 'center', marginTop: 16 }]}>{t('manager.teamOverview', 'Team Overview')}</Text>
                 <Text style={[styles.statusSubtext, { textAlign: 'center' }]}>
-                  Monitor team compliance and safety performance.
+                  {t('manager.monitorCompliance', 'Monitor team compliance and safety performance.')}
                 </Text>
               </View>
               <GlassButton 
-                title="View Team stats"
+                title={t('manager.viewTeamStats', 'View Team stats')}
                 onPress={() => navigation.navigate('ManagerQuickView')}
                 icon={<Shield color={colors.text.primary} size={20} />}
                 style={styles.actionButton}
@@ -128,7 +131,7 @@ export const HomeScreen = ({ navigation }: any) => {
                     style={[styles.progressBarFill, { width: `${safetyIndex}%` }]}
                   />
                 </View>
-                <Text style={styles.scoreSubtext}>90-day rolling average</Text>
+                <Text style={styles.scoreSubtext}>{t('home.rollingAverage', '90-day rolling average')}</Text>
               </GlassCard>
 
               {/* Weekly Status Card */}
@@ -148,11 +151,11 @@ export const HomeScreen = ({ navigation }: any) => {
                   {isCompliant ? t('home.compliant') : t('home.overdue')}
                 </Text>
                 <Text style={styles.statusSubtext}>
-                  {isCompliant ? 'Great job! You are up to date.' : t('home.quizDue')}
+                  {isCompliant ? t('home.greatJob', 'Great job! You are up to date.') : t('home.quizDue')}
                 </Text>
                 
                 <GlassButton
-                  title={isCompliant ? 'Practice Quiz' : t('home.startQuiz')}
+                  title={isCompliant ? t('home.practiceQuiz', 'Practice Quiz') : t('home.startQuiz')}
                   onPress={() => navigation.navigate('Quiz')}
                   variant={isCompliant ? 'primary' : 'danger'}
                   style={styles.actionButton}
@@ -166,7 +169,7 @@ export const HomeScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -219,12 +222,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   cardSuccess: {
-    borderColor: 'rgba(52, 199, 89, 0.3)',
-    backgroundColor: 'rgba(52, 199, 89, 0.05)',
+    borderColor: colors.status.success + '4D', // 30% opacity
+    backgroundColor: colors.status.success + '1A', // 10% opacity
   },
   cardDanger: {
-    borderColor: 'rgba(255, 59, 48, 0.3)',
-    backgroundColor: 'rgba(255, 59, 48, 0.05)',
+    borderColor: colors.status.danger + '4D',
+    backgroundColor: colors.status.danger + '1A',
   },
   cardTitle: {
     fontSize: typography.sizes.base,
@@ -242,13 +245,13 @@ const styles = StyleSheet.create({
     fontSize: 56,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
-    textShadowColor: 'rgba(0, 122, 255, 0.5)',
+    textShadowColor: colors.mode === 'dark' ? 'rgba(0, 122, 255, 0.5)' : 'rgba(0,0,0,0.1)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.background.subtle,
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 8,
@@ -272,6 +275,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.bold,
     marginTop: 8,
     marginBottom: 8,
+    color: colors.text.primary,
   },
   statusSubtext: {
     fontSize: typography.sizes.sm,

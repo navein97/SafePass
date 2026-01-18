@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Mail, Phone, ArrowLeft, CheckCircle } from 'lucide-react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthService } from '../services/authService';
@@ -26,12 +26,15 @@ type RecoveryMethod = 'email' | 'sms';
 
 export const ForgotPasswordScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
+  const { colors, theme } = useTheme();
   const [recoveryMethod, setRecoveryMethod] = useState<RecoveryMethod>('email');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [errors, setErrors] = useState({ email: '', phone: '', general: '' });
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
     let isValid = true;
@@ -102,7 +105,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
     return (
       <GradientBackground>
         <SafeAreaView style={styles.safeArea}>
-          <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+          <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
           <View style={styles.successContainer}>
             <View style={styles.successIconContainer}>
               <CheckCircle size={80} color={colors.status.success} />
@@ -142,7 +145,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -281,7 +284,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -307,7 +310,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontFamily: typography.fonts.bold,
-    color: colors.primary.DEFAULT,
+    color: colors.mode === 'light' ? colors.primary.dark : colors.primary.DEFAULT,
     marginBottom: 12,
     textShadowColor: colors.primary.dark,
     textShadowOffset: { width: 0, height: 0 },
@@ -366,7 +369,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
   },
   linkTextBold: {
-    color: colors.primary.light,
+    color: colors.mode === 'light' ? colors.primary.dark : colors.primary.light,
     fontFamily: typography.fonts.bold,
   },
   errorBanner: {
@@ -409,7 +412,7 @@ const styles = StyleSheet.create({
   emailText: {
     fontSize: typography.sizes.lg,
     fontFamily: typography.fonts.bold,
-    color: colors.primary.DEFAULT,
+    color: colors.mode === 'light' ? colors.primary.dark : colors.primary.DEFAULT,
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -435,7 +438,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   resendTextBold: {
-    color: colors.primary.light,
+    color: colors.mode === 'light' ? colors.primary.dark : colors.primary.light,
     fontFamily: typography.fonts.bold,
   },
 });

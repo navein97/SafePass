@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { QuizService } from '../services/quizService';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import { Question } from '../types/models';
-import { ChevronRight, ChevronLeft } from 'lucide-react-native';
+import { ChevronRight, ChevronLeft, Check, XCircle, AlertCircle } from 'lucide-react-native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -24,13 +24,18 @@ const QUIZ_IMAGES: Record<string, any> = {
 
 export const QuizScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
+  const { colors, theme } = useTheme();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: string; selectedOptionIndex: number; isCorrect: boolean }[]>([]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [isAnswered, setIsAnswered] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState('Initializing...');
+  const [loadingStatus, setLoadingStatus] = useState(t('common.initializing', 'Initializing...'));
   const [userId, setUserId] = useState<string>('');
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     loadQuiz();
@@ -39,19 +44,18 @@ export const QuizScreen = ({ navigation }: any) => {
   const loadQuiz = async () => {
     try {
       setLoading(true);
-      setLoadingStatus('Fetching user profile...');
+      setLoadingStatus(t('common.fetchingProfile', 'Fetching user profile...'));
       
-      // Get user profile to determine region
       const { profile, error } = await AuthService.getUserProfile();
       
       if (error || !profile) {
         console.error('Profile load error:', error);
         Alert.alert(
-          'Session Error', 
-          'Could not load user profile. Please try again or re-login.',
+          t('common.error', 'Error'), 
+          t('auth.sessionError', 'Could not load user profile. Please try again or re-login.'),
           [
-            { text: 'Retry', onPress: () => loadQuiz() },
-            { text: 'Login', onPress: () => navigation.replace('Login') }
+            { text: t('common.retry', 'Retry'), onPress: () => loadQuiz() },
+            { text: t('auth.login', 'Login'), onPress: () => navigation.replace('Login') }
           ]
         );
         return;
@@ -59,16 +63,15 @@ export const QuizScreen = ({ navigation }: any) => {
 
       console.log('User Profile loaded:', profile.region);
       setUserId(profile.id);
-      setLoadingStatus(`Loading questions for ${profile.region}...`);
+      setLoadingStatus(t('quiz.loadingQuestionsFor', { region: profile.region, defaultValue: `Loading questions for ${profile.region}...` }));
 
-      // Load questions for user's region
       const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region);
       console.log('Questions loaded for region:', loadedQuestions.length);
       
       if (loadedQuestions.length === 0) {
         Alert.alert(
-          'No Questions', 
-          `No questions found for your region (${profile.region}).`
+          t('quiz.noQuestionsTitle', 'No Questions'), 
+          t('quiz.noQuestionsMessage', { region: profile.region, defaultValue: `No questions found for your region (${profile.region}).` })
         );
         navigation.goBack();
         return;
@@ -77,47 +80,55 @@ export const QuizScreen = ({ navigation }: any) => {
       setQuestions(loadedQuestions);
     } catch (error) {
       console.error('Error loading quiz:', error);
-      Alert.alert('Error', 'Failed to load quiz. Please try again.');
+      Alert.alert(t('common.error', 'Error'), t('quiz.loadFailed', 'Failed to load quiz. Please try again.'));
       navigation.goBack();
     } finally {
       setLoading(false);
     }
   };
 
-  const handleNext = () => {
-    if (selectedOption === null) {
-      Alert.alert('Please select an answer');
-      return;
-    }
+  const handleOptionSelect = (index: number) => {
+    if (isAnswered) return;
+
+    setSelectedOption(index);
+    setIsAnswered(true);
 
     const currentQuestion = questions[currentIndex];
-    const isCorrect = selectedOption === currentQuestion.correctOptionIndex;
+    const isCorrect = index === currentQuestion.correctOptionIndex;
 
-    const newAnswers = [...answers, {
+    const newAnswer = {
       questionId: currentQuestion.id,
-      selectedOptionIndex: selectedOption,
+      selectedOptionIndex: index,
       isCorrect
-    }];
+    };
 
-    setAnswers(newAnswers);
+    setAnswers([...answers, newAnswer]);
+    
+    // Auto-scroll to show feedback
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
 
+  const handleNext = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setSelectedOption(null);
+      setIsAnswered(false);
     } else {
-      handleSubmit(newAnswers);
+      handleSubmit(answers);
     }
   };
 
   const handleSubmit = async (finalAnswers: typeof answers) => {
     try {
       setLoading(true);
-      setLoadingStatus('Submitting results...');
-      const { score, attempt } = await QuizService.submitQuiz(userId, finalAnswers);
+      setLoadingStatus(t('quiz.submitting', 'Submitting results...'));
+      const { score, attempt } = await QuizService.submitQuiz(userId, finalAnswers, questions);
       navigation.replace('Review', { attempt, questions });
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      Alert.alert('Error', 'Failed to submit quiz. Please try again.');
+      Alert.alert(t('common.error', 'Error'), t('quiz.submitFailed', 'Failed to submit quiz. Please try again.'));
       setLoading(false);
     }
   };
@@ -140,13 +151,13 @@ export const QuizScreen = ({ navigation }: any) => {
       <GradientBackground>
         <SafeAreaView style={styles.loadingContainer}>
           <Text style={styles.errorTitle}>
-            Unable to load quiz
+            {t('quiz.unableToLoad', 'Unable to load quiz')}
           </Text>
           <Text style={styles.errorText}>
-            We couldn't find any questions for your region, or there was a connection error.
+            {t('quiz.noQuestionsFound', "We couldn't find any questions for your region, or there was a connection error.")}
           </Text>
           <GlassButton 
-            title="Go Back"
+            title={t('common.goBack', 'Go Back')}
             onPress={() => navigation.goBack()}
             style={{ width: 200 }}
           />
@@ -154,7 +165,7 @@ export const QuizScreen = ({ navigation }: any) => {
             onPress={loadQuiz}
             style={{ marginTop: 20 }}
           >
-            <Text style={{ color: colors.primary.light, fontFamily: typography.fonts.medium }}>Try Again</Text>
+            <Text style={{ color: colors.primary.light, fontFamily: typography.fonts.medium }}>{t('common.tryAgain', 'Try Again')}</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </GradientBackground>
@@ -164,10 +175,44 @@ export const QuizScreen = ({ navigation }: any) => {
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
+  // Feedback Rendering Logic
+  const getOptionStyle = (index: number) => {
+    if (!isAnswered) {
+      return selectedOption === index ? styles.optionSelected : {};
+    }
+
+    if (index === currentQuestion.correctOptionIndex) {
+      return styles.optionCorrect;
+    }
+
+    if (selectedOption === index && index !== currentQuestion.correctOptionIndex) {
+      return styles.optionWrong;
+    }
+
+    return styles.optionDisabled; // Dim other options
+  };
+
+  const getOptionIcon = (index: number) => {
+    if (!isAnswered) {
+      return selectedOption === index ? <View style={styles.radioInner} /> : null;
+    }
+    
+    if (index === currentQuestion.correctOptionIndex) {
+      return <Check size={16} color={colors.status.success} strokeWidth={4} />;
+    }
+
+    if (selectedOption === index && index !== currentQuestion.correctOptionIndex) {
+      return <XCircle size={16} color={colors.status.danger} />;
+    }
+
+    return null;
+  };
+
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+        
         {/* Header / Progress */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -188,7 +233,12 @@ export const QuizScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          ref={scrollViewRef}
+          contentContainerStyle={styles.content} 
+          bounces={true} 
+          showsVerticalScrollIndicator={false}
+        >
           <GlassCard style={styles.questionCard}>
             {currentQuestion.imageUrl && QUIZ_IMAGES[currentQuestion.imageUrl] && (
               <Image 
@@ -204,22 +254,25 @@ export const QuizScreen = ({ navigation }: any) => {
             {currentQuestion.options.map((option, index) => (
               <TouchableOpacity
                 key={index}
-                activeOpacity={0.8}
-                onPress={() => setSelectedOption(index)}
+                activeOpacity={isAnswered ? 1 : 0.8}
+                onPress={() => handleOptionSelect(index)}
+                disabled={isAnswered}
               >
                 <GlassCard 
                   style={[
                     styles.optionButton,
-                    selectedOption === index && styles.optionSelected
+                    getOptionStyle(index)
                   ]}
-                  intensity={selectedOption === index ? 40 : 20}
+                  intensity={selectedOption === index || (isAnswered && index === currentQuestion.correctOptionIndex) ? 40 : 20}
                 >
                   <View style={styles.optionContent}>
                     <View style={[
                       styles.radioCircle,
-                      selectedOption === index && styles.radioSelected
+                      isAnswered && index === currentQuestion.correctOptionIndex && styles.radioCorrect,
+                      isAnswered && selectedOption === index && index !== currentQuestion.correctOptionIndex && styles.radioWrong,
+                      !isAnswered && selectedOption === index && styles.radioSelected
                     ]}>
-                      {selectedOption === index && <View style={styles.radioInner} />}
+                      {getOptionIcon(index)}
                     </View>
                     <Text style={[
                       styles.optionText,
@@ -232,22 +285,55 @@ export const QuizScreen = ({ navigation }: any) => {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Instant Feedback Section */}
+          {isAnswered && (
+             <View style={styles.feedbackContainer}>
+                {selectedOption === currentQuestion.correctOptionIndex ? (
+                    <GlassCard style={[styles.feedbackCard, { borderColor: colors.status.success, borderLeftWidth: 4 }]}>
+                         <View style={styles.feedbackHeader}>
+                            <Check size={24} color={colors.status.success} />
+                            <Text style={[styles.feedbackTitle, { color: colors.status.success }]}>{t('quiz.correct', 'Correct!')}</Text>
+                         </View>
+                         {currentQuestion.explanation && (
+                             <Text style={styles.feedbackText}>{currentQuestion.explanation}</Text>
+                         )}
+                    </GlassCard>
+                ) : (
+                    <GlassCard style={[styles.feedbackCard, { borderColor: colors.status.danger, borderLeftWidth: 4 }]}>
+                         <View style={styles.feedbackHeader}>
+                            <AlertCircle size={24} color={colors.status.danger} />
+                            <Text style={[styles.feedbackTitle, { color: colors.status.danger }]}>{t('quiz.incorrect', 'Incorrect')}</Text>
+                         </View>
+                         <Text style={styles.feedbackText}>
+                             {t('quiz.correctAnswerIs', 'The correct answer is')} <Text style={{fontFamily: typography.fonts.bold}}>{currentQuestion.options[currentQuestion.correctOptionIndex]}</Text>.
+                         </Text>
+                         {currentQuestion.explanation && (
+                             <Text style={[styles.feedbackText, { marginTop: 8 }]}>{currentQuestion.explanation}</Text>
+                         )}
+                    </GlassCard>
+                )}
+             </View>
+          )}
+
         </ScrollView>
 
-        <View style={styles.footer}>
-          <GlassButton
-            title={currentIndex === questions.length - 1 ? t('quiz.finish') : t('common.next')}
-            onPress={handleNext}
-            icon={<ChevronRight color={colors.text.primary} size={20} />}
-            style={styles.nextButton}
-          />
-        </View>
+        {isAnswered && (
+          <View style={styles.footer}>
+            <GlassButton
+              title={currentIndex === questions.length - 1 ? t('quiz.finish') : t('common.next')}
+              onPress={handleNext}
+              icon={<ChevronRight color={colors.text.primary} size={20} />}
+              style={styles.nextButton}
+            />
+          </View>
+        )}
       </SafeAreaView>
     </GradientBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
@@ -295,7 +381,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.background.subtle,
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -328,9 +414,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   optionButton: {
-    padding: 0, // Reset padding since GlassCard has padding
+    padding: 0,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.border,
   },
   optionContent: {
     flexDirection: 'row',
@@ -338,7 +424,18 @@ const styles = StyleSheet.create({
   },
   optionSelected: {
     borderColor: colors.primary.DEFAULT,
-    backgroundColor: 'rgba(0, 122, 255, 0.2)',
+    backgroundColor: colors.mode === 'dark' ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255, 215, 0, 0.1)',
+  },
+  optionCorrect: {
+    borderColor: colors.status.success,
+    backgroundColor: colors.mode === 'dark' ? 'rgba(0, 200, 83, 0.15)' : 'rgba(0, 200, 83, 0.1)',
+  },
+  optionWrong: {
+    borderColor: colors.status.danger,
+    backgroundColor: colors.mode === 'dark' ? 'rgba(255, 61, 0, 0.15)' : 'rgba(255, 61, 0, 0.1)',
+  },
+  optionDisabled: {
+    opacity: 0.5,
   },
   radioCircle: {
     width: 24,
@@ -352,6 +449,14 @@ const styles = StyleSheet.create({
   },
   radioSelected: {
     borderColor: colors.primary.DEFAULT,
+  },
+  radioCorrect: {
+    borderColor: colors.status.success,
+    backgroundColor: 'rgba(0, 200, 83, 0.2)',
+  },
+  radioWrong: {
+     borderColor: colors.status.danger,
+     backgroundColor: 'rgba(255, 61, 0, 0.2)',
   },
   radioInner: {
     width: 12,
@@ -368,6 +473,29 @@ const styles = StyleSheet.create({
   optionTextSelected: {
     color: colors.primary.light,
     fontFamily: typography.fonts.bold,
+  },
+  feedbackContainer: {
+    marginTop: 24,
+    marginBottom: 20,
+  },
+  feedbackCard: {
+    padding: 16,
+  },
+  feedbackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  feedbackTitle: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+  },
+  feedbackText: {
+    color: colors.text.primary,
+    fontSize: 15,
+    lineHeight: 22,
+    fontFamily: typography.fonts.regular,
   },
   footer: {
     padding: 24,
