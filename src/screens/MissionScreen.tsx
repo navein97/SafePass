@@ -254,12 +254,6 @@ function SwipeCard({
           colors={[colors.background.card, colors.background.subtle]}
           style={styles.cardGradient}
         >
-          {/* Rewind Button */}
-          {canRewind && (
-            <TouchableOpacity style={styles.rewindButton} onPress={onRewind}>
-              <RotateCcw color={colors.primary.DEFAULT} size={20} />
-            </TouchableOpacity>
-          )}
 
           {/* Question */}
           <View style={styles.questionContainer}>
