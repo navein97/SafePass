@@ -12,6 +12,7 @@ import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Toast } from '../components/Toast';
 import Svg, { Circle } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -48,6 +49,17 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [questionCount, setQuestionCount] = useState(5);
   const [timerDuration, setTimerDuration] = useState(2); // minutes
 
+  /* Toast State */
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
+
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const isManager = profile?.role === 'manager';
@@ -81,10 +93,23 @@ export const ProfileScreen = ({ navigation }: any) => {
         if (savedCount) setQuestionCount(parseInt(savedCount, 10));
         if (savedTimer) setTimerDuration(parseInt(savedTimer, 10));
       } else {
-        const savedAge = await AsyncStorage.getItem(`USER_AGE_${userProfile.id}`);
-        const savedVehicle = await AsyncStorage.getItem(`USER_VEHICLE_${userProfile.id}`);
-        if (savedAge) setAge(savedAge);
-        if (savedVehicle) setVehicleType(savedVehicle);
+        // Prioritize profile data from Supabase
+        let initialAge = userProfile.age ? userProfile.age.toString() : '';
+        let initialVehicle = userProfile.vehicle_type || '';
+
+        // If missing in Supabase, try to fallback to AsyncStorage
+        if (!initialAge && userProfile.id) {
+             const savedAge = await AsyncStorage.getItem(`USER_AGE_${userProfile.id}`);
+             if (savedAge) initialAge = savedAge;
+        }
+        
+        if (!initialVehicle && userProfile.id) {
+             const savedVehicle = await AsyncStorage.getItem(`USER_VEHICLE_${userProfile.id}`);
+             if (savedVehicle) initialVehicle = savedVehicle;
+        }
+        
+        setAge(initialAge);
+        setVehicleType(initialVehicle);
       }
 
     } catch (error) {
@@ -94,17 +119,30 @@ export const ProfileScreen = ({ navigation }: any) => {
     }
   };
 
-  const handleAgeChange = async (text: string) => {
+  const handleAgeChange = (text: string) => {
     setAge(text);
-    if (profile?.id) {
-        await AsyncStorage.setItem(`USER_AGE_${profile.id}`, text);
-    }
   };
 
-  const handleVehicleSelect = async (vehicle: string) => {
+  const handleVehicleSelect = (vehicle: string) => {
     setVehicleType(vehicle);
-    if (profile?.id) {
-        await AsyncStorage.setItem(`USER_VEHICLE_${profile.id}`, vehicle);
+  };
+
+  const handleSavePersonalDetails = async () => {
+    if (!profile?.id) return;
+    try {
+        const { error } = await AuthService.updateProfile(profile.id, {
+            age: parseInt(age) || null,
+            vehicle_type: vehicleType
+        });
+        
+        if (error) throw error;
+        
+        // Refresh local state and persistent profile
+        await loadProfile();
+        showToast(t('profile.detailsSaved', 'Personal details saved!'), 'success');
+    } catch (error) {
+        console.error('Save details error:', error);
+        showToast(t('profile.detailsSaveError', 'Failed to save details.'), 'error');
     }
   };
 
@@ -120,10 +158,10 @@ export const ProfileScreen = ({ navigation }: any) => {
     try {
         await AsyncStorage.setItem('QUIZ_QUESTION_COUNT', questionCount.toString());
         await AsyncStorage.setItem('QUIZ_TIMER_DURATION', timerDuration.toString());
-        Alert.alert(t('common.success', 'Success'), t('profile.settingsSaved', 'Quiz settings have been saved.'));
+        showToast(t('profile.settingsSaved', 'Settings saved successfully!'), 'success');
     } catch (error) {
         console.error('Save error:', error);
-        Alert.alert(t('common.error', 'Error'), t('profile.settingsSaveError', 'Failed to save settings.'));
+        showToast(t('profile.settingsSaveError', 'Failed to save settings.'), 'error');
     }
   };
 
@@ -179,6 +217,12 @@ export const ProfileScreen = ({ navigation }: any) => {
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
+        <Toast 
+            visible={toastVisible} 
+            message={toastMessage} 
+            type={toastType} 
+            onHide={() => setToastVisible(false)} 
+        />
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
           
@@ -317,6 +361,13 @@ export const ProfileScreen = ({ navigation }: any) => {
                       </TouchableOpacity>
                    ))}
                 </View>
+
+                {/* Save Button */}
+                <GlassButton
+                  title={t('common.save', 'Save Details')}
+                  onPress={handleSavePersonalDetails}
+                  style={{ marginTop: 24 }}
+                />
              </GlassCard>
           )}
 

@@ -11,6 +11,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,6 +53,8 @@ interface Driver {
   trend: 'up' | 'down' | 'same';
   trendValue: number;
   componentScores?: ComponentScores;
+  age?: number;
+  vehicle?: string;
 }
 
 function TopThreePodium({ drivers, colors }: { drivers: Driver[], colors: any }) {
@@ -177,8 +180,21 @@ function LeaderboardItem({ driver, isPitLane, colors, isExpanded, onPress }: { d
         </View>
       </View>
 
-      {isExpanded && driver.componentScores && (
+      {isExpanded && (
           <View style={styles.expandedContent}>
+              <View style={styles.personalInfoContainer}>
+                  <View style={styles.infoItem}>
+                      <Text style={styles.infoLabel}>{t('common.age', 'Age')}</Text>
+                      <Text style={styles.infoValue}>{driver.age || '-'}</Text>
+                  </View>
+                  <View style={styles.divider} />
+                  <View style={styles.infoItem}>
+                      <Text style={styles.infoLabel}>{t('common.vehicle', 'Vehicle')}</Text>
+                      <Text style={styles.infoValue}>{driver.vehicle || '-'}</Text>
+                  </View>
+              </View>
+              
+              {driver.componentScores && (
               <View style={styles.paramsContainer}>
                   <View style={styles.paramItem}>
                       <Text style={styles.paramLabel}>{t('leaderboard.operation', 'Operation')}</Text>
@@ -201,7 +217,8 @@ function LeaderboardItem({ driver, isPitLane, colors, isExpanded, onPress }: { d
                       </View>
                       <Text style={styles.paramValue}>{driver.componentScores.discipline}%</Text>
                   </View>
-              </View>
+                  </View>
+              )}
           </View>
       )}
     </TouchableOpacity>
@@ -222,6 +239,7 @@ export function LeaderboardScreen() {
   // Refresh leaderboard when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      setDrivers([]); // Clear current list immediately to avoid confusion
       loadLeaderboard();
     }, [activeTab])
   );
@@ -248,7 +266,7 @@ export function LeaderboardScreen() {
       if (activeTab === 'weekly' || activeTab === 'monthly') {
           const { data: attempts, error } = await supabase
             .from('quiz_attempts')
-            .select('user_id, score, component_scores, profiles(full_name, region, streak)')
+            .select('user_id, score, component_scores, profiles(full_name, region, streak, age, vehicle_type)')
             .gte('completed_at', startDate.toISOString());
 
           if (error) throw error;
@@ -257,11 +275,12 @@ export function LeaderboardScreen() {
           const userScores: Record<string, { total: number, count: number, profile: any, components: ComponentScores }> = {};
           
           attempts?.forEach((attempt: any) => {
+              const profileData = Array.isArray(attempt.profiles) ? attempt.profiles[0] : attempt.profiles;
               if (!userScores[attempt.user_id]) {
                   userScores[attempt.user_id] = { 
                       total: 0, 
                       count: 0, 
-                      profile: attempt.profiles,
+                      profile: profileData,
                       components: { operation: 0, professionalism: 0, discipline: 0 }
                   };
               }
@@ -327,7 +346,10 @@ export function LeaderboardScreen() {
                   streak: u.profile?.streak || 0,
                   trend,
                   trendValue,
-                  componentScores: compAvg
+
+                  componentScores: compAvg,
+                  age: u.profile?.age,
+                  vehicle: u.profile?.vehicle_type
               };
           });
 
@@ -354,7 +376,10 @@ export function LeaderboardScreen() {
               streak: p.streak || 0,
               trend: 'same',
               trendValue: 0,
-              componentScores: p.component_scores || { operation: 0, professionalism: 0, discipline: 0 }
+
+              componentScores: p.component_scores || { operation: 0, professionalism: 0, discipline: 0 },
+              age: p.age,
+              vehicle: p.vehicle_type
             }));
             
             // Re-sort just in case
@@ -426,6 +451,12 @@ export function LeaderboardScreen() {
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
         >
+          {loading ? (
+             <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+             </View>
+          ) : (
+            <>
           {/* Top 3 Podium - Only show if no search filter or matches top 3 */}
           {!searchQuery && <TopThreePodium drivers={topThree} colors={colors} />}
 
@@ -463,6 +494,8 @@ export function LeaderboardScreen() {
                 ))}
               </View>
           )}
+          </> 
+          )}
 
           <View style={styles.bottomPadding} />
         </ScrollView>
@@ -472,6 +505,11 @@ export function LeaderboardScreen() {
 }
 
 const createStyles = (colors: any) => StyleSheet.create({
+  loadingContainer: {
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background.default,
@@ -793,5 +831,34 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   bottomPadding: {
     height: 100,
+  },
+  personalInfoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 8,
+    padding: 8,
+  },
+  infoItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  divider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  infoLabel: {
+    fontSize: 11,
+    color: colors.text.tertiary,
+    marginBottom: 2,
+    fontFamily: 'Inter-Medium',
+  },
+  infoValue: {
+    fontSize: 13,
+    color: colors.text.primary,
+    fontFamily: 'Inter-Bold',
   },
 });

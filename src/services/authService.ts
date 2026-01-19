@@ -197,6 +197,27 @@ export const AuthService = {
     },
 
     /**
+     * Update user profile
+     */
+    async updateProfile(userId: string, updates: any) {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', userId)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            return { data, error: null };
+        } catch (error: any) {
+            console.error('Update profile error:', error);
+            return { data: null, error: error.message };
+        }
+    },
+
+    /**
      * Listen to auth state changes
      */
     onAuthStateChange(callback: (event: string, session: any) => void) {
