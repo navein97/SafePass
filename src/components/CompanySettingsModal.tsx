@@ -71,9 +71,14 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <GlassCard style={styles.modalContent}>
+      <ScrollView 
+        style={styles.modalOverlay}
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        <GlassCard style={styles.modalContent}>
             <View style={styles.header}>
                 <Text style={[styles.title, dynamicStyles.title]}>{t('company.settings', 'Company Settings')}</Text>
                 <TouchableOpacity 
@@ -85,47 +90,39 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
                 </TouchableOpacity>
             </View>
 
-            <ScrollView 
-                style={styles.scrollView}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-                bounces={true}
-            >
-                <Text style={[styles.label, dynamicStyles.label]}>{t('company.name', 'Company Name')}</Text>
-                <TextInput 
-                    style={[styles.input, dynamicStyles.input]}
-                    value={companyName}
-                    onChangeText={setCompanyName}
-                    placeholder="E.g. SafePass Logistics"
-                    placeholderTextColor={colors.text.tertiary}
-                />
+            <Text style={[styles.label, dynamicStyles.label]}>{t('company.name', 'Company Name')}</Text>
+            <TextInput 
+                style={[styles.input, dynamicStyles.input]}
+                value={companyName}
+                onChangeText={setCompanyName}
+                placeholder="E.g. SafePass Logistics"
+                placeholderTextColor={colors.text.tertiary}
+            />
 
-                <Text style={[styles.label, dynamicStyles.label]}>{t('company.logo', 'Logo URL (Optional)')}</Text>
-                <TextInput 
-                    style={[styles.input, dynamicStyles.input]}
-                    value={logoUrl}
-                    onChangeText={setLogoUrl}
-                    placeholder="https://example.com/logo.png"
-                    placeholderTextColor={colors.text.tertiary}
-                    autoCapitalize="none"
-                />
-                
-                <Text style={[styles.helperText, dynamicStyles.helperText]}>
-                    This name and logo will appear on the dashboard for all your drivers.
-                </Text>
+            <Text style={[styles.label, dynamicStyles.label]}>{t('company.logo', 'Logo URL (Optional)')}</Text>
+            <TextInput 
+                style={[styles.input, dynamicStyles.input]}
+                value={logoUrl}
+                onChangeText={setLogoUrl}
+                placeholder="https://example.com/logo.png"
+                placeholderTextColor={colors.text.tertiary}
+                autoCapitalize="none"
+            />
+            
+            <Text style={[styles.helperText, dynamicStyles.helperText]}>
+                This name and logo will appear on the dashboard for all your drivers.
+            </Text>
 
-                <View style={{ marginTop: 24, marginBottom: 20 }}>
-                    <GlassButton 
-                        title={loading ? 'Saving...' : 'Save Settings'}
-                        onPress={handleSave}
-                        variant="primary"
-                        disabled={loading}
-                    />
-                </View>
-            </ScrollView>
-          </GlassCard>
-        </View>
-      </View>
+            <View style={{ marginTop: 24, marginBottom: 10 }}>
+                <GlassButton 
+                    title={loading ? 'Saving...' : 'Save Settings'}
+                    onPress={handleSave}
+                    variant="primary"
+                    disabled={loading}
+                />
+            </View>
+        </GlassCard>
+      </ScrollView>
     </Modal>
   );
 };
@@ -134,17 +131,17 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  modalContainer: {
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '70%',
+    paddingVertical: 40,
   },
   modalContent: {
-    flex: 1,
+    width: '100%',
+    maxWidth: 500,
     padding: 24,
   },
   header: {
@@ -166,12 +163,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 12,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 20,
   },
   label: {
     fontSize: 14,

@@ -106,9 +106,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <GlassCard style={styles.modalContent}>
+      <ScrollView 
+        style={styles.modalOverlay}
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        <GlassCard style={styles.modalContent}>
             <View style={styles.header}>
                 <Text style={[styles.title, dynamicStyles.title]}>{t('user.createTitle', 'Create New User')}</Text>
                 <TouchableOpacity 
@@ -119,13 +124,6 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                     <X size={20} color={colors.text.primary} />
                 </TouchableOpacity>
             </View>
-
-            <ScrollView 
-                style={styles.scrollView}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-                bounces={true}
-            >
             
             {/* Role Selection */}
             {canCreateManager && (
@@ -206,7 +204,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 Default password will be set to: 123456
             </Text>
 
-            <View style={{ marginTop: 24, marginBottom: 20 }}>
+            <View style={{ marginTop: 24, marginBottom: 10 }}>
                 <GlassButton 
                     title={loading ? 'Creating...' : 'Create User'}
                     onPress={handleCreateUser}
@@ -214,11 +212,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                     disabled={loading}
                 />
             </View>
-            
-            </ScrollView>
-          </GlassCard>
-        </View>
-      </View>
+        </GlassCard>
+      </ScrollView>
     </Modal>
   );
 };
@@ -227,17 +222,17 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  modalContainer: {
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '85%',
+    paddingVertical: 40,
   },
   modalContent: {
-    flex: 1,
+    width: '100%',
+    maxWidth: 500,
     padding: 24,
   },
   header: {
@@ -249,7 +244,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontFamily: typography.fonts.bold,
-    flex: 1, // Allow text to wrap if needed
+    flex: 1,
   },
   closeButton: {
     width: 40,
@@ -259,12 +254,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 12,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 20,
   },
   roleSelector: {
     flexDirection: 'row',
