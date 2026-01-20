@@ -15,7 +15,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Toast } from '../components/Toast';
 import Svg, { Circle } from 'react-native-svg';
 import { PerformanceRing } from '../components/PerformanceRing';
-import { Building, BookOpen } from 'lucide-react-native';
+import { CreateUserModal } from '../components/CreateUserModal';
+import { CompanySettingsModal } from '../components/CompanySettingsModal';
+import { Building, BookOpen, UserPlus } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SHIELD_SIZE = 120;
@@ -40,6 +42,9 @@ interface ProfileData {
   operationalEffectiveness?: number;
   operationalDiscipline?: number;
   professionalConduct?: number;
+  department?: string;
+  division?: string;
+  area?: string;
 }
 
 export const ProfileScreen = ({ navigation }: any) => {
@@ -60,6 +65,10 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+  
+  // User Management
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showCompanySettings, setShowCompanySettings] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage(message);
@@ -287,11 +296,17 @@ export const ProfileScreen = ({ navigation }: any) => {
             
                {/* Level 1 Specific: Company Settings */}
                {profile?.managerLevel === 1 && (
-                 <TouchableOpacity style={styles.companySettingsButton} onPress={() => showToast('Company Settings - Coming Soon', 'info')}>
-                    <Building size={24} color={colors.text.inverse} />
-                    <Text style={styles.companySettingsText}>{t('profile.companySettings', 'Company Settings')}</Text>
-                 </TouchableOpacity>
+                  <TouchableOpacity style={styles.companySettingsButton} onPress={() => setShowCompanySettings(true)}>
+                     <Building size={24} color={colors.text.inverse} />
+                     <Text style={styles.companySettingsText}>{t('profile.companySettings', 'Company Settings')}</Text>
+                  </TouchableOpacity>
                )}
+
+                {/* Manage Users Button - For all Managers */}
+                 <TouchableOpacity style={styles.manageUsersButton} onPress={() => setShowCreateUser(true)}>
+                    <UserPlus size={24} color={colors.primary.DEFAULT} />
+                    <Text style={styles.manageUsersText}>{t('profile.manageUsers', 'Manage / Create Users')}</Text>
+                 </TouchableOpacity>
 
                {/* DOPS Dashboard - Visible to all managers */}
                <View style={styles.dopsContainer}>
@@ -492,6 +507,19 @@ export const ProfileScreen = ({ navigation }: any) => {
           />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Modals */}
+      <CreateUserModal 
+        visible={showCreateUser} 
+        onClose={() => setShowCreateUser(false)}
+        currentUserLevel={(profile?.managerLevel || 2) as 1 | 2}
+        currentUserDepartment={profile?.department}
+      />
+      
+      <CompanySettingsModal
+         visible={showCompanySettings}
+         onClose={() => setShowCompanySettings(false)}
+      />
     </GradientBackground>
   );
 };
@@ -771,6 +799,24 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   companySettingsText: {
     color: colors.text.inverse,
+    fontFamily: typography.fonts.bold,
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  manageUsersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background.subtle,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.primary.DEFAULT,
+    borderStyle: 'dashed',
+  },
+  manageUsersText: {
+    color: colors.primary.DEFAULT,
     fontFamily: typography.fonts.bold,
     fontSize: 16,
     marginLeft: 8,

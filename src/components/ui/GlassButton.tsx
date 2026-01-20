@@ -35,7 +35,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
       case 'danger':
         return colors.gradients.danger;
       case 'secondary':
-        return ['#3A3A3C', '#2C2C2E']; // Dark gray gradient
+        return theme === 'light' ? ['#E5E5EA', '#D1D1D6'] : ['#3A3A3C', '#2C2C2E']; // Light gray for light mode, Dark gray for dark mode
       case 'outline':
         // Use fully transparent white to avoid Android black artifact issues
         return ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)'] as const;
@@ -50,7 +50,10 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
         // Darker gold/primary for visibility on light backgrounds
         return theme === 'light' ? colors.primary.dark : colors.primary.DEFAULT;
     }
-    return colors.text.primary;
+    if (variant === 'secondary') {
+        return theme === 'light' ? colors.text.secondary : colors.text.primary;
+    }
+    return colors.text.inverse;
   };
 
   return (
@@ -69,7 +72,11 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
         colors={getGradientColors() as any}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={[styles.gradient, variant === 'outline' && styles.outlineGradient]}
+        style={[
+            styles.gradient, 
+            !!title && styles.gradientPadding,
+            variant === 'outline' && styles.outlineGradient
+        ]}
       >
         {loading ? (
           <ActivityIndicator color={getTextColor()} />
@@ -113,8 +120,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
     gap: 10,
+  },
+  gradientPadding: {
+    paddingHorizontal: 20,
   },
   outlineGradient: {
     backgroundColor: 'transparent',

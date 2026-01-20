@@ -8,6 +8,7 @@ export interface SignUpData {
     fullName: string;
     employeeId: string;
     region: Region;
+    [key: string]: any; // Allow extra fields
 }
 
 export interface SignInData {
@@ -34,7 +35,7 @@ export const AuthService = {
                     data: {
                         full_name: data.fullName,
                         employee_id: data.employeeId,
-                        region: data.region,
+                        ...data // Pass all data including region, role, department
                     },
                 },
             });

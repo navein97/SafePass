@@ -56,6 +56,9 @@ interface Driver {
   componentScores?: ComponentScores;
   age?: number;
   vehicle?: string;
+  department?: string;
+  division?: string;
+  area?: string;
 }
 
 function TopThreePodium({ drivers, colors }: { drivers: Driver[], colors: any }) {
@@ -239,6 +242,7 @@ export function LeaderboardScreen() {
   
   // Manager View State
   const [isManager, setIsManager] = useState(false);
+  const [managerProfile, setManagerProfile] = useState<any>(null);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Department' | 'Division' | 'Area'>('All');
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -256,6 +260,7 @@ export function LeaderboardScreen() {
       const { profile } = await AuthService.getUserProfile();
       if (profile?.role === 'manager' || profile?.role === 'admin') {
           setIsManager(true);
+          setManagerProfile(profile);
       }
   };
 
@@ -281,7 +286,7 @@ export function LeaderboardScreen() {
       if (activeTab === 'weekly' || activeTab === 'monthly') {
           const { data: attempts, error } = await supabase
             .from('quiz_attempts')
-            .select('user_id, score, component_scores, profiles(full_name, region, streak, age, vehicle_type)')
+            .select('user_id, score, component_scores, profiles(full_name, region, streak, age, vehicle_type, department, division, area)')
             .gte('completed_at', startDate.toISOString());
 
           if (error) throw error;
@@ -364,7 +369,10 @@ export function LeaderboardScreen() {
 
                   componentScores: compAvg,
                   age: u.profile?.age,
-                  vehicle: u.profile?.vehicle_type
+                  vehicle: u.profile?.vehicle_type,
+                  department: u.profile?.department,
+                  division: u.profile?.division,
+                  area: u.profile?.area
               };
           });
 
@@ -418,14 +426,20 @@ export function LeaderboardScreen() {
     // Filter Logic for Managers
     if (activeFilter === 'All') return matchesSearch;
     
-    // For demo purposes, we are simulating "My Department" vs others
-    // In a real app, we would compare d.department === currentUser.department
-    if (activeFilter === 'Department') {
-         // Show only drivers in "Operations" for this test (or matching the manager)
-         // For now, let's just show top 5 as "My Department" to show the filter works UI-wise
-         return matchesSearch && d.rank <= 5; 
+    // Filter by Manager's context
+    if (managerProfile) {
+        if (activeFilter === 'Department' && managerProfile.department) {
+             return matchesSearch && d.department === managerProfile.department;
+        }
+        if (activeFilter === 'Division' && managerProfile.division) {
+             return matchesSearch && d.division === managerProfile.division;
+        }
+        if (activeFilter === 'Area' && managerProfile.area) {
+             return matchesSearch && d.area === managerProfile.area;
+        }
     }
     
+    // Fallback if no match or no manager profile
     return matchesSearch;
   });
 
