@@ -14,6 +14,8 @@ import { GlassButton } from '../components/ui/GlassButton';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Toast } from '../components/Toast';
 import Svg, { Circle } from 'react-native-svg';
+import { PerformanceRing } from '../components/PerformanceRing';
+import { Building, BookOpen } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SHIELD_SIZE = 120;
@@ -33,6 +35,11 @@ interface ProfileData {
   role?: 'staff' | 'manager';
   age?: string;
   vehicleType?: string;
+  // Master User Fields
+  managerLevel?: 1 | 2;
+  operationalEffectiveness?: number;
+  operationalDiscipline?: number;
+  professionalConduct?: number;
 }
 
 export const ProfileScreen = ({ navigation }: any) => {
@@ -84,6 +91,10 @@ export const ProfileScreen = ({ navigation }: any) => {
         ...userProfile,
         streak: userProfile.streak || 0,
         shieldHealth: userProfile.shield_health || 100,
+        managerLevel: userProfile.manager_level,
+        operationalEffectiveness: userProfile.operational_effectiveness || 0.75, // Default for demo
+        operationalDiscipline: userProfile.operational_discipline || 0.25,
+        professionalConduct: userProfile.professional_conduct || 0.12,
       });
 
       // Load local settings/data
@@ -273,7 +284,43 @@ export const ProfileScreen = ({ navigation }: any) => {
           {/* Manager Settings */}
           {isManager ? (
             <GlassCard style={styles.inputCard}>
-               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+            
+               {/* Level 1 Specific: Company Settings */}
+               {profile?.managerLevel === 1 && (
+                 <TouchableOpacity style={styles.companySettingsButton} onPress={() => showToast('Company Settings - Coming Soon', 'info')}>
+                    <Building size={24} color={colors.text.inverse} />
+                    <Text style={styles.companySettingsText}>{t('profile.companySettings', 'Company Settings')}</Text>
+                 </TouchableOpacity>
+               )}
+
+               {/* DOPS Dashboard - Visible to all managers */}
+               <View style={styles.dopsContainer}>
+                  <Text style={styles.sectionTitle}>{t('profile.dopsTitle', 'Driver Operational Performance')}</Text>
+                  <Text style={styles.sectionSubtitle}>{t('profile.dopsSubtitle', 'DOPD - Final Aggregated Results')}</Text>
+                  
+                  <View style={styles.ringsContainer}>
+                      <PerformanceRing 
+                        score={profile?.operationalEffectiveness || 0} 
+                        label={t('profile.opEffectiveness', 'Operational Effectiveness')} 
+                        color={colors.status.success}
+                        size={SCREEN_WIDTH * 0.26}
+                      />
+                      <PerformanceRing 
+                        score={profile?.operationalDiscipline || 0} 
+                        label={t('profile.opDiscipline', 'Operational Discipline')} 
+                        color={colors.status.warning}
+                        size={SCREEN_WIDTH * 0.26}
+                      />
+                      <PerformanceRing 
+                        score={profile?.professionalConduct || 0} 
+                        label={t('profile.profConduct', 'Professional Conduct')} 
+                        color={colors.status.danger} // Red/Grey as per PDF for low score
+                        size={SCREEN_WIDTH * 0.26}
+                      />
+                  </View>
+               </View>
+
+               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, marginTop: 24 }}>
                   <Settings size={24} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
                   <Text style={styles.sectionTitle}>{t('profile.settings', 'Team Quiz Settings')}</Text>
                </View>
@@ -688,6 +735,45 @@ const createStyles = (colors: any) => StyleSheet.create({
   slider: {
     width: '100%',
     height: 40,
+  },
+  dopsContainer: {
+    marginBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    paddingBottom: 24,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontFamily: typography.fonts.medium,
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  ringsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+  },
+  companySettingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary.DEFAULT,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    shadowColor: colors.primary.DEFAULT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  companySettingsText: {
+    color: colors.text.inverse,
+    fontFamily: typography.fonts.bold,
+    fontSize: 16,
+    marginLeft: 8,
   },
 });
 

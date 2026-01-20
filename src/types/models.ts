@@ -18,6 +18,11 @@ export interface Driver {
     totalScore?: number;
     age?: number;
     vehicleType?: 'Motorcycle' | 'Car' | 'Truck' | 'Bus';
+    // Master User Fields
+    managerLevel?: 1 | 2;
+    department?: string;
+    division?: string;
+    area?: string;
 }
 
 export interface Question {

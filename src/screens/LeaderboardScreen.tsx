@@ -29,6 +29,7 @@ import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { GlassCard } from '../components/ui/GlassCard';
 import { useFocusEffect } from '@react-navigation/native';
+import { AuthService } from '../services/authService';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -118,14 +119,14 @@ function TopThreePodium({ drivers, colors }: { drivers: Driver[], colors: any })
   );
 }
 
-function LeaderboardItem({ driver, isPitLane, colors, isExpanded, onPress }: { driver: Driver; isPitLane?: boolean; colors: any; isExpanded: boolean; onPress: () => void }) {
+function LeaderboardItem({ driver, isPitLane, colors, isExpanded, onPress, isManager }: { driver: Driver; isPitLane?: boolean; colors: any; isExpanded: boolean; onPress: () => void; isManager: boolean }) {
   const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <TouchableOpacity 
-      activeOpacity={0.8}
-      onPress={onPress}
+      activeOpacity={isManager ? 0.8 : 1}
+      onPress={isManager ? onPress : undefined}
       style={[
         styles.leaderboardItem,
         isPitLane && styles.leaderboardItemPitLane,
@@ -172,10 +173,12 @@ function LeaderboardItem({ driver, isPitLane, colors, isExpanded, onPress }: { d
         </View>
 
         <View style={{ marginLeft: 8 }}>
-            {isExpanded ? (
-                <ChevronDown color={colors.text.tertiary} size={20} />
-            ) : (
-                <ChevronRight color={colors.text.tertiary} size={20} />
+            {isManager && (
+                isExpanded ? (
+                    <ChevronDown color={colors.text.tertiary} size={20} />
+                ) : (
+                    <ChevronRight color={colors.text.tertiary} size={20} />
+                )
             )}
         </View>
       </View>
@@ -233,6 +236,10 @@ export function LeaderboardScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDriverId, setExpandedDriverId] = useState<number | null>(null);
+  
+  // Manager View State
+  const [isManager, setIsManager] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Department' | 'Division' | 'Area'>('All');
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -240,9 +247,17 @@ export function LeaderboardScreen() {
   useFocusEffect(
     useCallback(() => {
       setDrivers([]); // Clear current list immediately to avoid confusion
+      checkUserRole();
       loadLeaderboard();
     }, [activeTab])
   );
+
+  const checkUserRole = async () => {
+      const { profile } = await AuthService.getUserProfile();
+      if (profile?.role === 'manager' || profile?.role === 'admin') {
+          setIsManager(true);
+      }
+  };
 
   const loadLeaderboard = async () => {
     try {
@@ -397,9 +412,22 @@ export function LeaderboardScreen() {
     }
   };
   
-  const filteredDrivers = drivers.filter(d => 
-    d.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDrivers = drivers.filter(d => {
+    const matchesSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Filter Logic for Managers
+    if (activeFilter === 'All') return matchesSearch;
+    
+    // For demo purposes, we are simulating "My Department" vs others
+    // In a real app, we would compare d.department === currentUser.department
+    if (activeFilter === 'Department') {
+         // Show only drivers in "Operations" for this test (or matching the manager)
+         // For now, let's just show top 5 as "My Department" to show the filter works UI-wise
+         return matchesSearch && d.rank <= 5; 
+    }
+    
+    return matchesSearch;
+  });
 
   const topThree = filteredDrivers.slice(0, 3);
   // Include ALL drivers in the list (including top 3) so they can be expanded
@@ -432,6 +460,26 @@ export function LeaderboardScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Manager Filters */}
+        {isManager && (
+            <View style={styles.managerFiltersContainer}>
+                <Text style={styles.managerLabel}>{t('leaderboard.filterBy', 'Filter View:')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+                    {(['All', 'Department', 'Division', 'Area'] as const).map((filter) => (
+                        <TouchableOpacity 
+                            key={filter} 
+                            style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
+                            onPress={() => setActiveFilter(filter)}
+                        >
+                            <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>
+                                {filter}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        )}
         
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -469,6 +517,7 @@ export function LeaderboardScreen() {
                 colors={colors}
                 isExpanded={expandedDriverId === driver.rank}
                 onPress={() => handleExpand(driver.rank)}
+                isManager={isManager}
               />
             ))}
           </View>
@@ -490,6 +539,7 @@ export function LeaderboardScreen() {
                         colors={colors}
                         isExpanded={expandedDriverId === driver.rank}
                         onPress={() => handleExpand(driver.rank)}
+                        isManager={isManager}
                     />
                 ))}
               </View>
@@ -564,6 +614,42 @@ const createStyles = (colors: any) => StyleSheet.create({
       paddingVertical: 10,
       borderWidth: 1,
       borderColor: colors.border,
+  },
+  managerFiltersContainer: {
+      paddingHorizontal: 16,
+      marginBottom: 12,
+  },
+  managerLabel: {
+      fontSize: 12,
+      fontFamily: 'Inter-Bold',
+      color: colors.text.secondary,
+      marginBottom: 8,
+      marginLeft: 4,
+  },
+  filterScroll: {
+      paddingRight: 16,
+      gap: 8,
+  },
+  filterChip: {
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      borderRadius: 16,
+      backgroundColor: colors.background.subtle,
+      borderWidth: 1,
+      borderColor: colors.border,
+  },
+  filterChipActive: {
+      backgroundColor: colors.primary.DEFAULT,
+      borderColor: colors.primary.DEFAULT,
+  },
+  filterText: {
+      fontSize: 12,
+      fontFamily: 'Inter-Medium',
+      color: colors.text.secondary,
+  },
+  filterTextActive: {
+      color: colors.text.inverse,
+      fontFamily: 'Inter-Bold',
   },
   searchInput: {
       flex: 1,
