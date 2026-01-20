@@ -478,7 +478,7 @@ export function LeaderboardScreen() {
         {/* Manager Filters */}
         {isManager && (
             <View style={styles.managerFiltersContainer}>
-                <Text style={styles.managerLabel}>{t('leaderboard.filterBy', 'Filter View:')}</Text>
+                <Text style={styles.managerLabel}>{t('leaderboard.filterBy')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
                     {(['All', 'Department', 'Division', 'Area'] as const).map((filter) => (
                         <TouchableOpacity 
@@ -500,7 +500,7 @@ export function LeaderboardScreen() {
             <View style={styles.searchBar}>
                 <Search color={colors.text.tertiary} size={20} />
                 <TextInput 
-                    placeholder={t('leaderboard.searchPlaceholder', 'Search driver...')} 
+                    placeholder={t('leaderboard.searchPlaceholder')} 
                     placeholderTextColor={colors.text.tertiary}
                     style={styles.searchInput}
                     value={searchQuery}
@@ -541,8 +541,8 @@ export function LeaderboardScreen() {
               <View style={styles.pitLaneSection}>
                 <View style={styles.pitLaneHeader}>
                     <Wrench color={colors.leaderboard.pitLane} size={24} />
-                    <Text style={styles.pitLaneTitle}>{t('social.pitLane', 'Pit Lane')}</Text>
-                    <Text style={styles.pitLaneSubtitle}>{t('leaderboard.tuneUp', 'Need a Tune-up')}</Text>
+                    <Text style={styles.pitLaneTitle}>{t('social.pitLane')}</Text>
+                    <Text style={styles.pitLaneSubtitle}>{t('leaderboard.tuneUp')}</Text>
                 </View>
                 {/* Just show a few from pit lane or allow expansion? For now show all pit lane if scrollable */}
                 {pitLane.map(driver => (

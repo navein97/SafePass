@@ -159,10 +159,10 @@ export const ProfileScreen = ({ navigation }: any) => {
         
         // Refresh local state and persistent profile
         await loadProfile();
-        showToast(t('profile.detailsSaved', 'Personal details saved!'), 'success');
+        showToast(t('profile.detailsSaved'), 'success');
     } catch (error) {
         console.error('Save details error:', error);
-        showToast(t('profile.detailsSaveError', 'Failed to save details.'), 'error');
+        showToast(t('profile.detailsSaveError'), 'error');
     }
   };
 
@@ -178,10 +178,10 @@ export const ProfileScreen = ({ navigation }: any) => {
     try {
         await AsyncStorage.setItem('QUIZ_QUESTION_COUNT', questionCount.toString());
         await AsyncStorage.setItem('QUIZ_TIMER_DURATION', timerDuration.toString());
-        showToast(t('profile.settingsSaved', 'Settings saved successfully!'), 'success');
+        showToast(t('profile.settingsSaved'), 'success');
     } catch (error) {
         console.error('Save error:', error);
-        showToast(t('profile.settingsSaveError', 'Failed to save settings.'), 'error');
+        showToast(t('profile.settingsSaveError'), 'error');
     }
   };
 
@@ -248,7 +248,7 @@ export const ProfileScreen = ({ navigation }: any) => {
           
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>{t('profile.title', 'Profile')}</Text>
+            <Text style={styles.title}>{t('profile.title')}</Text>
             <View style={styles.headerActions}>
                <TouchableOpacity 
                 style={styles.settingsButton}
@@ -283,7 +283,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                 <Text style={styles.id}>{profile?.employee_id || 'EMP-001'}</Text>
                 <View style={styles.regionBadge}>
                   <Text style={styles.regionText}>
-                    {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia', 'Malaysia')}` : `🇵🇹 ${t('common.portugal', 'Portugal')}`}
+                    {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : `🇵🇹 ${t('common.portugal')}`}
                   </Text>
                 </View>
               </View>
@@ -298,37 +298,37 @@ export const ProfileScreen = ({ navigation }: any) => {
                {profile?.managerLevel === 1 && (
                   <TouchableOpacity style={styles.companySettingsButton} onPress={() => setShowCompanySettings(true)}>
                      <Building size={24} color={colors.text.inverse} />
-                     <Text style={styles.companySettingsText}>{t('profile.companySettings', 'Company Settings')}</Text>
+                     <Text style={styles.companySettingsText}>{t('profile.companySettings')}</Text>
                   </TouchableOpacity>
                )}
 
                 {/* Manage Users Button - For all Managers */}
                  <TouchableOpacity style={styles.manageUsersButton} onPress={() => setShowCreateUser(true)}>
                     <UserPlus size={24} color={colors.primary.DEFAULT} />
-                    <Text style={styles.manageUsersText}>{t('profile.manageUsers', 'Manage / Create Users')}</Text>
+                    <Text style={styles.manageUsersText}>{t('profile.manageUsers')}</Text>
                  </TouchableOpacity>
 
                {/* DOPS Dashboard - Visible to all managers */}
                <View style={styles.dopsContainer}>
-                  <Text style={styles.sectionTitle}>{t('profile.dopsTitle', 'Driver Operational Performance')}</Text>
-                  <Text style={styles.sectionSubtitle}>{t('profile.dopsSubtitle', 'DOPD - Final Aggregated Results')}</Text>
+                  <Text style={styles.sectionTitle}>{t('profile.dopsTitle')}</Text>
+                  <Text style={styles.sectionSubtitle}>{t('profile.dopsSubtitle')}</Text>
                   
                   <View style={styles.ringsContainer}>
                       <PerformanceRing 
                         score={profile?.operationalEffectiveness || 0} 
-                        label={t('profile.opEffectiveness', 'Operational Effectiveness')} 
+                        label={t('profile.opEffectiveness')} 
                         color={colors.status.success}
                         size={SCREEN_WIDTH * 0.26}
                       />
                       <PerformanceRing 
                         score={profile?.operationalDiscipline || 0} 
-                        label={t('profile.opDiscipline', 'Operational Discipline')} 
+                        label={t('profile.opDiscipline')} 
                         color={colors.status.warning}
                         size={SCREEN_WIDTH * 0.26}
                       />
                       <PerformanceRing 
                         score={profile?.professionalConduct || 0} 
-                        label={t('profile.profConduct', 'Professional Conduct')} 
+                        label={t('profile.profConduct')} 
                         color={colors.status.danger} // Red/Grey as per PDF for low score
                         size={SCREEN_WIDTH * 0.26}
                       />
@@ -337,13 +337,13 @@ export const ProfileScreen = ({ navigation }: any) => {
 
                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, marginTop: 24 }}>
                   <Settings size={24} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
-                  <Text style={styles.sectionTitle}>{t('profile.settings', 'Team Quiz Settings')}</Text>
+                  <Text style={styles.sectionTitle}>{t('profile.settings')}</Text>
                </View>
 
                {/* Question Count Slider */}
                <View style={styles.sliderContainer}>
                  <View style={styles.sliderLabelContainer}>
-                   <Text style={styles.inputLabel}>{t('profile.questionsCount', 'Questions to Answer')}</Text>
+                   <Text style={styles.inputLabel}>{t('profile.questionsCount')}</Text>
                    <Text style={styles.sliderValue}>{questionCount}</Text>
                  </View>
                  <Slider
@@ -362,8 +362,8 @@ export const ProfileScreen = ({ navigation }: any) => {
                {/* Timer Slider */}
                <View style={styles.sliderContainer}>
                  <View style={styles.sliderLabelContainer}>
-                   <Text style={styles.inputLabel}>{t('profile.timerDuration', 'Timer (Minutes)')}</Text>
-                   <Text style={styles.sliderValue}>{timerDuration} min</Text>
+                   <Text style={styles.inputLabel}>{t('profile.timerDuration')}</Text>
+                   <Text style={styles.sliderValue}>{timerDuration} {t('profile.minutes')}</Text>
                  </View>
                  <Slider
                    style={styles.slider}
@@ -380,7 +380,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
                {/* Save Button */}
                <GlassButton
-                 title={t('common.save', 'Save Settings')}
+                 title={t('common.save')}
                  onPress={handleSaveSettings}
                  style={{ marginTop: 8 }}
                />
@@ -390,14 +390,14 @@ export const ProfileScreen = ({ navigation }: any) => {
              <GlassCard style={styles.inputCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                    <User size={24} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
-                   <Text style={styles.sectionTitle}>{t('profile.personalDetails', 'Personal Details')}</Text>
+                   <Text style={styles.sectionTitle}>{t('profile.personalDetails')}</Text>
                 </View>
 
                 {/* Age Input */}
-                <Text style={styles.inputLabel}>{t('profile.age', 'Age')}</Text>
+                <Text style={styles.inputLabel}>{t('profile.age')}</Text>
                 <TextInput 
                    style={styles.textInput}
-                   placeholder="Enter your age"
+                   placeholder={t('profile.agePlaceholder')}
                    placeholderTextColor={colors.text.tertiary}
                    keyboardType="numeric"
                    value={age}
@@ -405,28 +405,33 @@ export const ProfileScreen = ({ navigation }: any) => {
                 />
 
                 {/* Vehicle Selection */}
-                <Text style={styles.inputLabel}>{t('profile.vehicleType', 'Vehicle Type')}</Text>
+                <Text style={styles.inputLabel}>{t('profile.vehicleType')}</Text>
                 <View style={styles.vehicleOptions}>
-                   {['Motorcycle', 'Car', 'Bus', 'Truck'].map((v) => (
+                   {[
+                      { key: 'Motorcycle', label: t('profile.vehicles.motorcycle') },
+                      { key: 'Car', label: t('profile.vehicles.car') },
+                      { key: 'Bus', label: t('profile.vehicles.bus') },
+                      { key: 'Truck', label: t('profile.vehicles.truck') }
+                    ].map((v) => (
                       <TouchableOpacity
-                        key={v}
+                        key={v.key}
                         style={[
                           styles.vehicleOption,
-                          vehicleType === v && styles.vehicleOptionSelected
+                          vehicleType === v.key && styles.vehicleOptionSelected
                         ]}
-                        onPress={() => handleVehicleSelect(v)}
+                        onPress={() => handleVehicleSelect(v.key)}
                       >
                          <Text style={[
                            styles.vehicleText,
-                           vehicleType === v && styles.vehicleTextSelected
-                         ]}>{v}</Text>
+                           vehicleType === v.key && styles.vehicleTextSelected
+                         ]}>{v.label}</Text>
                       </TouchableOpacity>
                    ))}
                 </View>
 
                 {/* Save Button */}
                 <GlassButton
-                  title={t('common.save', 'Save Details')}
+                  title={t('common.save')}
                   onPress={handleSavePersonalDetails}
                   style={{ marginTop: 24 }}
                 />
@@ -447,12 +452,12 @@ export const ProfileScreen = ({ navigation }: any) => {
               </LinearGradient>
             </View>
             <Text style={styles.statValue}>{streakWeeks}</Text>
-            <Text style={styles.statLabel}>{t('profile.weeklyStreak', 'Weekly Streak')}</Text>
+            <Text style={styles.statLabel}>{t('profile.weeklyStreak')}</Text>
           </GlassCard>
 
           {/* Safety Shield - Only for Staff */}
           <GlassCard style={styles.shieldCard}>
-            <Text style={styles.shieldTitle}>{t('profile.safetyShield', 'Safety Shield')}</Text>
+            <Text style={styles.shieldTitle}>{t('profile.safetyShield')}</Text>
             <View style={styles.shieldContainer}>
               <Svg width={SHIELD_SIZE} height={SHIELD_SIZE} style={styles.shieldSvg}>
                 {/* Background Circle */}
@@ -488,10 +493,10 @@ export const ProfileScreen = ({ navigation }: any) => {
             </View>
             <Text style={styles.shieldDescription}>
               {shieldHealth > 75 
-                ? t('profile.shieldStrong', '🛡️ Shield is strong! Keep it up!')
+                ? t('profile.shieldStrong')
                 : shieldHealth > 50 
-                  ? t('profile.shieldWarn', '⚠️ Shield needs attention')
-                  : t('profile.shieldCritical', '🚨 Shield critically low! Complete missions!')}
+                  ? t('profile.shieldWarn')
+                  : t('profile.shieldCritical')}
             </Text>
           </GlassCard>
           </>
@@ -499,7 +504,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
           {/* Logout */}
           <GlassButton
-            title={t('auth.logout', 'Logout')}
+            title={t('auth.logout')}
             onPress={handleLogout}
             variant="danger"
             icon={<LogOut color={colors.text.primary} size={20} />}

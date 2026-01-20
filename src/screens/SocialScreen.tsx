@@ -218,17 +218,17 @@ function PitLaneCard({ drivers }: { drivers: any[] }) {
   return (
     <View style={styles.pitLaneCard}>
       <View style={styles.pitLaneHeader}>
-        <Text style={styles.pitLaneTitle}>🔧 {t('social.pitLane', 'Pit Lane')}</Text>
-        <Text style={styles.pitLaneSubtitle}>{t('social.pitLaneSubtitle', 'These drivers need a tune-up!')}</Text>
+        <Text style={styles.pitLaneTitle}>🔧 {t('social.pitLane')}</Text>
+        <Text style={styles.pitLaneSubtitle}>{t('social.pitLaneSubtitle')}</Text>
       </View>
       
       {drivers.map((driver, index) => (
         <View key={index} style={styles.pitLaneDriver}>
           <View style={styles.pitLaneInfo}>
             <Text style={styles.pitLaneName}>{driver.full_name}</Text>
-            <Text style={styles.pitLaneMessage}>{t('common.score', 'Score')}: {driver.safety_index}%</Text>
+            <Text style={styles.pitLaneMessage}>{t('common.score')}: {driver.safety_index}%</Text>
           </View>
-          <Text style={styles.retakeText}>{t('social.needsImprovement', 'Needs improvement')}</Text>
+          <Text style={styles.retakeText}>{t('social.needsImprovement')}</Text>
         </View>
       ))}
     </View>
@@ -359,9 +359,9 @@ export function SocialScreen() {
         topDrivers.forEach((driver, index) => {
           const rank = index + 1;
           let message = '';
-          if (rank === 1) message = `🏆 UNSTOPPABLE! I secured 1st place this week with a ${driver.safety_index}% Safety Index! ${weekTag}`;
-          if (rank === 2) message = `🥈 Staying consistent! Ranked 2nd this week. Chasing gold next! ${weekTag}`;
-          if (rank === 3) message = `🥉 Made it to the podium! Top 3 finish for me. ${weekTag}`;
+          if (rank === 1) message = t('social.posts.top1', { score: driver.safety_index, weekTag });
+          if (rank === 2) message = t('social.posts.top2', { weekTag });
+          if (rank === 3) message = t('social.posts.top3', { weekTag });
 
           postsToCreate.push({
             user_id: driver.id,
@@ -376,7 +376,7 @@ export function SocialScreen() {
         bottomDrivers.forEach((driver) => {
           postsToCreate.push({
             user_id: driver.id,
-            content: `🔧 Heading to the Pit Lane. My Safety Index is ${driver.safety_index}%. Time to focus and improve! ${weekTag}`,
+            content: t('social.posts.pitlane', { score: driver.safety_index, weekTag }),
             // Removed 'type' field - column doesn't exist in posts table
           });
         });
@@ -457,7 +457,7 @@ export function SocialScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('social.title', 'Social Feed')}</Text>
+        <Text style={styles.headerTitle}>{t('social.title')}</Text>
       </View>
       
       <ScrollView 
@@ -469,7 +469,7 @@ export function SocialScreen() {
       >
         {/* Top 3 Highlight - Pinned */}
         <View style={styles.topThreeCard}>
-          <Text style={styles.topThreeTitle}>🏆 {t('social.topPerformers', 'Top Performers')}</Text>
+          <Text style={styles.topThreeTitle}>🏆 {t('social.topPerformers')}</Text>
           <View style={styles.topThreeContainer}>
             {/* 2nd Place */}
             <View style={styles.topThreeItem}>
@@ -517,7 +517,7 @@ export function SocialScreen() {
         {/* Feed Items */}
         {feed.length === 0 ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ color: colors.text.secondary }}>{t('social.noPosts', 'No posts yet. Be the first!')}</Text>
+            <Text style={{ color: colors.text.secondary }}>{t('social.noPosts')}</Text>
           </View>
         ) : (
           feed.map(post => (

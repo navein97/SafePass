@@ -88,7 +88,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
       // Fallback for demo if RLS blocks access
-      Alert.alert('Notice', 'Please run the RLS update script to see all users.');
+      Alert.alert(t('common.notice'), t('manager.noticeRLS'));
     }
   };
 
@@ -116,7 +116,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <ChevronLeft color={colors.text.primary} size={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('manager.weeklyLeaderboard', 'Weekly Leaderboard')}</Text>
+          <Text style={styles.headerTitle}>{t('manager.weeklyLeaderboard')}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -127,15 +127,15 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
         >
           <GlassCard style={styles.banner}>
             <Trophy size={48} color="#FFD700" />
-            <Text style={styles.bannerTitle}>{t('manager.safetyChampions', 'Safety Champions')}</Text>
-            <Text style={styles.bannerSubtitle}>{t('manager.week', 'Week')} {getWeek(new Date())}</Text>
+            <Text style={styles.bannerTitle}>{t('manager.safetyChampions')}</Text>
+            <Text style={styles.bannerSubtitle}>{t('manager.week')} {getWeek(new Date())}</Text>
           </GlassCard>
 
           {leaderboard.length === 0 ? (
             <View style={styles.emptyState}>
               <AlertTriangle size={48} color={colors.text.tertiary} />
-              <Text style={styles.emptyText}>{t('manager.noQuizzesCompleted', 'No quizzes completed this week yet.')}</Text>
-              <Text style={styles.emptySubtext}>{t('manager.beFirst', 'Be the first to complete the quiz!')}</Text>
+              <Text style={styles.emptyText}>{t('manager.noQuizzesCompleted')}</Text>
+              <Text style={styles.emptySubtext}>{t('manager.beFirst')}</Text>
             </View>
           ) : (
             leaderboard.map((entry, index) => {
@@ -159,7 +159,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
                     
                     <View style={styles.infoContainer}>
                       <Text style={[styles.name, isMe && styles.myName]}>
-                        {entry.full_name} {isMe ? `(${t('common.you', 'You')})` : ''}
+                        {entry.full_name} {isMe ? `(${t('common.you')})` : ''}
                       </Text>
                       <Text style={[styles.id, isMe && styles.myId]}>{entry.employee_id}</Text>
                     </View>

@@ -79,7 +79,7 @@ export const HomeScreen = ({ navigation }: any) => {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.greeting}>{t('home.hello', 'Hello')}, {profile?.full_name || 'Driver'}</Text>
+              <Text style={styles.greeting}>{t('home.hello')}, {profile?.full_name || t('home.driver')}</Text>
               <Text style={styles.date}>{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
             </View>
             <TouchableOpacity 
@@ -98,16 +98,16 @@ export const HomeScreen = ({ navigation }: any) => {
           {isManager ? (
             /* Manager Dashboard View */
             <GlassCard style={styles.card}>
-              <Text style={styles.cardTitle}>{t('manager.dashboardTitle', 'Management Dashboard')}</Text>
+              <Text style={styles.cardTitle}>{t('manager.dashboardTitle')}</Text>
               <View style={{ alignItems: 'center', paddingVertical: 30 }}>
                 <Users size={64} color={colors.primary.DEFAULT} />
-                <Text style={[styles.statusText, { textAlign: 'center', marginTop: 16 }]}>{t('manager.teamOverview', 'Team Overview')}</Text>
+                <Text style={[styles.statusText, { textAlign: 'center', marginTop: 16 }]}>{t('manager.teamOverview')}</Text>
                 <Text style={[styles.statusSubtext, { textAlign: 'center' }]}>
-                  {t('manager.monitorCompliance', 'Monitor team compliance and safety performance.')}
+                  {t('manager.monitorCompliance')}
                 </Text>
               </View>
               <GlassButton 
-                title={t('manager.viewTeamStats', 'View Team stats')}
+                title={t('manager.viewTeamStats')}
                 onPress={() => navigation.navigate('ManagerQuickView')}
                 icon={<Shield color={colors.text.primary} size={20} />}
                 style={styles.actionButton}
@@ -131,7 +131,7 @@ export const HomeScreen = ({ navigation }: any) => {
                     style={[styles.progressBarFill, { width: `${safetyIndex}%` }]}
                   />
                 </View>
-                <Text style={styles.scoreSubtext}>{t('home.rollingAverage', '90-day rolling average')}</Text>
+                <Text style={styles.scoreSubtext}>{t('home.rollingAverage')}</Text>
               </GlassCard>
 
               {/* Weekly Status Card */}
@@ -151,11 +151,11 @@ export const HomeScreen = ({ navigation }: any) => {
                   {isCompliant ? t('home.compliant') : t('home.overdue')}
                 </Text>
                 <Text style={styles.statusSubtext}>
-                  {isCompliant ? t('home.greatJob', 'Great job! You are up to date.') : t('home.quizDue')}
+                  {isCompliant ? t('home.greatJob') : t('home.quizDue')}
                 </Text>
                 
                 <GlassButton
-                  title={isCompliant ? t('home.practiceQuiz', 'Practice Quiz') : t('home.startQuiz')}
+                  title={isCompliant ? t('home.practiceQuiz') : t('home.startQuiz')}
                   onPress={() => navigation.navigate('Quiz')}
                   variant={isCompliant ? 'primary' : 'danger'}
                   style={styles.actionButton}

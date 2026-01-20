@@ -31,7 +31,7 @@ export const QuizScreen = ({ navigation }: any) => {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState(t('common.initializing', 'Initializing...'));
+  const [loadingStatus, setLoadingStatus] = useState(t('common.initializing'));
   const [userId, setUserId] = useState<string>('');
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -44,18 +44,18 @@ export const QuizScreen = ({ navigation }: any) => {
   const loadQuiz = async () => {
     try {
       setLoading(true);
-      setLoadingStatus(t('common.fetchingProfile', 'Fetching user profile...'));
+      setLoadingStatus(t('common.fetchingProfile'));
       
       const { profile, error } = await AuthService.getUserProfile();
       
       if (error || !profile) {
         console.error('Profile load error:', error);
         Alert.alert(
-          t('common.error', 'Error'), 
-          t('auth.sessionError', 'Could not load user profile. Please try again or re-login.'),
+          t('common.error'), 
+          t('auth.sessionError'),
           [
-            { text: t('common.retry', 'Retry'), onPress: () => loadQuiz() },
-            { text: t('auth.login', 'Login'), onPress: () => navigation.replace('Login') }
+            { text: t('common.retry'), onPress: () => loadQuiz() },
+            { text: t('auth.login'), onPress: () => navigation.replace('Login') }
           ]
         );
         return;
@@ -63,15 +63,15 @@ export const QuizScreen = ({ navigation }: any) => {
 
       console.log('User Profile loaded:', profile.region);
       setUserId(profile.id);
-      setLoadingStatus(t('quiz.loadingQuestionsFor', { region: profile.region, defaultValue: `Loading questions for ${profile.region}...` }));
+      setLoadingStatus(t('quiz.loadingQuestionsFor', { region: profile.region }));
 
       const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region);
       console.log('Questions loaded for region:', loadedQuestions.length);
       
       if (loadedQuestions.length === 0) {
         Alert.alert(
-          t('quiz.noQuestionsTitle', 'No Questions'), 
-          t('quiz.noQuestionsMessage', { region: profile.region, defaultValue: `No questions found for your region (${profile.region}).` })
+          t('quiz.noQuestionsTitle'), 
+          t('quiz.noQuestionsMessage', { region: profile.region })
         );
         navigation.goBack();
         return;
@@ -80,7 +80,7 @@ export const QuizScreen = ({ navigation }: any) => {
       setQuestions(loadedQuestions);
     } catch (error) {
       console.error('Error loading quiz:', error);
-      Alert.alert(t('common.error', 'Error'), t('quiz.loadFailed', 'Failed to load quiz. Please try again.'));
+      Alert.alert(t('common.error'), t('quiz.loadFailed'));
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -123,12 +123,12 @@ export const QuizScreen = ({ navigation }: any) => {
   const handleSubmit = async (finalAnswers: typeof answers) => {
     try {
       setLoading(true);
-      setLoadingStatus(t('quiz.submitting', 'Submitting results...'));
+      setLoadingStatus(t('quiz.submitting'));
       const { score, attempt } = await QuizService.submitQuiz(userId, finalAnswers, questions);
       navigation.replace('Review', { attempt, questions });
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      Alert.alert(t('common.error', 'Error'), t('quiz.submitFailed', 'Failed to submit quiz. Please try again.'));
+      Alert.alert(t('common.error'), t('quiz.submitFailed'));
       setLoading(false);
     }
   };
@@ -151,13 +151,13 @@ export const QuizScreen = ({ navigation }: any) => {
       <GradientBackground>
         <SafeAreaView style={styles.loadingContainer}>
           <Text style={styles.errorTitle}>
-            {t('quiz.unableToLoad', 'Unable to load quiz')}
+            {t('quiz.unableToLoad')}
           </Text>
           <Text style={styles.errorText}>
-            {t('quiz.noQuestionsFound', "We couldn't find any questions for your region, or there was a connection error.")}
+            {t('quiz.noQuestionsFound')}
           </Text>
           <GlassButton 
-            title={t('common.goBack', 'Go Back')}
+            title={t('common.goBack')}
             onPress={() => navigation.goBack()}
             style={{ width: 200 }}
           />
@@ -165,7 +165,7 @@ export const QuizScreen = ({ navigation }: any) => {
             onPress={loadQuiz}
             style={{ marginTop: 20 }}
           >
-            <Text style={{ color: colors.primary.light, fontFamily: typography.fonts.medium }}>{t('common.tryAgain', 'Try Again')}</Text>
+            <Text style={{ color: colors.primary.light, fontFamily: typography.fonts.medium }}>{t('common.tryAgain')}</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </GradientBackground>
@@ -293,7 +293,7 @@ export const QuizScreen = ({ navigation }: any) => {
                     <GlassCard style={[styles.feedbackCard, { borderColor: colors.status.success, borderLeftWidth: 4 }]}>
                          <View style={styles.feedbackHeader}>
                             <Check size={24} color={colors.status.success} />
-                            <Text style={[styles.feedbackTitle, { color: colors.status.success }]}>{t('quiz.correct', 'Correct!')}</Text>
+                            <Text style={[styles.feedbackTitle, { color: colors.status.success }]}>{t('quiz.correct')}</Text>
                          </View>
                          {currentQuestion.explanation && (
                              <Text style={styles.feedbackText}>{currentQuestion.explanation}</Text>
@@ -303,10 +303,10 @@ export const QuizScreen = ({ navigation }: any) => {
                     <GlassCard style={[styles.feedbackCard, { borderColor: colors.status.danger, borderLeftWidth: 4 }]}>
                          <View style={styles.feedbackHeader}>
                             <AlertCircle size={24} color={colors.status.danger} />
-                            <Text style={[styles.feedbackTitle, { color: colors.status.danger }]}>{t('quiz.incorrect', 'Incorrect')}</Text>
+                            <Text style={[styles.feedbackTitle, { color: colors.status.danger }]}>{t('quiz.incorrect')}</Text>
                          </View>
                          <Text style={styles.feedbackText}>
-                             {t('quiz.correctAnswerIs', 'The correct answer is')} <Text style={{fontFamily: typography.fonts.bold}}>{currentQuestion.options[currentQuestion.correctOptionIndex]}</Text>.
+                             {t('quiz.correctAnswerIs')} <Text style={{fontFamily: typography.fonts.bold}}>{currentQuestion.options[currentQuestion.correctOptionIndex]}</Text>.
                          </Text>
                          {currentQuestion.explanation && (
                              <Text style={[styles.feedbackText, { marginTop: 8 }]}>{currentQuestion.explanation}</Text>

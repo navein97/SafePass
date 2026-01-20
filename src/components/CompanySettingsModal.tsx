@@ -49,10 +49,10 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
         // Simulating API delay
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        Alert.alert('Success', 'Company settings updated!');
+        Alert.alert(t('common.success'), t('company.updateSuccess'));
         onClose();
     } catch (error: any) {
-        Alert.alert('Error', 'Failed to save settings');
+        Alert.alert(t('common.error'), t('company.updateError'));
     } finally {
         setLoading(false);
     }
@@ -80,7 +80,7 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
       >
         <GlassCard style={styles.modalContent}>
             <View style={styles.header}>
-                <Text style={[styles.title, dynamicStyles.title]}>{t('company.settings', 'Company Settings')}</Text>
+                <Text style={[styles.title, dynamicStyles.title]}>{t('company.settings')}</Text>
                 <TouchableOpacity 
                     onPress={onClose} 
                     style={styles.closeButton}
@@ -90,32 +90,32 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
                 </TouchableOpacity>
             </View>
 
-            <Text style={[styles.label, dynamicStyles.label]}>{t('company.name', 'Company Name')}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>{t('company.name')}</Text>
             <TextInput 
                 style={[styles.input, dynamicStyles.input]}
                 value={companyName}
                 onChangeText={setCompanyName}
-                placeholder="E.g. SafePass Logistics"
+                placeholder={t('company.namePlaceholder')}
                 placeholderTextColor={colors.text.tertiary}
             />
 
-            <Text style={[styles.label, dynamicStyles.label]}>{t('company.logo', 'Logo URL (Optional)')}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>{t('company.logo')}</Text>
             <TextInput 
                 style={[styles.input, dynamicStyles.input]}
                 value={logoUrl}
                 onChangeText={setLogoUrl}
-                placeholder="https://example.com/logo.png"
+                placeholder={t('company.logoPlaceholder')}
                 placeholderTextColor={colors.text.tertiary}
                 autoCapitalize="none"
             />
             
             <Text style={[styles.helperText, dynamicStyles.helperText]}>
-                This name and logo will appear on the dashboard for all your drivers.
+                {t('company.helperText')}
             </Text>
 
             <View style={{ marginTop: 24, marginBottom: 10 }}>
                 <GlassButton 
-                    title={loading ? 'Saving...' : 'Save Settings'}
+                    title={loading ? t('company.saving') : t('company.saveSettings')}
                     onPress={handleSave}
                     variant="primary"
                     disabled={loading}

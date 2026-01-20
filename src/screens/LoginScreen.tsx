@@ -28,15 +28,15 @@ export const LoginScreen = ({ navigation }: any) => {
     const newErrors = { email: '', password: '', general: '' };
 
     if (!email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('auth.emailRequired');
       isValid = false;
     } else if (!Validation.isValidEmail(email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('auth.invalidEmail');
       isValid = false;
     }
 
     if (!password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('auth.passwordRequired');
       isValid = false;
     }
 
@@ -60,7 +60,7 @@ export const LoginScreen = ({ navigation }: any) => {
     if (error) {
       const friendlyMsg = Validation.getFriendlyErrorMessage(error);
       setErrors(prev => ({ ...prev, general: friendlyMsg }));
-      Alert.alert('Login Failed', friendlyMsg);
+      Alert.alert(t('auth.loginFailed'), friendlyMsg);
     } else if (session) {
       navigation.replace('MainTabs');
     }
@@ -95,7 +95,7 @@ export const LoginScreen = ({ navigation }: any) => {
                 ) : null}
 
                 <GlassInput
-                  label="Email"
+                  label={t('auth.employeeId') + ' / Email'}
                   placeholder="driver@company.com"
                   value={email}
                   onChangeText={(text) => {
@@ -144,7 +144,7 @@ export const LoginScreen = ({ navigation }: any) => {
                   onPress={() => navigation.navigate('ForgotPassword')}
                   disabled={loading}
                 >
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                  <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -153,7 +153,7 @@ export const LoginScreen = ({ navigation }: any) => {
                   disabled={loading}
                 >
                   <Text style={styles.linkText}>
-                    Don't have an account? <Text style={styles.linkTextBold}>Register</Text>
+                    {t('auth.noAccount')} <Text style={styles.linkTextBold}>{t('auth.registerNow')}</Text>
                   </Text>
                 </TouchableOpacity>
               </View>

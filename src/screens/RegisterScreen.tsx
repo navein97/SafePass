@@ -46,28 +46,28 @@ export const RegisterScreen = ({ navigation }: any) => {
     const newErrors = { email: '', password: '', fullName: '', employeeId: '', general: '' };
 
     if (!fullName.trim()) {
-      newErrors.fullName = 'Full Name is required';
+      newErrors.fullName = t('auth.fullNameRequired');
       isValid = false;
     }
 
     if (!employeeId.trim()) {
-      newErrors.employeeId = 'Employee ID is required';
+      newErrors.employeeId = t('auth.employeeIdRequired');
       isValid = false;
     }
 
     if (!email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('auth.emailRequired');
       isValid = false;
     } else if (!Validation.isValidEmail(email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('auth.invalidEmail');
       isValid = false;
     }
 
     if (!password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('auth.passwordRequired');
       isValid = false;
     } else if (!Validation.isValidPassword(password)) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = t('auth.passwordMinLength');
       isValid = false;
     }
 
@@ -100,7 +100,7 @@ export const RegisterScreen = ({ navigation }: any) => {
     } else {
       // Show success toast
       setToastType('success');
-      setToastMessage('✅ Check your email for verification link!');
+      setToastMessage(t('auth.checkEmail'));
       setToastVisible(true);
       
       // Navigate to login after a short delay
@@ -133,7 +133,7 @@ export const RegisterScreen = ({ navigation }: any) => {
           >
             <View style={styles.header}>
               <Text style={styles.title}>SafePass</Text>
-              <Text style={styles.subtitle}>Create Driver Account</Text>
+              <Text style={styles.subtitle}>{t('auth.createAccountSubtitle')}</Text>
             </View>
 
             <GlassCard style={styles.formCard}>
@@ -145,7 +145,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                 ) : null}
 
                 <GlassInput
-                  label="Full Name"
+                  label={t('auth.fullName')}
                   placeholder="John Doe"
                   value={fullName}
                   onChangeText={(text) => {
@@ -158,7 +158,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                 />
 
                 <GlassInput
-                  label="Employee ID"
+                  label={t('auth.employeeId')}
                   placeholder="EMP12345"
                   value={employeeId}
                   onChangeText={(text) => {
@@ -185,7 +185,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                 />
 
                 <GlassInput
-                  label="Password"
+                  label={t('auth.password')}
                   placeholder="••••••••"
                   value={password}
                   onChangeText={(text) => {
@@ -206,17 +206,17 @@ export const RegisterScreen = ({ navigation }: any) => {
                   }
                 />
 
-                <Text style={styles.label}>Region</Text>
+                <Text style={styles.label}>{t('auth.region')}</Text>
                 <View style={styles.regionContainer}>
                   <GlassButton
-                    title="Malaysia"
+                    title={t('common.malaysia')}
                     onPress={() => setRegion('MY')}
                     variant={region === 'MY' ? 'primary' : 'outline'}
                     style={styles.regionButton}
                     icon={<MapPin size={16} color={region === 'MY' ? colors.text.primary : colors.primary.DEFAULT} />}
                   />
                   <GlassButton
-                    title="Portugal"
+                    title={t('common.portugal')}
                     onPress={() => setRegion('PT')}
                     variant={region === 'PT' ? 'primary' : 'outline'}
                     style={styles.regionButton}
@@ -225,7 +225,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                 </View>
 
                 <GlassButton
-                  title={loading ? 'Creating Account...' : 'Register'}
+                  title={loading ? t('auth.creatingAccount') : t('auth.registerNow')}
                   onPress={handleRegister}
                   loading={loading}
                   style={styles.registerButton}
@@ -236,7 +236,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                   onPress={() => navigation.navigate('Login')}
                 >
                   <Text style={styles.linkText}>
-                    Already have an account? <Text style={styles.linkTextBold}>Sign In</Text>
+                    {t('auth.alreadyHaveAccount')} <Text style={styles.linkTextBold}>{t('auth.signIn')}</Text>
                   </Text>
                 </TouchableOpacity>
               </View>

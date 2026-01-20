@@ -13,6 +13,7 @@ import { GlassButton } from '../components/ui/GlassButton';
 import { Toast } from '../components/Toast';
 
 export const ResetPasswordScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,17 +27,17 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
 
   const handleUpdatePassword = async () => {
     if (!password) {
-      setError('Please enter a new password');
+      setError(t('auth.enterNewPasswordError'));
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(t('auth.passwordMinLength'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordsDoNotMatch'));
       return;
     }
 
@@ -51,7 +52,7 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
       setError(updateError);
     } else {
         setToastType('success');
-        setToastMessage('✅ Your password has been updated successfully.');
+        setToastMessage(t('auth.passwordUpdateSuccess'));
         setToastVisible(true);
 
         setTimeout(() => {
@@ -76,8 +77,8 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
         >
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.header}>
-              <Text style={styles.title}>Reset Password</Text>
-              <Text style={styles.subtitle}>Enter your new password below</Text>
+              <Text style={styles.title}>{t('auth.resetPassword')}</Text>
+              <Text style={styles.subtitle}>{t('auth.enterNewPassword')}</Text>
             </View>
 
             <GlassCard style={styles.card}>
@@ -89,7 +90,7 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
                 ) : null}
 
                 <GlassInput
-                  label="New Password"
+                  label={t('auth.newPassword')}
                   placeholder="••••••••"
                   value={password}
                   onChangeText={(text) => {
@@ -110,7 +111,7 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
                 />
 
                 <GlassInput
-                  label="Confirm Password"
+                  label={t('auth.confirmPassword')}
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChangeText={(text) => {
@@ -122,7 +123,7 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
                 />
 
                 <GlassButton
-                  title="Update Password"
+                  title={t('auth.updatePasswordButton')}
                   onPress={handleUpdatePassword}
                   loading={loading}
                   style={styles.button}
@@ -132,7 +133,7 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
                    style={styles.cancelButton}
                    onPress={() => navigation.navigate('Login')}
                  >
-                   <Text style={styles.cancelText}>Cancel</Text>
+                   <Text style={styles.cancelText}>{t('common.cancel')}</Text>
                  </TouchableOpacity>
               </View>
             </GlassCard>

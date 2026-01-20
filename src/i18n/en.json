@@ -17,7 +17,10 @@
     "score": "Score",
     "you": "You",
     "malaysia": "Malaysia",
-    "portugal": "Portugal"
+    "portugal": "Portugal",
+    "done": "Done",
+    "success": "Success",
+    "notice": "Notice"
   },
   "auth": {
     "login": "Login",
@@ -27,10 +30,53 @@
     "logout": "Logout",
     "logoutConfirm": "Are you sure you want to logout?",
     "sessionError": "Could not load user profile. Please try again or re-login.",
-    "loadProfileError": "Could not load user profile"
+    "loadProfileError": "Could not load user profile",
+    "emailRequired": "Email is required",
+    "passwordRequired": "Password is required",
+    "invalidEmail": "Please enter a valid email address",
+    "loginFailed": "Login Failed",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "registerNow": "Register",
+    "fullName": "Full Name",
+    "fullNameRequired": "Full Name is required",
+    "employeeIdRequired": "Employee ID is required",
+    "passwordMinLength": "Password must be at least 6 characters",
+    "checkEmail": "✅ Check your email for verification link!",
+    "createAccountSubtitle": "Create Driver Account",
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign In",
+    "region": "Region",
+    "creatingAccount": "Creating Account...",
+    "phoneRequired": "Phone number is required",
+    "invalidPhone": "Please enter a valid phone number",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "smsRecovery": "SMS Recovery",
+    "smsNotImplemented": "SMS password recovery is not yet implemented. Please use email recovery or contact your administrator.",
+    "checkYourEmail": "Check Your Email",
+    "emailSentInstructions": "We've sent password reset instructions to:",
+    "resetLinkExpiry": "Click the link in the email to reset your password. The link will expire in 1 hour.",
+    "backToLogin": "Back to Login",
+    "notReceivedEmail": "Didn't receive the email?",
+    "resend": "Resend",
+    "back": "Back",
+    "forgotPasswordSubtitle": "Don't worry! It happens. Please select your preferred recovery method.",
+    "rememberPassword": "Remember your password?",
+    "email": "Email Address",
+    "phone": "Phone Number",
+    "sendResetLink": "Send Reset Link",
+    "resetPassword": "Reset Password",
+    "enterNewPassword": "Enter your new password below",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "updatePasswordButton": "Update Password",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "passwordUpdateSuccess": "✅ Your password has been updated successfully.",
+    "enterNewPasswordError": "Please enter a new password"
   },
   "home": {
     "hello": "Hello",
+    "driver": "Driver",
     "safetyIndex": "Driver Safety Index",
     "weeklyStatus": "Weekly Status",
     "compliant": "COMPLIANT",
@@ -47,18 +93,25 @@
     "pitLane": "Pit Lane",
     "pitLaneSubtitle": "These drivers need a tune-up!",
     "needsImprovement": "Needs improvement",
-    "noPosts": "No posts yet. Be the first!"
+    "noPosts": "No posts yet. Be the first!",
+    "posts": {
+      "top1": "🏆 UNSTOPPABLE! I secured 1st place this week with a {{score}}% Safety Index! {{weekTag}}",
+      "top2": "🥈 Staying consistent! Ranked 2nd this week. Chasing gold next! {{weekTag}}",
+      "top3": "🥉 Made it to the podium! Top 3 finish for me. {{weekTag}}",
+      "pitlane": "🔧 Heading to the Pit Lane. My Safety Index is {{score}}%. Time to focus and improve! {{weekTag}}"
+    }
   },
   "leaderboard": {
     "title": "Leaderboard",
     "weekly": "Weekly",
     "monthly": "Monthly",
     "allTime": "All Time",
-    "searchPlaceholder": "Search driver...",
-    "tuneUp": "Need a Tune-up",
     "operation": "Operation",
     "professionalism": "Prof.",
-    "discipline": "Discipline"
+    "discipline": "Discipline",
+    "filterBy": "Filter View:",
+    "searchPlaceholder": "Search driver...",
+    "tuneUp": "Need a Tune-up"
   },
   "notifications": {
     "title": "Notifications",
@@ -77,7 +130,12 @@
     "noQuestions": "No Questions",
     "noQuestionsRegion": "No questions found for your region.",
     "loadError": "Failed to load quiz",
-    "submitError": "Failed to submit quiz results"
+    "submitError": "Failed to submit quiz results",
+    "missionAccomplished": "MISSION ACCOMPLISHED!",
+    "missionFailed": "MISSION FAILED",
+    "outOfLives": "You ran out of lives.",
+    "outOfTime": "Time ran out.",
+    "score": "Score"
   },
   "manager": {
     "dashboardTitle": "Management Dashboard",
@@ -88,7 +146,8 @@
     "safetyChampions": "Safety Champions",
     "week": "Week",
     "noQuizzesCompleted": "No quizzes completed this week yet.",
-    "beFirst": "Be the first to complete the quiz!"
+    "beFirst": "Be the first to complete the quiz!",
+    "noticeRLS": "Please run the RLS update script to see all users."
   },
   "quiz": {
     "question": "Question",
@@ -120,7 +179,31 @@
     "safetyShield": "Safety Shield",
     "shieldStrong": "🛡️ Shield is strong! Keep it up!",
     "shieldWarn": "⚠️ Shield needs attention",
-    "shieldCritical": "🚨 Shield critically low! Complete missions!"
+    "shieldCritical": "🚨 Shield critically low! Complete missions!",
+    "detailsSaved": "Personal details saved!",
+    "detailsSaveError": "Failed to save details.",
+    "settingsSaved": "Settings saved successfully!",
+    "settingsSaveError": "Failed to save settings.",
+    "age": "Age",
+    "agePlaceholder": "Enter your age",
+    "vehicleType": "Vehicle Type",
+    "vehicles": {
+      "motorcycle": "Motorcycle",
+      "car": "Car",
+      "bus": "Bus",
+      "truck": "Truck"
+    },
+    "companySettings": "Company Settings",
+    "manageUsers": "Manage / Create Users",
+    "dopsTitle": "Driver Operational Performance",
+    "dopsSubtitle": "DOPD - Final Aggregated Results",
+    "opEffectiveness": "Operational Effectiveness",
+    "opDiscipline": "Operational Discipline",
+    "profConduct": "Professional Conduct",
+    "settings": "Team Quiz Settings",
+    "questionsCount": "Questions to Answer",
+    "timerDuration": "Timer (Minutes)",
+    "minutes": "min"
   },
   "audit": {
     "title": "Compliance Audit",
@@ -130,5 +213,33 @@
     "score": "Score",
     "date": "Date",
     "tamperDetected": "TAMPERING DETECTED"
+  },
+  "user": {
+    "createTitle": "Create New User",
+    "driver": "Driver",
+    "managerLevel2": "Manager (Level 2)",
+    "department": "Department",
+    "departmentPlaceholder": "Operations, Sales, etc.",
+    "area": "Area / Division",
+    "areaPlaceholder": "North Region, etc.",
+    "defaultPasswordNote": "Default password will be set to: 123456",
+    "creating": "Creating...",
+    "createUser": "Create User",
+    "errorRequired": "Please fill in required fields",
+    "success": "Success",
+    "userCreated": "User {{fullName}} created!",
+    "errorCreate": "Failed to create user"
+  },
+  "company": {
+    "settings": "Company Settings",
+    "name": "Company Name",
+    "namePlaceholder": "E.g. SafePass Logistics",
+    "logo": "Logo URL (Optional)",
+    "logoPlaceholder": "https://example.com/logo.png",
+    "helperText": "This name and logo will appear on the dashboard for all your drivers.",
+    "saving": "Saving...",
+    "saveSettings": "Save Settings",
+    "updateSuccess": "Company settings updated!",
+    "updateError": "Failed to save settings"
   }
 }

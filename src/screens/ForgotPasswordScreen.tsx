@@ -42,20 +42,20 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
 
     if (recoveryMethod === 'email') {
       if (!email.trim()) {
-        newErrors.email = 'Email is required';
+        newErrors.email = t('auth.emailRequired');
         isValid = false;
       } else if (!Validation.isValidEmail(email)) {
-        newErrors.email = 'Please enter a valid email address';
+        newErrors.email = t('auth.invalidEmail');
         isValid = false;
       }
     } else {
       if (!phone.trim()) {
-        newErrors.phone = 'Phone number is required';
+        newErrors.phone = t('auth.phoneRequired');
         isValid = false;
       }
       // Basic phone validation - you can enhance this
       if (phone.trim() && !/^\+?[\d\s-()]+$/.test(phone)) {
-        newErrors.phone = 'Please enter a valid phone number';
+        newErrors.phone = t('auth.invalidPhone');
         isValid = false;
       }
     }
@@ -77,7 +77,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
         if (error) {
           const friendlyMsg = Validation.getFriendlyErrorMessage(error);
           setErrors(prev => ({ ...prev, general: friendlyMsg }));
-          Alert.alert('Error', friendlyMsg);
+          Alert.alert(t('common.error'), friendlyMsg);
         } else {
           setEmailSent(true);
         }
@@ -85,8 +85,8 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
         // SMS recovery - This would need to be implemented in your backend
         // For now, show a placeholder message
         Alert.alert(
-          'SMS Recovery',
-          'SMS password recovery is not yet implemented. Please use email recovery or contact your administrator.',
+          t('auth.smsRecovery'),
+          t('auth.smsNotImplemented'),
           [{ text: 'OK' }]
         );
       }
@@ -94,7 +94,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
       console.error('Password reset error:', error);
       setErrors(prev => ({ 
         ...prev, 
-        general: 'An unexpected error occurred. Please try again.' 
+        general: t('auth.unexpectedError') 
       }));
     } finally {
       setLoading(false);
@@ -111,18 +111,18 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               <CheckCircle size={80} color={colors.status.success} />
             </View>
             
-            <Text style={styles.successTitle}>Check Your Email</Text>
+            <Text style={styles.successTitle}>{t('auth.checkYourEmail')}</Text>
             <Text style={styles.successMessage}>
-              We've sent password reset instructions to:
+              {t('auth.emailSentInstructions')}
             </Text>
             <Text style={styles.emailText}>{email}</Text>
             
             <Text style={styles.instructionText}>
-              Click the link in the email to reset your password. The link will expire in 1 hour.
+              {t('auth.resetLinkExpiry')}
             </Text>
 
             <GlassButton
-              title="Back to Login"
+              title={t('auth.backToLogin')}
               onPress={() => navigation.navigate('Login')}
               style={styles.backButton}
             />
@@ -133,7 +133,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               disabled={loading}
             >
               <Text style={styles.resendText}>
-                Didn't receive the email? <Text style={styles.resendTextBold}>Resend</Text>
+                {t('auth.notReceivedEmail')} <Text style={styles.resendTextBold}>{t('auth.resend')}</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -163,13 +163,13 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               onPress={() => navigation.goBack()}
             >
               <ArrowLeft color={colors.text.primary} size={24} />
-              <Text style={styles.backButtonText}>Back</Text>
+              <Text style={styles.backButtonText}>{t('auth.back')}</Text>
             </TouchableOpacity>
 
             <View style={styles.header}>
-              <Text style={styles.title}>Forgot Password?</Text>
+              <Text style={styles.title}>{t('auth.forgotPassword')}</Text>
               <Text style={styles.subtitle}>
-                Don't worry! It happens. Please select your preferred recovery method.
+                {t('auth.forgotPasswordSubtitle')}
               </Text>
             </View>
 
@@ -230,7 +230,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
 
                 {recoveryMethod === 'email' ? (
                   <GlassInput
-                    label="Email Address"
+                    label={t('auth.email')}
                     placeholder="driver@company.com"
                     value={email}
                     onChangeText={(text) => {
@@ -245,8 +245,8 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
                   />
                 ) : (
                   <GlassInput
-                    label="Phone Number"
-                    placeholder="+1 (555) 123-4567"
+                    label={t('auth.phone')}
+                    placeholder="+60 12-345 6789"
                     value={phone}
                     onChangeText={(text) => {
                       setPhone(text);
@@ -260,7 +260,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
                 )}
 
                 <GlassButton
-                  title="Send Reset Link"
+                  title={t('auth.sendResetLink')}
                   onPress={handleResetPassword}
                   loading={loading}
                   style={styles.submitButton}
@@ -272,7 +272,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
                   disabled={loading}
                 >
                   <Text style={styles.linkText}>
-                    Remember your password? <Text style={styles.linkTextBold}>Login</Text>
+                    {t('auth.rememberPassword')} <Text style={styles.linkTextBold}>{t('auth.login')}</Text>
                   </Text>
                 </TouchableOpacity>
               </View>

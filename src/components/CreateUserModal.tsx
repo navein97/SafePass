@@ -45,7 +45,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 
   const handleCreateUser = async () => {
     if (!email || !fullName || !employeeId) {
-        Alert.alert('Error', 'Please fill in required fields');
+        Alert.alert(t('common.error'), t('user.errorRequired'));
         return;
     }
 
@@ -75,13 +75,13 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         Alert.alert(
-            'Success', 
-            `User ${fullName} created!\nEmail: ${email}\nPassword: ${password}`,
+            t('user.success'), 
+            t('user.userCreated', { fullName, email, password }),
             [{ text: 'OK', onPress: onClose }]
         );
         
     } catch (error: any) {
-        Alert.alert('Error', error.message || 'Failed to create user');
+        Alert.alert(t('common.error'), error.message || t('user.errorCreate'));
     } finally {
         setLoading(false);
     }
@@ -115,7 +115,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
       >
         <GlassCard style={styles.modalContent}>
             <View style={styles.header}>
-                <Text style={[styles.title, dynamicStyles.title]}>{t('user.createTitle', 'Create New User')}</Text>
+                <Text style={[styles.title, dynamicStyles.title]}>{t('user.createTitle')}</Text>
                 <TouchableOpacity 
                     onPress={onClose} 
                     style={styles.closeButton}
@@ -129,14 +129,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
             {canCreateManager && (
                 <View style={styles.roleSelector}>
                     <GlassButton 
-                        title="Driver" 
+                        title={t('user.driver')} 
                         variant={role === 'driver' ? 'primary' : 'secondary'} 
                         onPress={() => setRole('driver')}
                         style={styles.roleButton}
                         textStyle={{ color: role === 'driver' ? '#000' : colors.text.primary }}
                     />
                     <GlassButton 
-                        title="Manager (Level 2)" 
+                        title={t('user.managerLevel2')} 
                         variant={role === 'manager' ? 'primary' : 'secondary'} 
                         onPress={() => setRole('manager')}
                         style={styles.roleButton}
@@ -145,7 +145,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 </View>
             )}
 
-            <Text style={[styles.label, dynamicStyles.label]}>{t('auth.email', 'Email')}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>{t('auth.email')}</Text>
             <TextInput 
                 style={[styles.input, dynamicStyles.input]}
                 value={email}
@@ -155,16 +155,16 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 autoCapitalize="none"
             />
 
-            <Text style={[styles.label, dynamicStyles.label]}>{t('auth.fullName', 'Full Name')}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>{t('auth.fullName')}</Text>
             <TextInput 
                 style={[styles.input, dynamicStyles.input]}
                 value={fullName}
                 onChangeText={setFullName}
-                placeholder="Full Name"
+                placeholder={t('auth.fullName')}
                 placeholderTextColor={colors.text.tertiary}
             />
             
-            <Text style={[styles.label, dynamicStyles.label]}>{t('auth.employeeId', 'Employee ID')}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>{t('auth.employeeId')}</Text>
             <TextInput 
                 style={[styles.input, dynamicStyles.input]}
                 value={employeeId}
@@ -173,7 +173,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 placeholderTextColor={colors.text.tertiary}
             />
 
-            <Text style={[styles.label, dynamicStyles.label]}>{t('user.department', 'Department')}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>{t('user.department')}</Text>
             <TextInput 
                 style={[
                     styles.input, 
@@ -182,31 +182,31 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 ]}
                 value={department}
                 onChangeText={setDepartment}
-                placeholder="Operations, Sales, etc."
+                placeholder={t('user.departmentPlaceholder')}
                 placeholderTextColor={colors.text.tertiary}
                 editable={currentUserLevel === 1}
             />
 
             {role === 'manager' && (
                 <>
-                <Text style={[styles.label, dynamicStyles.label]}>{t('user.area', 'Area / Division')}</Text>
+                <Text style={[styles.label, dynamicStyles.label]}>{t('user.area')}</Text>
                 <TextInput 
                     style={[styles.input, dynamicStyles.input]}
                     value={area}
                     onChangeText={setArea}
-                    placeholder="North Region, etc."
+                    placeholder={t('user.areaPlaceholder')}
                     placeholderTextColor={colors.text.tertiary}
                 />
                 </>
             )}
 
             <Text style={[styles.helperText, dynamicStyles.helperText]}>
-                Default password will be set to: 123456
+                {t('user.defaultPasswordNote')}
             </Text>
 
             <View style={{ marginTop: 24, marginBottom: 10 }}>
                 <GlassButton 
-                    title={loading ? 'Creating...' : 'Create User'}
+                    title={loading ? t('user.creating') : t('user.createUser')}
                     onPress={handleCreateUser}
                     variant="primary"
                     disabled={loading}

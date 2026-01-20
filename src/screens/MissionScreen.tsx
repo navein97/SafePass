@@ -283,7 +283,7 @@ export function MissionScreen() {
        <GradientBackground>
          <SafeAreaView style={styles.loadingContainer}>
            <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-           <Text style={styles.loadingText}>{t('mission.loading', 'Loading Mission...')}</Text>
+           <Text style={styles.loadingText}>{t('mission.loading')}</Text>
          </SafeAreaView>
        </GradientBackground>
      );
@@ -301,10 +301,10 @@ export function MissionScreen() {
                 {gameResult === 'win' ? (
                     <View style={styles.resultCard}>
                         <Check size={80} color={colors.status.success} style={{ marginBottom: 20 }} />
-                        <Text style={[styles.resultTitle, { color: colors.status.success }]}>{t('mission.missionAccomplished', 'MISSION ACCOMPLISHED!')}</Text>
-                        <Text style={styles.resultScore}>{t('mission.score', 'Score')}: {Math.round((answers.filter(a => a.isCorrect).length / questions.length) * 100)}%</Text>
+                        <Text style={[styles.resultTitle, { color: colors.status.success }]}>{t('mission.missionAccomplished')}</Text>
+                        <Text style={styles.resultScore}>{t('mission.score')}: {Math.round((answers.filter(a => a.isCorrect).length / questions.length) * 100)}%</Text>
                         <GlassButton 
-                            title={t('common.done', 'Done')}
+                            title={t('common.done')}
                             onPress={() => navigation.goBack()}
                             style={styles.actionButton}
                         />
@@ -318,19 +318,19 @@ export function MissionScreen() {
                                 textAlign: 'center',
                                 padding: 12
                             }}>
-                                {t('common.tryAgain', 'Try Again')}
+                                {t('common.tryAgain')}
                             </Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
                     <View style={styles.resultCard}>
                         <X size={80} color={colors.status.danger} style={{ marginBottom: 20 }} />
-                        <Text style={[styles.resultTitle, { color: colors.status.danger }]}>{t('mission.missionFailed', 'MISSION FAILED')}</Text>
+                        <Text style={[styles.resultTitle, { color: colors.status.danger }]}>{t('mission.missionFailed')}</Text>
                         <Text style={styles.resultReason}>
-                            {lives === 0 ? t('mission.outOfLives', 'You ran out of lives.') : t('mission.outOfTime', 'Time ran out.')}
+                            {lives === 0 ? t('mission.outOfLives') : t('mission.outOfTime')}
                         </Text>
                          <GlassButton 
-                            title={t('common.tryAgain', 'Try Again')}
+                            title={t('common.tryAgain')}
                             onPress={handleRetry}
                             style={styles.actionButton}
                         />
@@ -432,11 +432,11 @@ export function MissionScreen() {
                    {selectedOption !== currentQuestion.correctIndex && (
                        <View style={styles.feedbackBox}>
                           <AlertCircle size={20} color={colors.status.danger} style={{ marginRight: 8 }} />
-                          <Text style={styles.feedbackText}>{t('quiz.correctAnswerIs', 'Correct answer is')} {String.fromCharCode(65 + currentQuestion.correctIndex)}</Text>
+                           <Text style={styles.feedbackText}>{t('quiz.correctAnswerIs')} {String.fromCharCode(65 + currentQuestion.correctIndex)}</Text>
                        </View>
                    )}
                    <GlassButton 
-                      title={currentQuestionIndex < questions.length - 1 ? t('common.next', 'Next') : t('quiz.finish', 'Finish')}
+                      title={currentQuestionIndex < questions.length - 1 ? t('common.next') : t('quiz.finish')}
                       onPress={handleNext}
                       style={{ marginTop: 16 }}
                    />

@@ -17,7 +17,10 @@
     "score": "Markah",
     "you": "Anda",
     "malaysia": "Malaysia",
-    "portugal": "Portugal"
+    "portugal": "Portugal",
+    "done": "Selesai",
+    "success": "Berjaya",
+    "notice": "Notis"
   },
   "auth": {
     "login": "Log Masuk",
@@ -27,10 +30,53 @@
     "logout": "Log Keluar",
     "logoutConfirm": "Adakah anda pasti mahu log keluar?",
     "sessionError": "Tidak dapat memuatkan profil pengguna. Sila cuba lagi atau log masuk semula.",
-    "loadProfileError": "Tidak dapat memuatkan profil pengguna"
+    "loadProfileError": "Tidak dapat memuatkan profil pengguna",
+    "emailRequired": "E-mel diperlukan",
+    "passwordRequired": "Kata laluan diperlukan",
+    "invalidEmail": "Sila masukkan alamat e-mel yang sah",
+    "loginFailed": "Log Masuk Gagal",
+    "forgotPassword": "Lupa Kata Laluan?",
+    "noAccount": "Tiada akaun?",
+    "registerNow": "Daftar",
+    "fullName": "Nama Penuh",
+    "fullNameRequired": "Nama Penuh diperlukan",
+    "employeeIdRequired": "ID Pekerja diperlukan",
+    "passwordMinLength": "Kata laluan mestilah sekurang-kurangnya 6 aksara",
+    "checkEmail": "✅ Semak e-mel anda untuk pautan pengesahan!",
+    "createAccountSubtitle": "Cipta Akaun Pemandu",
+    "alreadyHaveAccount": "Dah ada akaun?",
+    "signIn": "Log Masuk",
+    "region": "Wilayah",
+    "creatingAccount": "Mencipta Akaun...",
+    "phoneRequired": "Nombor telefon diperlukan",
+    "invalidPhone": "Sila masukkan nombor telefon yang sah",
+    "unexpectedError": "Ralat tidak dijangka berlaku. Sila cuba lagi.",
+    "smsRecovery": "Pemulihan SMS",
+    "smsNotImplemented": "Pemulihan kata laluan SMS belum dilaksanakan lagi. Sila gunakan pemulihan e-mel atau hubungi pentadbir anda.",
+    "checkYourEmail": "Semak E-mel Anda",
+    "emailSentInstructions": "Kami telah menghantar arahan penetapan semula kata laluan ke:",
+    "resetLinkExpiry": "Klik pautan dalam e-mel untuk menetapkan semula kata laluan anda. Pautan akan tamat tempoh dalam masa 1 jam.",
+    "backToLogin": "Kembali ke Log Masuk",
+    "notReceivedEmail": "Tidak menerima e-mel?",
+    "resend": "Hantar semula",
+    "back": "Kembali",
+    "forgotPasswordSubtitle": "Jangan risau! Itu perkara biasa. Sila pilih kaedah pemulihan pilihan anda.",
+    "rememberPassword": "Ingat kata laluan anda?",
+    "email": "Alamat E-mel",
+    "phone": "Nombor Telefon",
+    "sendResetLink": "Hantar Pautan Set Semula",
+    "resetPassword": "Set Semula Kata Laluan",
+    "enterNewPassword": "Masukkan kata laluan baru anda di bawah",
+    "newPassword": "Kata Laluan Baru",
+    "confirmPassword": "Sahkan Kata Laluan",
+    "updatePasswordButton": "Kemas Kini Kata Laluan",
+    "passwordsDoNotMatch": "Kata laluan tidak sepadan",
+    "passwordUpdateSuccess": "✅ Kata laluan anda telah berjaya dikemas kini.",
+    "enterNewPasswordError": "Sila masukkan kata laluan baru"
   },
   "home": {
     "hello": "Apa Khabar",
+    "driver": "Pemandu",
     "safetyIndex": "Indeks Keselamatan Pemandu",
     "weeklyStatus": "Status Mingguan",
     "compliant": "PATUH",
@@ -47,18 +93,25 @@
     "pitLane": "Lorong Pit",
     "pitLaneSubtitle": "Pemandu ini perlukan perhatian!",
     "needsImprovement": "Perlu Pembaikan",
-    "noPosts": "Tiada siaran lagi. Jadilah yang pertama!"
+    "noPosts": "Tiada siaran lagi. Jadilah yang pertama!",
+    "posts": {
+      "top1": "🏆 LUAR BIASA! Saya mendapat tempat pertama minggu ini dengan Indeks Keselamatan {{score}}%! {{weekTag}}",
+      "top2": "🥈 Kekal konsisten! Di tangga ke-2 minggu ini. Sasar emas selepas ini! {{weekTag}}",
+      "top3": "🥉 Berjaya ke podium! Penamat 3 teratas untuk saya. {{weekTag}}",
+      "pitlane": "🔧 Menuju ke Lorong Pit. Indeks Keselamatan saya ialah {{score}}%. Masa untuk fokus dan perbaiki diri! {{weekTag}}"
+    }
   },
   "leaderboard": {
     "title": "Papan Pendahulu",
     "weekly": "Mingguan",
     "monthly": "Bulanan",
     "allTime": "Sepanjang Masa",
-    "searchPlaceholder": "Cari pemandu...",
-    "tuneUp": "Perlukan Tune-up",
     "operation": "Operasi",
     "professionalism": "Prof.",
-    "discipline": "Disiplin"
+    "discipline": "Disiplin",
+    "filterBy": "Penapis Paparan:",
+    "searchPlaceholder": "Cari pemandu...",
+    "tuneUp": "Perlu Pembaikan"
   },
   "notifications": {
     "title": "Notifikasi",
@@ -77,7 +130,12 @@
     "noQuestions": "Tiada Soalan",
     "noQuestionsRegion": "Tiada soalan ditemui untuk wilayah anda.",
     "loadError": "Gagal memuatkan kuiz",
-    "submitError": "Gagal menghantar keputusan kuiz"
+    "submitError": "Gagal menghantar keputusan kuiz",
+    "missionAccomplished": "MISI BERJAYA!",
+    "missionFailed": "MISI GAGAL",
+    "outOfLives": "Anda kehabisan nyawa.",
+    "outOfTime": "Masa tamat.",
+    "score": "Markah"
   },
   "manager": {
     "dashboardTitle": "Papan Pemuka Pengurusan",
@@ -88,7 +146,8 @@
     "safetyChampions": "Juara Keselamatan",
     "week": "Minggu",
     "noQuizzesCompleted": "Tiada kuiz diselesaikan minggu ini.",
-    "beFirst": "Jadilah yang pertama menyelesaikan kuiz!"
+    "beFirst": "Jadilah yang pertama menyelesaikan kuiz!",
+    "noticeRLS": "Sila jalankan skrip kemas kini RLS untuk melihat semua pengguna."
   },
   "quiz": {
     "question": "Soalan",
@@ -120,7 +179,31 @@
     "safetyShield": "Perisai Keselamatan",
     "shieldStrong": "🛡️ Perisai kuat! Teruskan usaha!",
     "shieldWarn": "⚠️ Perisai memerlukan perhatian",
-    "shieldCritical": "🚨 Perisai kritikal rendah! Selesaikan misi!"
+    "shieldCritical": "🚨 Perisai kritikal rendah! Selesaikan misi!",
+    "detailsSaved": "Butiran peribadi disimpan!",
+    "detailsSaveError": "Gagal menyimpan butiran.",
+    "settingsSaved": "Tetapan berjaya disimpan!",
+    "settingsSaveError": "Gagal menyimpan tetapan.",
+    "age": "Umur",
+    "agePlaceholder": "Masukkan umur anda",
+    "vehicleType": "Jenis Kenderaan",
+    "vehicles": {
+      "motorcycle": "Motosikal",
+      "car": "Kereta",
+      "bus": "Bas",
+      "truck": "Trak"
+    },
+    "companySettings": "Tetapan Syarikat",
+    "manageUsers": "Urus / Cipta Pengguna",
+    "dopsTitle": "Prestasi Operasi Pemandu",
+    "dopsSubtitle": "DOPD - Keputusan Agregat Akhir",
+    "opEffectiveness": "Keberkesanan Operasi",
+    "opDiscipline": "Disiplin Operasi",
+    "profConduct": "Tingkah Laku Profesional",
+    "settings": "Tetapan Kuiz Pasukan",
+    "questionsCount": "Soalan untuk Dijawab",
+    "timerDuration": "Pemasa (Minit)",
+    "minutes": "min"
   },
   "audit": {
     "title": "Audit Pematuhan",
@@ -130,5 +213,33 @@
     "score": "Markah",
     "date": "Tarikh",
     "tamperDetected": "USIKAN DIKESAN"
+  },
+  "user": {
+    "createTitle": "Cipta Pengguna Baru",
+    "driver": "Pemandu",
+    "managerLevel2": "Pengurus (Tahap 2)",
+    "department": "Jabatan",
+    "departmentPlaceholder": "Operasi, Jualan, dll.",
+    "area": "Kawasan / Bahagian",
+    "areaPlaceholder": "Wilayah Utara, dll.",
+    "defaultPasswordNote": "Kata laluan lalai akan ditetapkan kepada: 123456",
+    "creating": "Mencipta...",
+    "createUser": "Cipta Pengguna",
+    "errorRequired": "Sila isi ruangan yang diperlukan",
+    "success": "Berjaya",
+    "userCreated": "Pengguna {{fullName}} dicipta!",
+    "errorCreate": "Gagal mencipta pengguna"
+  },
+  "company": {
+    "settings": "Tetapan Syarikat",
+    "name": "Nama Syarikat",
+    "namePlaceholder": "Cth: SafePass Logistics",
+    "logo": "URL Logo (Pilihan)",
+    "logoPlaceholder": "https://example.com/logo.png",
+    "helperText": "Nama dan logo ini akan muncul pada papan pemuka untuk semua pemandu anda.",
+    "saving": "Menyimpan...",
+    "saveSettings": "Simpan Tetapan",
+    "updateSuccess": "Tetapan syarikat dikemas kini!",
+    "updateError": "Gagal menyimpan tetapan"
   }
 }
