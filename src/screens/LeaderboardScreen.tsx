@@ -12,6 +12,7 @@ import {
   Platform,
   UIManager,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -444,9 +445,6 @@ export function LeaderboardScreen() {
   });
 
   const topThree = filteredDrivers.slice(0, 3);
-  // Include ALL drivers in the list (including top 3) so they can be expanded
-  const allDriversForList = filteredDrivers;
-  const pitLane = filteredDrivers.slice(10); // Display logic might need adjustment if search is active
 
   const handleExpand = (rank: number) => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -509,60 +507,60 @@ export function LeaderboardScreen() {
             </View>
         </View>
 
-        <ScrollView 
+        <FlatList
+          data={filteredDrivers}
           style={styles.scrollView}
+          contentContainerStyle={{ flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
-        >
-          {loading ? (
-             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-             </View>
-          ) : (
+          keyExtractor={(item) => item.rank.toString()}
+          extraData={expandedDriverId} // Ensure re-render on expand/collapse
+          ListHeaderComponent={
             <>
-          {/* Top 3 Podium - Only show if no search filter or matches top 3 */}
-          {!searchQuery && <TopThreePodium drivers={topThree} colors={colors} />}
-
-          {/* Rest of Leaderboard - Include ALL drivers for expandable list */}
-          <View style={styles.leaderboardList}>
-            {(searchQuery ? filteredDrivers : allDriversForList.slice(0, 10)).map(driver => (
-              <LeaderboardItem 
-                key={driver.rank} 
-                driver={driver} 
-                colors={colors}
-                isExpanded={expandedDriverId === driver.rank}
-                onPress={() => handleExpand(driver.rank)}
-                isManager={isManager}
-              />
-            ))}
-          </View>
-          
-          {/* Pit Lane Section - Only show if not searching (or decide logic) */}
-          {!searchQuery && drivers.length > 10 && (
-              <View style={styles.pitLaneSection}>
-                <View style={styles.pitLaneHeader}>
-                    <Wrench color={colors.leaderboard.pitLane} size={24} />
-                    <Text style={styles.pitLaneTitle}>{t('social.pitLane')}</Text>
-                    <Text style={styles.pitLaneSubtitle}>{t('leaderboard.tuneUp')}</Text>
-                </View>
-                {/* Just show a few from pit lane or allow expansion? For now show all pit lane if scrollable */}
-                {pitLane.map(driver => (
-                    <LeaderboardItem 
-                        key={driver.rank} 
-                        driver={driver} 
-                        isPitLane 
-                        colors={colors}
-                        isExpanded={expandedDriverId === driver.rank}
-                        onPress={() => handleExpand(driver.rank)}
-                        isManager={isManager}
-                    />
-                ))}
+               {!searchQuery && <TopThreePodium drivers={topThree} colors={colors} />}
+            </>
+          }
+          ListEmptyComponent={
+            loading ? (
+               <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+               </View>
+            ) : (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: colors.text.secondary }}>{t('common.noResults', 'No drivers found')}</Text>
               </View>
-          )}
-          </> 
-          )}
+            )
+          }
+          renderItem={({ item, index }) => {
+            const isPitLaneItem = !searchQuery && index >= 10;
+            const showPitLaneHeader = !searchQuery && index === 10;
 
-          <View style={styles.bottomPadding} />
-        </ScrollView>
+            return (
+              <View>
+                {showPitLaneHeader && (
+                    <View style={[styles.pitLaneHeader, { marginTop: 24, marginHorizontal: 16 }]}>
+                        <Wrench color={colors.leaderboard.pitLane} size={24} />
+                        <Text style={styles.pitLaneTitle}>{t('social.pitLane')}</Text>
+                        <Text style={styles.pitLaneSubtitle}>{t('leaderboard.tuneUp')}</Text>
+                    </View>
+                )}
+                
+                <View style={{ marginHorizontal: 16 }}>
+                      <LeaderboardItem 
+                        driver={item} 
+                        isPitLane={isPitLaneItem} 
+                        colors={colors}
+                        isExpanded={expandedDriverId === item.rank}
+                        onPress={() => handleExpand(item.rank)}
+                        isManager={isManager}
+                      />
+                </View>
+              </View>
+            );
+          }}
+          ListFooterComponent={
+              <View style={styles.bottomPadding} />
+          }
+        />
       </SafeAreaView>
     </View>
   );
@@ -770,9 +768,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.primary.DEFAULT,
     fontSize: 18,
   },
-  leaderboardList: {
-    marginHorizontal: 16,
-  },
   leaderboardItem: {
     marginBottom: 8,
     backgroundColor: colors.background.card,
@@ -907,10 +902,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 11,
     color: colors.text.tertiary,
-  },
-  pitLaneSection: {
-    marginTop: 24,
-    marginHorizontal: 16,
   },
   pitLaneHeader: {
     flexDirection: 'row',
