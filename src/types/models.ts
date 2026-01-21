@@ -28,12 +28,14 @@ export interface Driver {
 export interface Question {
     id: string;
     text: string;
+    text_bm?: string;
     options: string[];
     correctOptionIndex: number;
     explanation: string;
     region: Region[]; // Applicable regions
     category: string;
     imageUrl?: string; // Optional image URL for visual questions
+    difficulty: 'easy' | 'intermediate' | 'hard';
     componentWeights?: {
         operation?: number; // e.g. 70
         professionalism?: number;

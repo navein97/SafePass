@@ -32,7 +32,7 @@ export const ScoringService = {
 
     calculateComponentScores(
         questions: Question[],
-        answers: { questionId: string; isCorrect: boolean }[]
+        answers: { questionId: string; isCorrect: boolean; attempts?: number }[]
     ): ComponentScore {
         let earned = { operation: 0, professionalism: 0, discipline: 0 };
         let totalPossible = { operation: 0, professionalism: 0, discipline: 0 };
@@ -44,16 +44,23 @@ export const ScoringService = {
             // Use componentWeights if available, otherwise use defaults based on category
             const weights = question.componentWeights || this.getDefaultWeights(question.category);
 
-            // Add to possible totals
+            // Add to possible totals (Always full potential currently)
             if (weights.operation) totalPossible.operation += weights.operation;
             if (weights.professionalism) totalPossible.professionalism += weights.professionalism;
             if (weights.discipline) totalPossible.discipline += weights.discipline;
 
-            // Add to earned totals if correct
+            // Add to earned totals if correct, with WEIGHTING based on attempts
             if (answer.isCorrect) {
-                if (weights.operation) earned.operation += weights.operation;
-                if (weights.professionalism) earned.professionalism += weights.professionalism;
-                if (weights.discipline) earned.discipline += weights.discipline;
+                let attemptMultiplier = 1.0;
+                const attempts = answer.attempts || 1;
+
+                if (attempts === 1) attemptMultiplier = 1.0;
+                else if (attempts === 2) attemptMultiplier = 0.5;
+                else if (attempts >= 3) attemptMultiplier = 0.25;
+
+                if (weights.operation) earned.operation += weights.operation * attemptMultiplier;
+                if (weights.professionalism) earned.professionalism += weights.professionalism * attemptMultiplier;
+                if (weights.discipline) earned.discipline += weights.discipline * attemptMultiplier;
             }
         });
 

@@ -13,7 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 // Screens
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SocialScreen } from '../screens/SocialScreen';
-import { MissionScreen } from '../screens/MissionScreen';
+import { QuizScreen } from '../screens/QuizScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 
@@ -25,8 +25,23 @@ interface TabIconProps {
   size: number;
 }
 
+import { AuthService } from '../services/authService';
+import { useState, useEffect } from 'react';
+
 export function MainTabNavigator() {
   const { colors, theme } = useTheme();
+  const [role, setRole] = useState<'staff' | 'manager'>('staff');
+
+  useEffect(() => {
+    checkRole();
+  }, []);
+
+  const checkRole = async () => {
+    const { profile } = await AuthService.getUserProfile();
+    if (profile?.role) {
+      setRole(profile.role);
+    }
+  };
 
   return (
     <Tab.Navigator
@@ -58,8 +73,9 @@ export function MainTabNavigator() {
 
       <Tab.Screen
         name="Mission"
-        component={MissionScreen}
+        component={QuizScreen}
         options={{
+          tabBarLabel: role === 'manager' ? 'Team' : 'Quiz',
           tabBarIcon: ({ color, size }: TabIconProps) => (
             <Target color={color} size={size} />
           ),

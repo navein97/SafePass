@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -27,7 +28,11 @@ export const QuizScreen = ({ navigation }: any) => {
   const { colors, theme } = useTheme();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<{ questionId: string; selectedOptionIndex: number; isCorrect: boolean }[]>([]);
+  /* State for new logic */
+  const [currentAttempts, setCurrentAttempts] = useState(0);
+  const [disabledOptions, setDisabledOptions] = useState<number[]>([]);
+  const [answers, setAnswers] = useState<{ questionId: string; attempts: number; isCorrect: boolean }[]>([]);
+  
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,6 +41,24 @@ export const QuizScreen = ({ navigation }: any) => {
 
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null); // Seconds
+  
+  useEffect(() => {
+    if (questions.length > 0 && timeLeft !== null && timeLeft > 0) {
+      timerRef.current = setTimeout(() => {
+        setTimeLeft(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    } else if (timeLeft === 0) {
+        // Time's up!
+        Alert.alert(t('quiz.timeUpTitle', 'Time\'s Up!'), t('quiz.timeUpMessage', 'Submitting your current progress.'), [
+            { text: 'OK', onPress: () => handleSubmit(answers) }
+        ]);
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    }
+  }, [timeLeft, questions]);
 
   useEffect(() => {
     loadQuiz();
@@ -63,9 +86,26 @@ export const QuizScreen = ({ navigation }: any) => {
 
       console.log('User Profile loaded:', profile.region);
       setUserId(profile.id);
+      
+      // Manager Redirect
+      if (profile.role === 'manager') {
+          navigation.replace('ManagerQuickView'); // Or navigate, but replace is better for root tab logic if stack allows
+          return;
+      }
+
       setLoadingStatus(t('quiz.loadingQuestionsFor', { region: profile.region }));
 
-      const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region);
+      // Load Settings
+      const savedCount = await AsyncStorage.getItem('QUIZ_QUESTION_COUNT');
+      const savedDiff = await AsyncStorage.getItem('QUIZ_DIFFICULTY_PARAMS');
+      
+      const count = savedCount ? parseInt(savedCount, 10) : 5;
+      let difficultySettings = undefined;
+      if (savedDiff) {
+         try { difficultySettings = JSON.parse(savedDiff); } catch(e) {}
+      }
+
+      const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region, count, difficultySettings);
       console.log('Questions loaded for region:', loadedQuestions.length);
       
       if (loadedQuestions.length === 0) {
@@ -78,6 +118,17 @@ export const QuizScreen = ({ navigation }: any) => {
       }
 
       setQuestions(loadedQuestions);
+
+      // Initialize Timer
+      const savedTimer = await AsyncStorage.getItem('QUIZ_TIMER_DURATION');
+      let calculatedDuration = loadedQuestions.length * 60; // Default fallback
+      
+      if (savedTimer) {
+          calculatedDuration = parseInt(savedTimer, 10) * 60;
+      }
+      
+      setTimeLeft(calculatedDuration);
+
     } catch (error) {
       console.error('Error loading quiz:', error);
       Alert.alert(t('common.error'), t('quiz.loadFailed'));
@@ -88,33 +139,60 @@ export const QuizScreen = ({ navigation }: any) => {
   };
 
   const handleOptionSelect = (index: number) => {
-    if (isAnswered) return;
+    if (isAnswered || disabledOptions.includes(index)) return;
 
+    const newAttempts = currentAttempts + 1;
+    setCurrentAttempts(newAttempts);
     setSelectedOption(index);
-    setIsAnswered(true);
 
     const currentQuestion = questions[currentIndex];
     const isCorrect = index === currentQuestion.correctOptionIndex;
 
-    const newAnswer = {
-      questionId: currentQuestion.id,
-      selectedOptionIndex: index,
-      isCorrect
-    };
+    if (isCorrect) {
+        // Correct Answer
+        setIsAnswered(true);
+        setAnswers([...answers, {
+            questionId: currentQuestion.id,
+            attempts: newAttempts,
+            isCorrect: true
+        }]);
+        // Auto-scroll logic
+        setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
 
-    setAnswers([...answers, newAnswer]);
-    
-    // Auto-scroll to show feedback
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    } else {
+        // Incorrect Answer
+        if (newAttempts < 3) {
+            // Allow Retry
+            Alert.alert(
+                t('quiz.incorrectHeader', 'Incorrect'), 
+                t('quiz.tryAgainMessage', 'That is not correct. You have {remaining} tries left.', { remaining: 3 - newAttempts })
+            );
+            setDisabledOptions([...disabledOptions, index]);
+            setSelectedOption(null); // Reset selection
+        } else {
+            // Max Attempts Reached
+            setIsAnswered(true);
+             setAnswers([...answers, {
+                questionId: currentQuestion.id,
+                attempts: newAttempts,
+                isCorrect: false
+            }]);
+             setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+        }
+    }
   };
-
-  const handleNext = () => {
+  
+   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setSelectedOption(null);
       setIsAnswered(false);
+      setCurrentAttempts(0);
+      setDisabledOptions([]);
     } else {
       handleSubmit(answers);
     }
@@ -133,50 +211,15 @@ export const QuizScreen = ({ navigation }: any) => {
     }
   };
 
-  if (loading) {
-    return (
-      <GradientBackground>
-        <SafeAreaView style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-          <Text style={styles.loadingText}>
-            {loadingStatus}
-          </Text>
-        </SafeAreaView>
-      </GradientBackground>
-    );
-  }
-
-  if (questions.length === 0) {
-    return (
-      <GradientBackground>
-        <SafeAreaView style={styles.loadingContainer}>
-          <Text style={styles.errorTitle}>
-            {t('quiz.unableToLoad')}
-          </Text>
-          <Text style={styles.errorText}>
-            {t('quiz.noQuestionsFound')}
-          </Text>
-          <GlassButton 
-            title={t('common.goBack')}
-            onPress={() => navigation.goBack()}
-            style={{ width: 200 }}
-          />
-          <TouchableOpacity 
-            onPress={loadQuiz}
-            style={{ marginTop: 20 }}
-          >
-            <Text style={{ color: colors.primary.light, fontFamily: typography.fonts.medium }}>{t('common.tryAgain')}</Text>
-          </TouchableOpacity>
-        </SafeAreaView>
-      </GradientBackground>
-    );
-  }
-
-  const currentQuestion = questions[currentIndex];
-  const progress = ((currentIndex + 1) / questions.length) * 100;
-
   // Feedback Rendering Logic
+  const currentQuestion = questions[currentIndex] || { options: [], text: '' }; // Fallback to avoid crash on empty
+  const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
+
   const getOptionStyle = (index: number) => {
+    if (disabledOptions.includes(index)) {
+        return styles.optionWrong; // Start red if previously selected wrong
+    }
+
     if (!isAnswered) {
       return selectedOption === index ? styles.optionSelected : {};
     }
@@ -193,6 +236,10 @@ export const QuizScreen = ({ navigation }: any) => {
   };
 
   const getOptionIcon = (index: number) => {
+     if (disabledOptions.includes(index)) {
+         return <XCircle size={16} color={colors.status.danger} />;
+     }
+
     if (!isAnswered) {
       return selectedOption === index ? <View style={styles.radioInner} /> : null;
     }
@@ -213,15 +260,27 @@ export const QuizScreen = ({ navigation }: any) => {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         
-        {/* Header / Progress */}
+        {/* Header / Progress / Timer */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
               <ChevronLeft color={colors.text.primary} size={28} />
             </TouchableOpacity>
-            <Text style={styles.progressText}>
-              {t('quiz.question')} {currentIndex + 1} {t('quiz.of')} {questions.length}
-            </Text>
+            
+            <View style={{ flex: 1 }}>
+                <Text style={styles.progressText}>
+                    {t('quiz.question')} {currentIndex + 1} {t('quiz.of')} {questions.length}
+                </Text>
+            </View>
+
+            {/* Timer Display */}
+            {timeLeft !== null && (
+                <View style={[styles.timerContainer, timeLeft < 60 && styles.timerWarning]}>
+                    <Text style={[styles.timerText, timeLeft < 60 && { color: colors.status.danger }]}>
+                        {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                    </Text>
+                </View>
+            )}
           </View>
           <View style={styles.progressBarBg}>
             <LinearGradient
@@ -503,6 +562,23 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   nextButton: {
     width: '100%',
+  },
+  timerContainer: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  timerWarning: {
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    borderColor: 'red',
+  },
+  timerText: {
+    fontFamily: typography.fonts.mono || typography.fonts.bold,
+    fontSize: 14,
+    color: colors.text.primary,
   },
 });
 

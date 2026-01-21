@@ -113,7 +113,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.backButton}>
             <ChevronLeft color={colors.text.primary} size={24} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('manager.weeklyLeaderboard')}</Text>

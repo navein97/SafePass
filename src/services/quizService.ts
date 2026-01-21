@@ -4,25 +4,29 @@ import { getWeek, getYear } from 'date-fns';
 import * as Crypto from 'expo-crypto';
 import { ScoringService } from './scoringService';
 
+import questionsMY from '../data/questionsMY.json';
+import questionsPT from '../data/questionsPT.json';
+
 export const QuizService = {
     /**
-     * Get questions for a specific region from Supabase
+     * Get questions for a specific region from Supabase (Mocked with Local JSON for consistency)
      */
     async getQuestionsForRegion(region: Region): Promise<Question[]> {
         try {
             console.log('🔍 Fetching questions for region:', region);
-            const { data, error } = await supabase
-                .from('questions')
-                .select('*')
-                .contains('regions', [region]);
 
-            if (error) {
-                console.error('❌ Supabase error:', error);
-                throw error;
+            // Use local JSON instead of Supabase to ensure new Intermediate questions are used
+            let data: any[] = [];
+            if (region === 'MY') {
+                data = questionsMY;
+            } else if (region === 'PT') {
+                data = questionsPT; // Assuming this file exists and follows structure
             }
 
-            console.log('✅ Raw data from Supabase:', data?.length, 'questions');
-            console.log('📋 First question sample:', data?.[0]);
+            // Fallback to empty if no data
+            if (!data) return [];
+
+            console.log('✅ Data from Local JSON:', data?.length, 'questions');
 
             const questions = data.map(q => {
                 // Shuffle options
@@ -47,14 +51,16 @@ export const QuizService = {
                 return {
                     id: q.id,
                     text: q.text,
+                    text_bm: q.text_bm,
                     options: shuffledOptions,
                     correctOptionIndex: newCorrectIndex,
                     explanation: q.explanation,
-                    region: q.regions,
+                    region: q.regions || q.region, // Handle both key styles if present
                     category: q.category,
-                    imageUrl: q.image_url,
-                    componentWeights: q.component_weights,
-                };
+                    imageUrl: q.image_url || q.imageUrl,
+                    difficulty: q.difficulty || 'intermediate',
+                    componentWeights: q.component_weights || q.componentWeights,
+                } as Question;
             });
 
             console.log('🎯 Mapped questions:', questions.length);
@@ -68,21 +74,28 @@ export const QuizService = {
     /**
      * Generate a weekly quiz with 30 random questions
      */
-    async generateWeeklyQuiz(region: Region): Promise<Question[]> {
+    /**
+     * Generate a weekly quiz with varying difficulty based on Manager settings or defaults
+     */
+    async generateWeeklyQuiz(region: Region, count: number = 5, difficultySettings?: { easy: number, intermediate: number, hard: number }): Promise<Question[]> {
         console.log('🎲 Generating weekly quiz for region:', region);
+
+        // Default Distribution if not provided (Mid-level focus)
+        const distribution = difficultySettings || { easy: 0, intermediate: 100, hard: 0 };
+
+        const easyCount = Math.round(count * (distribution.easy / 100));
+        const hardCount = Math.round(count * (distribution.hard / 100));
+        const intermediateCount = count - easyCount - hardCount; // Remainder to ensure total matches count
 
         // 1. Get current week for the cycle calculation
         const now = new Date();
-        const absoluteWeek = getWeek(now); // Week in user's calendar
-
-        // 2. Calculate Cycle and Batch
-        // Cycle updates every 4 weeks. Batch is 0-3 within that cycle.
+        const absoluteWeek = getWeek(now);
         const cycleIndex = Math.floor(absoluteWeek / 4);
-        const batchIndex = absoluteWeek % 4; // 0, 1, 2, 3
+        const batchIndex = absoluteWeek % 4;
 
         console.log(`📅 Cycle: ${cycleIndex}, Batch: ${batchIndex}/3 (Week ${absoluteWeek})`);
 
-        // 3. Fetch ALL questions for the region
+        // 2. Fetch ALL questions
         const allQuestions = await this.getQuestionsForRegion(region);
 
         if (allQuestions.length === 0) {
@@ -90,27 +103,34 @@ export const QuizService = {
             return [];
         }
 
-        // 4. Deterministic Shuffle
-        // We use a seed based on the Cycle Index so the order is fixed for the duration of the 4-week cycle
-        // but changes completely ("resets") when the next cycle starts.
-        const seed = `cycle_${cycleIndex}_${region}`;
-        const shuffled = this.shuffleWithSeed(allQuestions, seed);
+        // 3. Separate by difficulty
+        const easyPool = allQuestions.filter(q => q.difficulty === 'easy');
+        const intermediatePool = allQuestions.filter(q => q.difficulty === 'intermediate' || !q.difficulty); // Fallback to intermediate
+        const hardPool = allQuestions.filter(q => q.difficulty === 'hard');
 
-        // 5. Select batch of 5
-        const QUESTIONS_PER_WEEK = 5;
-        const startIndex = batchIndex * QUESTIONS_PER_WEEK;
+        // 4. Helper to select questions deterministically
+        const selectQuestions = (pool: Question[], amount: number, seedSuffix: string) => {
+            if (pool.length === 0 || amount === 0) return [];
+            const seed = `cycle_${cycleIndex}_${region}_${seedSuffix}`;
+            const shuffled = this.shuffleWithSeed(pool, seed);
+            const startIndex = (batchIndex * amount) % pool.length;
 
-        // Handle case where we might run out of questions if pool < 20
-        // We wrap around using modulo if needed, or just slice safely
-        const selected = [];
-        for (let i = 0; i < QUESTIONS_PER_WEEK; i++) {
-            const index = (startIndex + i) % shuffled.length;
-            selected.push(shuffled[index]);
-        }
+            const selected = [];
+            for (let i = 0; i < amount; i++) {
+                const index = (startIndex + i) % shuffled.length;
+                selected.push(shuffled[index]);
+            }
+            return selected;
+        };
 
-        console.log(`✨ Selected ${selected.length} questions for Batch ${batchIndex}`);
+        const selectedEasy = selectQuestions(easyPool, easyCount, 'easy');
+        const selectedInt = selectQuestions(intermediatePool, intermediateCount, 'int');
+        const selectedHard = selectQuestions(hardPool, hardCount, 'hard');
 
-        return selected;
+        const finalSelection = [...selectedEasy, ...selectedInt, ...selectedHard];
+
+        // Final shuffle so difficulty levels are mixed
+        return this.shuffleWithSeed(finalSelection, `final_${absoluteWeek}`);
     },
 
     /**
@@ -138,34 +158,59 @@ export const QuizService = {
     },
 
     /**
-     * Calculate score from answers
+     * Calculate score from answers with RETRY logic
+     * 1st Try: Full Mark (1.0)
+     * 2nd Try: 0 Mark (0.0)
+     * 3rd Try: Right = 0 Mark (0.0), Wrong = Negative (-0.5 penalty?)
      */
-    calculateScore(answers: { questionId: string; isCorrect: boolean }[]): number {
+    calculateScore(answers: { questionId: string; attempts: number; isCorrect: boolean }[]): number {
         if (answers.length === 0) return 0;
-        const correctCount = answers.filter(a => a.isCorrect).length;
-        return Math.round((correctCount / answers.length) * 100);
+
+        let totalScore = 0;
+
+        answers.forEach(a => {
+            if (a.isCorrect) {
+                if (a.attempts === 1) {
+                    totalScore += 1;
+                } else if (a.attempts === 2) {
+                    totalScore += 0.5;
+                } else {
+                    totalScore += 0.25; // 3rd try (and beyond if logic permited)
+                }
+            } else {
+                // Wrong answer logic - Penalty
+                if (a.attempts >= 3) {
+                    // 3rd try AND wrong -> Negative
+                    totalScore -= 0.5;
+                }
+            }
+        });
+
+        // Normalize to 0-100
+        // Max possible score is answers.length * 1
+        // Min possible is negative, but we clamp to 0 for display usually, unless specified.
+        const maxScore = answers.length;
+        let percentage = (totalScore / maxScore) * 100;
+
+        return Math.max(0, Math.round(percentage));
     },
 
     /**
      * Submit quiz to database
      */
-    /**
-     * Submit quiz to database
-     */
     async submitQuiz(
         userId: string,
-        answers: { questionId: string; selectedOptionIndex: number; isCorrect: boolean }[],
+        answers: { questionId: string; attempts: number; isCorrect: boolean }[],
         questions: Question[]
     ) {
         try {
-            // Calculate Standard Score
-            const rawScore = this.calculateScore(answers.map(a => ({ questionId: a.questionId, isCorrect: a.isCorrect })));
+            // Calculate Standard Score using new logic
+            const rawScore = this.calculateScore(answers);
 
-            // Calculate Component Scores
-            const componentScores = ScoringService.calculateComponentScores(questions, answers.map(a => ({
-                questionId: a.questionId,
-                isCorrect: a.isCorrect
-            })));
+            // Calculate Component Scores using weighted logic
+            const componentScores = ScoringService.calculateComponentScores(questions, answers);
+
+
 
             const now = new Date();
             const weekNumber = getWeek(now);
@@ -434,7 +479,11 @@ export const QuizService = {
                 driverId: userId,
                 date: attemptData.completed_at,
                 score: rawScore,
-                answers,
+                answers: answers.map(a => ({
+                    questionId: a.questionId,
+                    selectedOptionIndex: -1, // Deprecated/Not tracked in new structure
+                    isCorrect: a.isCorrect
+                })),
                 weekNumber,
                 year,
             };

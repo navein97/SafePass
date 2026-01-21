@@ -59,7 +59,8 @@ export const ProfileScreen = ({ navigation }: any) => {
   
   // Manager State
   const [questionCount, setQuestionCount] = useState(5);
-  const [timerDuration, setTimerDuration] = useState(2); // minutes
+  const [timerDuration, setTimerDuration] = useState(5); // Default 5 mins
+  const [difficultyParams, setDifficultyParams] = useState({ easy: 0, intermediate: 100, hard: 0 });
 
   /* Toast State */
   const [toastVisible, setToastVisible] = useState(false);
@@ -110,8 +111,17 @@ export const ProfileScreen = ({ navigation }: any) => {
       if (userProfile.role === 'manager') {
         const savedCount = await AsyncStorage.getItem('QUIZ_QUESTION_COUNT');
         const savedTimer = await AsyncStorage.getItem('QUIZ_TIMER_DURATION');
+        const savedDiff = await AsyncStorage.getItem('QUIZ_DIFFICULTY_PARAMS');
+        
         if (savedCount) setQuestionCount(parseInt(savedCount, 10));
         if (savedTimer) setTimerDuration(parseInt(savedTimer, 10));
+        if (savedDiff) {
+            try {
+                setDifficultyParams(JSON.parse(savedDiff));
+            } catch (e) {
+                console.warn('Failed to parse difficulty settings', e);
+            }
+        }
       } else {
         // Prioritize profile data from Supabase
         let initialAge = userProfile.age ? userProfile.age.toString() : '';
@@ -169,15 +179,33 @@ export const ProfileScreen = ({ navigation }: any) => {
   const handleSettingChange = (key: string, value: number) => {
     if (key === 'count') {
         setQuestionCount(value);
-    } else {
+    } else if (key === 'timer') {
         setTimerDuration(value);
     }
   };
 
+  const handleDifficultyChange = (level: 'easy' | 'intermediate' | 'hard', value: number) => {
+      // Logic to ensure they roughly sum to 100?
+      // For now, just set the value. We can enforce sum validation on Save or auto-adjust others?
+      // Auto-adjusting is complex UI. Let's just allow setting them and maybe show warning if != 100?
+      // User said "allow managers to set percentages... e.g. 30, 40, 30".
+      setDifficultyParams(prev => ({
+          ...prev,
+          [level]: value
+      }));
+  };
+
   const handleSaveSettings = async () => {
     try {
+        const total = difficultyParams.easy + difficultyParams.intermediate + difficultyParams.hard;
+        if (Math.abs(total - 100) > 1) { // Tolerate small rounding
+            Alert.alert(t('common.error'), t('profile.difficultySumError', 'Difficulty percentages must sum to 100% (Current: {total}%)', { total }));
+            return;
+        }
+
         await AsyncStorage.setItem('QUIZ_QUESTION_COUNT', questionCount.toString());
         await AsyncStorage.setItem('QUIZ_TIMER_DURATION', timerDuration.toString());
+        await AsyncStorage.setItem('QUIZ_DIFFICULTY_PARAMS', JSON.stringify(difficultyParams));
         showToast(t('profile.settingsSaved'), 'success');
     } catch (error) {
         console.error('Save error:', error);
@@ -346,37 +374,99 @@ export const ProfileScreen = ({ navigation }: any) => {
                    <Text style={styles.inputLabel}>{t('profile.questionsCount')}</Text>
                    <Text style={styles.sliderValue}>{questionCount}</Text>
                  </View>
-                 <Slider
-                   style={styles.slider}
-                   minimumValue={5}
-                   maximumValue={20}
-                   step={1}
-                   value={questionCount}
-                   onValueChange={(val) => handleSettingChange('count', val)}
-                   minimumTrackTintColor={colors.primary.DEFAULT}
-                   maximumTrackTintColor={colors.border}
-                   thumbTintColor={colors.primary.DEFAULT}
-                 />
-               </View>
+                  <Slider
+                     style={styles.slider}
+                     minimumValue={5}
+                     maximumValue={39} // Updated to max available questions
+                     step={1}
+                     value={questionCount}
+                     onValueChange={(val) => handleSettingChange('count', val)}
+                     minimumTrackTintColor={colors.primary.DEFAULT}
+                     maximumTrackTintColor={colors.border}
+                     thumbTintColor={colors.primary.DEFAULT}
+                   />
+                </View>
 
-               {/* Timer Slider */}
-               <View style={styles.sliderContainer}>
-                 <View style={styles.sliderLabelContainer}>
-                   <Text style={styles.inputLabel}>{t('profile.timerDuration')}</Text>
-                   <Text style={styles.sliderValue}>{timerDuration} {t('profile.minutes')}</Text>
-                 </View>
-                 <Slider
-                   style={styles.slider}
-                   minimumValue={1}
-                   maximumValue={10}
-                   step={1}
-                   value={timerDuration}
-                   onValueChange={(val) => handleSettingChange('timer', val)}
-                   minimumTrackTintColor={colors.primary.DEFAULT}
-                   maximumTrackTintColor={colors.border}
-                   thumbTintColor={colors.primary.DEFAULT}
-                 />
-               </View>
+                {/* Timer Duration Slider */}
+                <View style={styles.sliderContainer}>
+                   <View style={styles.sliderLabelContainer}>
+                     <Text style={styles.inputLabel}>{t('profile.timerDuration')}</Text>
+                     <Text style={styles.sliderValue}>{timerDuration} {t('profile.minutes')}</Text>
+                   </View>
+                   <Slider
+                     style={styles.slider}
+                     minimumValue={1}
+                     maximumValue={39} // Syncs with question bank limit
+                     step={1}
+                     value={timerDuration}
+                     onValueChange={(val) => handleSettingChange('timer', val)}
+                     minimumTrackTintColor={colors.status.info}
+                     maximumTrackTintColor={colors.border}
+                     thumbTintColor={colors.status.info}
+                   />
+                </View>
+
+                {/* Difficulty Settings */}
+                <View style={{ marginTop: 24, marginBottom: 16 }}>
+                   <Text style={styles.inputLabel}>{t('profile.difficultyDistribution')} (Total: {difficultyParams.easy + difficultyParams.intermediate + difficultyParams.hard}%)</Text>
+                   
+                   {/* Easy */}
+                   <View style={styles.sliderContainer}>
+                      <View style={styles.sliderLabelContainer}>
+                         <Text style={[styles.inputLabel, { fontSize: 12 }]}>{t('common.easy')}</Text>
+                         <Text style={styles.sliderValue}>{difficultyParams.easy}%</Text>
+                      </View>
+                      <Slider
+                         style={styles.slider}
+                         minimumValue={0}
+                         maximumValue={100}
+                         step={10}
+                         value={difficultyParams.easy}
+                         onValueChange={(val) => handleDifficultyChange('easy', val)}
+                         minimumTrackTintColor={colors.status.success}
+                         maximumTrackTintColor={colors.border}
+                         thumbTintColor={colors.status.success}
+                      />
+                   </View>
+
+                   {/* Intermediate */}
+                   <View style={styles.sliderContainer}>
+                      <View style={styles.sliderLabelContainer}>
+                         <Text style={[styles.inputLabel, { fontSize: 12 }]}>{t('common.intermediate')}</Text>
+                         <Text style={styles.sliderValue}>{difficultyParams.intermediate}%</Text>
+                      </View>
+                      <Slider
+                         style={styles.slider}
+                         minimumValue={0}
+                         maximumValue={100}
+                         step={10}
+                         value={difficultyParams.intermediate}
+                         onValueChange={(val) => handleDifficultyChange('intermediate', val)}
+                         minimumTrackTintColor={colors.status.warning}
+                         maximumTrackTintColor={colors.border}
+                         thumbTintColor={colors.status.warning}
+                      />
+                   </View>
+
+                   {/* Hard */}
+                   <View style={styles.sliderContainer}>
+                      <View style={styles.sliderLabelContainer}>
+                         <Text style={[styles.inputLabel, { fontSize: 12 }]}>{t('common.hard')}</Text>
+                         <Text style={styles.sliderValue}>{difficultyParams.hard}%</Text>
+                      </View>
+                      <Slider
+                         style={styles.slider}
+                         minimumValue={0}
+                         maximumValue={100}
+                         step={10}
+                         value={difficultyParams.hard}
+                         onValueChange={(val) => handleDifficultyChange('hard', val)}
+                         minimumTrackTintColor={colors.status.danger}
+                         maximumTrackTintColor={colors.border}
+                         thumbTintColor={colors.status.danger}
+                      />
+                   </View>
+                </View>
 
                {/* Save Button */}
                <GlassButton
@@ -751,6 +841,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.primary,
     marginBottom: 16,
     marginTop: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 0,
   },
   sliderContainer: {
     marginBottom: 24,
