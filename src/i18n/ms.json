@@ -20,7 +20,10 @@
     "portugal": "Portugal",
     "done": "Selesai",
     "success": "Berjaya",
-    "notice": "Notis"
+    "notice": "Notis",
+    "easy": "Mudah",
+    "intermediate": "Pertengahan",
+    "hard": "Sukar"
   },
   "auth": {
     "login": "Log Masuk",
@@ -203,7 +206,9 @@
     "settings": "Tetapan Kuiz Pasukan",
     "questionsCount": "Soalan untuk Dijawab",
     "timerDuration": "Pemasa (Minit)",
-    "minutes": "min"
+    "minutes": "min",
+    "personalDetails": "Butiran Peribadi",
+    "difficultyDistribution": "Agihan Kesukaran"
   },
   "audit": {
     "title": "Audit Pematuhan",

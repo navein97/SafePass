@@ -20,7 +20,10 @@
     "portugal": "Portugal",
     "done": "Done",
     "success": "Success",
-    "notice": "Notice"
+    "notice": "Notice",
+    "easy": "Easy",
+    "intermediate": "Intermediate",
+    "hard": "Hard"
   },
   "auth": {
     "login": "Login",
@@ -203,7 +206,9 @@
     "settings": "Team Quiz Settings",
     "questionsCount": "Questions to Answer",
     "timerDuration": "Timer (Minutes)",
-    "minutes": "min"
+    "minutes": "min",
+    "personalDetails": "Personal Details",
+    "difficultyDistribution": "Difficulty Distribution"
   },
   "audit": {
     "title": "Compliance Audit",

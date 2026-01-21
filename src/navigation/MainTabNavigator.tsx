@@ -16,6 +16,7 @@ import { SocialScreen } from '../screens/SocialScreen';
 import { QuizScreen } from '../screens/QuizScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
+import { ManagerQuickViewScreen } from '../screens/ManagerQuickViewScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -30,18 +31,36 @@ import { useState, useEffect } from 'react';
 
 export function MainTabNavigator() {
   const { colors, theme } = useTheme();
-  const [role, setRole] = useState<'staff' | 'manager'>('staff');
+  const [role, setRole] = useState<'staff' | 'manager' | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     checkRole();
   }, []);
 
   const checkRole = async () => {
-    const { profile } = await AuthService.getUserProfile();
-    if (profile?.role) {
-      setRole(profile.role);
+    try {
+      const { profile } = await AuthService.getUserProfile();
+      if (profile?.role) {
+        setRole(profile.role);
+      } else {
+        setRole('staff');
+      }
+    } catch (error) {
+      console.error('Failed to load role', error);
+      setRole('staff'); // Fallback
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.centerIcon, { borderWidth: 0, width: '100%', height: '100%' }]}>
+        {/* Placeholder or simple view while determining role */}
+      </View>
+    );
+  }
 
   return (
     <Tab.Navigator
@@ -73,7 +92,7 @@ export function MainTabNavigator() {
 
       <Tab.Screen
         name="Mission"
-        component={QuizScreen}
+        component={role === 'manager' ? ManagerQuickViewScreen : QuizScreen}
         options={{
           tabBarLabel: role === 'manager' ? 'Team' : 'Quiz',
           tabBarIcon: ({ color, size }: TabIconProps) => (
