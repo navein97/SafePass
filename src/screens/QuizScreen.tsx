@@ -346,8 +346,8 @@ export const QuizScreen = ({ navigation }: any) => {
             {/* Timer - Right Side */}
             {timeLeft !== null && (
               <View style={[styles.timerPill, timeLeft < 60 && styles.timerWarning]}>
-                <Clock size={18} color={timeLeft < 60 ? '#FF3D00' : '#333'} />
-                <Text style={[styles.timerText, timeLeft < 60 && styles.timerTextWarning]}>
+                <Clock size={18} color={timeLeft < 60 ? '#FF3D00' : colors.text.primary} />
+                <Text style={[styles.timerText, { color: colors.text.primary }, timeLeft < 60 && styles.timerTextWarning]}>
                   {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                 </Text>
               </View>
@@ -510,19 +510,22 @@ const createStyles = (colors: any) => StyleSheet.create({
   timerPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: colors.background.subtle,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   timerWarning: {
     backgroundColor: 'rgba(255, 61, 0, 0.15)',
+    borderColor: '#FF3D00',
   },
   timerText: {
     fontFamily: typography.fonts.bold,
     fontSize: 16,
-    color: '#333',
+    color: colors.text.primary,
   },
   timerTextWarning: {
     color: '#FF3D00',
