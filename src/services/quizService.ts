@@ -51,10 +51,13 @@ export const QuizService = {
                 return {
                     id: q.id,
                     text: q.text,
-                    text_bm: q.text_bm,
+                    text_ms: q.text_bm || q.text_ms, // Support both keys
                     options: shuffledOptions,
+                    // We need to shuffle options_ms in the same order as options!
+                    options_ms: q.options_ms ? indices.map(i => q.options_ms[i]) : undefined,
                     correctOptionIndex: newCorrectIndex,
                     explanation: q.explanation,
+                    explanation_ms: q.explanation_ms,
                     region: q.regions || q.region, // Handle both key styles if present
                     category: q.category,
                     imageUrl: q.image_url || q.imageUrl,

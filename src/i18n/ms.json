@@ -191,24 +191,33 @@
     "agePlaceholder": "Masukkan umur anda",
     "vehicleType": "Jenis Kenderaan",
     "vehicles": {
-      "motorcycle": "Motosikal",
-      "car": "Kereta",
-      "bus": "Bas",
-      "truck": "Trak"
+      "containerHaulage": "Pengangkutan Kontena",
+      "curtainSide": "Trak Curtain Sider",
+      "openCargo": "Kargo Terbuka",
+      "smallTruck": "Lori Kecil dan Van",
+      "tanker": "Lori Tangki"
     },
     "companySettings": "Tetapan Syarikat",
     "manageUsers": "Urus / Cipta Pengguna",
     "dopsTitle": "Prestasi Operasi Pemandu",
-    "dopsSubtitle": "DOPD - Keputusan Agregat Akhir",
+    "dopsSubtitle": "Keberkesanan Operasi, Disiplin Operasi, Tingkah Laku Profesional",
     "opEffectiveness": "Keberkesanan Operasi",
     "opDiscipline": "Disiplin Operasi",
     "profConduct": "Tingkah Laku Profesional",
+    "performanceTrend": "Trend Prestasi",
     "settings": "Tetapan Kuiz Pasukan",
     "questionsCount": "Soalan untuk Dijawab",
     "timerDuration": "Pemasa (Minit)",
     "minutes": "min",
     "personalDetails": "Butiran Peribadi",
     "difficultyDistribution": "Agihan Kesukaran"
+  },
+  "navigation": {
+    "profile": "Profil",
+    "quiz": "Kuiz",
+    "team": "Pasukan",
+    "notifications": "Notifikasi",
+    "leaderboard": "Papan Pendahulu"
   },
   "audit": {
     "title": "Audit Pematuhan",

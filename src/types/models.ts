@@ -17,7 +17,7 @@ export interface Driver {
     shieldHealth?: number;
     totalScore?: number;
     age?: number;
-    vehicleType?: 'Motorcycle' | 'Car' | 'Truck' | 'Bus';
+    vehicleType?: 'Container Haulage' | 'Curtain Side' | 'Open Cargo' | 'Small Truck' | 'Tanker' | string;
     // Master User Fields
     managerLevel?: 1 | 2;
     department?: string;
@@ -28,10 +28,12 @@ export interface Driver {
 export interface Question {
     id: string;
     text: string;
-    text_bm?: string;
+    text_ms?: string; // Malay translation
     options: string[];
+    options_ms?: string[]; // Malay options
     correctOptionIndex: number;
     explanation: string;
+    explanation_ms?: string; // Malay explanation
     region: Region[]; // Applicable regions
     category: string;
     imageUrl?: string; // Optional image URL for visual questions

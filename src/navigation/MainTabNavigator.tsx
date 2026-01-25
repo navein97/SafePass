@@ -29,7 +29,10 @@ interface TabIconProps {
 import { AuthService } from '../services/authService';
 import { useState, useEffect } from 'react';
 
+import { useTranslation } from 'react-i18next'; // Add import
+
 export function MainTabNavigator() {
+  const { t } = useTranslation();
   const { colors, theme } = useTheme();
   const [role, setRole] = useState<'staff' | 'manager' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +77,7 @@ export function MainTabNavigator() {
           paddingBottom: 12,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: colors.primary.DEFAULT,
+        tabBarActiveTintColor: '#CA8A04', // Darker Gold for visibility
         tabBarInactiveTintColor: colors.text.tertiary,
         tabBarShowLabel: true,
         tabBarLabelStyle: styles.tabLabel,
@@ -84,6 +87,7 @@ export function MainTabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
+          tabBarLabel: t('navigation.profile'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (
             <User color={color} size={size} />
           ),
@@ -94,7 +98,7 @@ export function MainTabNavigator() {
         name="Mission"
         component={role === 'manager' ? ManagerQuickViewScreen : QuizScreen}
         options={{
-          tabBarLabel: role === 'manager' ? 'Team' : 'Quiz',
+          tabBarLabel: role === 'manager' ? t('navigation.team') : t('navigation.quiz'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (
             <Target color={color} size={size} />
           ),
@@ -104,6 +108,7 @@ export function MainTabNavigator() {
         name="Notifications"
         component={NotificationsScreen}
         options={{
+          tabBarLabel: t('navigation.notifications'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (
             <Bell color={color} size={size} />
           ),
@@ -113,6 +118,7 @@ export function MainTabNavigator() {
         name="Leaderboard"
         component={LeaderboardScreen}
         options={{
+          tabBarLabel: t('navigation.leaderboard'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (
             <Trophy color={color} size={size} />
           ),

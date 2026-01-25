@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
+import { QuizService } from '../services/quizService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -17,7 +18,10 @@ import Svg, { Circle } from 'react-native-svg';
 import { PerformanceRing } from '../components/PerformanceRing';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { CompanySettingsModal } from '../components/CompanySettingsModal';
+import { PerformanceChart } from '../components/PerformanceChart';
+import { MilestoneTracker } from '../components/MilestoneTracker';
 import { Building, BookOpen, UserPlus } from 'lucide-react-native';
+import { QuizAttempt } from '../types/models';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SHIELD_SIZE = 120;
@@ -45,6 +49,7 @@ interface ProfileData {
   department?: string;
   division?: string;
   area?: string;
+  totalScore?: number;
 }
 
 export const ProfileScreen = ({ navigation }: any) => {
@@ -52,6 +57,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   const { colors, theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [quizHistory, setQuizHistory] = useState<QuizAttempt[]>([]);
   
   // Staff State
   const [age, setAge] = useState('');
@@ -105,7 +111,14 @@ export const ProfileScreen = ({ navigation }: any) => {
         operationalEffectiveness: userProfile.operational_effectiveness || 0.75, // Default for demo
         operationalDiscipline: userProfile.operational_discipline || 0.25,
         professionalConduct: userProfile.professional_conduct || 0.12,
+        totalScore: userProfile.totalScore || 0,
       });
+
+      // Load History
+      if (userProfile.id) {
+          const history = await QuizService.getQuizAttempts(userProfile.id);
+          setQuizHistory(history);
+      }
 
       // Load local settings/data
       if (userProfile.role === 'manager') {
@@ -116,11 +129,7 @@ export const ProfileScreen = ({ navigation }: any) => {
         if (savedCount) setQuestionCount(parseInt(savedCount, 10));
         if (savedTimer) setTimerDuration(parseInt(savedTimer, 10));
         if (savedDiff) {
-            try {
-                setDifficultyParams(JSON.parse(savedDiff));
-            } catch (e) {
-                console.warn('Failed to parse difficulty settings', e);
-            }
+            try { setDifficultyParams(JSON.parse(savedDiff)); } catch (e) {}
         }
       } else {
         // Prioritize profile data from Supabase
@@ -185,10 +194,6 @@ export const ProfileScreen = ({ navigation }: any) => {
   };
 
   const handleDifficultyChange = (level: 'easy' | 'intermediate' | 'hard', value: number) => {
-      // Logic to ensure they roughly sum to 100?
-      // For now, just set the value. We can enforce sum validation on Save or auto-adjust others?
-      // Auto-adjusting is complex UI. Let's just allow setting them and maybe show warning if != 100?
-      // User said "allow managers to set percentages... e.g. 30, 40, 30".
       setDifficultyParams(prev => ({
           ...prev,
           [level]: value
@@ -330,7 +335,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                   </TouchableOpacity>
                )}
 
-                {/* Manage Users Button - For all Managers */}
+                 {/* Manage Users Button - For all Managers */}
                  <TouchableOpacity style={styles.manageUsersButton} onPress={() => setShowCreateUser(true)}>
                     <UserPlus size={24} color={colors.primary.DEFAULT} />
                     <Text style={styles.manageUsersText}>{t('profile.manageUsers')}</Text>
@@ -377,7 +382,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                   <Slider
                      style={styles.slider}
                      minimumValue={5}
-                     maximumValue={39} // Updated to max available questions
+                     maximumValue={39} 
                      step={1}
                      value={questionCount}
                      onValueChange={(val) => handleSettingChange('count', val)}
@@ -396,7 +401,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                    <Slider
                      style={styles.slider}
                      minimumValue={1}
-                     maximumValue={39} // Syncs with question bank limit
+                     maximumValue={39}
                      step={1}
                      value={timerDuration}
                      onValueChange={(val) => handleSettingChange('timer', val)}
@@ -476,7 +481,8 @@ export const ProfileScreen = ({ navigation }: any) => {
                />
             </GlassCard>
           ) : (
-             /* Staff Inputs */
+            <View>
+             {/* Staff Inputs */}
              <GlassCard style={styles.inputCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                    <User size={24} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
@@ -498,10 +504,11 @@ export const ProfileScreen = ({ navigation }: any) => {
                 <Text style={styles.inputLabel}>{t('profile.vehicleType')}</Text>
                 <View style={styles.vehicleOptions}>
                    {[
-                      { key: 'Motorcycle', label: t('profile.vehicles.motorcycle') },
-                      { key: 'Car', label: t('profile.vehicles.car') },
-                      { key: 'Bus', label: t('profile.vehicles.bus') },
-                      { key: 'Truck', label: t('profile.vehicles.truck') }
+                      { key: 'Container Haulage', label: t('profile.vehicles.containerHaulage') },
+                      { key: 'Curtain Side', label: t('profile.vehicles.curtainSide') },
+                      { key: 'Open Cargo', label: t('profile.vehicles.openCargo') },
+                      { key: 'Small Truck', label: t('profile.vehicles.smallTruck') },
+                      { key: 'Tanker', label: t('profile.vehicles.tanker') }
                     ].map((v) => (
                       <TouchableOpacity
                         key={v.key}
@@ -526,70 +533,106 @@ export const ProfileScreen = ({ navigation }: any) => {
                   style={{ marginTop: 24 }}
                 />
              </GlassCard>
-          )}
 
-          {/* Gamification Stats Row - Only for Staff and NOT Manager (redundant check but safe) */}
-          {!isManager && (
-          <>
-          {/* Weekly Streak Card */}
-          <GlassCard style={styles.streakCard}>
-            <View style={styles.flameContainer}>
-              <LinearGradient
-                colors={[colors.streak.flame, colors.streak.flameGlow]}
-                style={styles.flameGlow}
-              >
-                <Flame size={32} color="#FFF" fill="#FFF" />
-              </LinearGradient>
-            </View>
-            <Text style={styles.statValue}>{streakWeeks}</Text>
-            <Text style={styles.statLabel}>{t('profile.weeklyStreak')}</Text>
-          </GlassCard>
+             {/* Driver Performance Section */}
+             <GlassCard style={styles.inputCard}>
+                 <Text style={styles.sectionTitle}>{t('profile.dopsTitle')}</Text>
+                 <View style={styles.ringsContainer}>
+                      <PerformanceRing 
+                        score={profile?.operationalEffectiveness || 0} 
+                        label={t('profile.opEffectiveness')} 
+                        size={SCREEN_WIDTH * 0.26}
+                      />
+                      <PerformanceRing 
+                        score={profile?.operationalDiscipline || 0} 
+                        label={t('profile.opDiscipline')} 
+                        size={SCREEN_WIDTH * 0.26}
+                      />
+                      <PerformanceRing 
+                        score={profile?.professionalConduct || 0} 
+                        label={t('profile.profConduct')} 
+                        size={SCREEN_WIDTH * 0.26}
+                      />
+                  </View>
+             </GlassCard>
 
-          {/* Safety Shield - Only for Staff */}
-          <GlassCard style={styles.shieldCard}>
-            <Text style={styles.shieldTitle}>{t('profile.safetyShield')}</Text>
-            <View style={styles.shieldContainer}>
-              <Svg width={SHIELD_SIZE} height={SHIELD_SIZE} style={styles.shieldSvg}>
-                {/* Background Circle */}
-                <Circle
-                  cx={SHIELD_SIZE / 2}
-                  cy={SHIELD_SIZE / 2}
-                  r={SHIELD_RADIUS}
-                  stroke={colors.background.subtle}
-                  strokeWidth={SHIELD_STROKE_WIDTH}
-                  fill="transparent"
+             {/* Milestone Tracker */}
+             <MilestoneTracker currentPoints={(streakWeeks * 100) + (profile?.totalScore || 0) + (profile?.safety_index ? profile.safety_index * 10 : 0)} />
+
+             {/* Performance Chart */}
+             <GlassCard style={{marginTop: 16}}>
+                <PerformanceChart 
+                    data={
+                        quizHistory.length > 0
+                        ? quizHistory.slice(0, 5).reverse().map(a => ({
+                            value: a.score,
+                            label: `W${a.weekNumber}`
+                          }))
+                        : [{ value: 0, label: 'Start' }]
+                    } 
                 />
-                {/* Progress Circle */}
-                <Circle
-                  cx={SHIELD_SIZE / 2}
-                  cy={SHIELD_SIZE / 2}
-                  r={SHIELD_RADIUS}
-                  stroke={shieldHealth > 50 ? colors.status.success : shieldHealth > 25 ? colors.status.warning : colors.status.danger}
-                  strokeWidth={SHIELD_STROKE_WIDTH}
-                  fill="transparent"
-                  strokeDasharray={`${SHIELD_CIRCUMFERENCE * (shieldHealth / 100)} ${SHIELD_CIRCUMFERENCE}`}
-                  strokeLinecap="round"
-                  rotation={-90}
-                  origin={`${SHIELD_SIZE / 2}, ${SHIELD_SIZE / 2}`}
-                />
-              </Svg>
-              <View style={styles.shieldCenter}>
-                <Shield 
-                  size={36} 
-                  color={shieldHealth > 50 ? colors.status.success : shieldHealth > 25 ? colors.status.warning : colors.status.danger} 
-                />
-                <Text style={styles.shieldPercent}>{shieldHealth}%</Text>
-              </View>
-            </View>
-            <Text style={styles.shieldDescription}>
-              {shieldHealth > 75 
-                ? t('profile.shieldStrong')
-                : shieldHealth > 50 
-                  ? t('profile.shieldWarn')
-                  : t('profile.shieldCritical')}
-            </Text>
-          </GlassCard>
-          </>
+             </GlassCard>
+
+             {/* Weekly Streak Card */}
+             <GlassCard style={styles.streakCard}>
+               <View style={styles.flameContainer}>
+                 <LinearGradient
+                   colors={[colors.streak.flame, colors.streak.flameGlow]}
+                   style={styles.flameGlow}
+                 >
+                   <Flame size={32} color="#FFF" fill="#FFF" />
+                 </LinearGradient>
+               </View>
+               <Text style={styles.statValue}>{streakWeeks}</Text>
+               <Text style={styles.statLabel}>{t('profile.weeklyStreak')}</Text>
+             </GlassCard>
+
+             {/* Safety Shield - Only for Staff */}
+             <GlassCard style={styles.shieldCard}>
+                <Text style={styles.shieldTitle}>{t('profile.safetyShield')}</Text>
+                <View style={styles.shieldContainer}>
+                  <Svg width={SHIELD_SIZE} height={SHIELD_SIZE} style={styles.shieldSvg}>
+                    {/* Background Circle */}
+                    <Circle
+                      cx={SHIELD_SIZE / 2}
+                      cy={SHIELD_SIZE / 2}
+                      r={SHIELD_RADIUS}
+                      stroke={colors.background.subtle}
+                      strokeWidth={SHIELD_STROKE_WIDTH}
+                      fill="transparent"
+                    />
+                    {/* Progress Circle */}
+                    <Circle
+                      cx={SHIELD_SIZE / 2}
+                      cy={SHIELD_SIZE / 2}
+                      r={SHIELD_RADIUS}
+                      stroke={shieldHealth > 50 ? colors.status.success : shieldHealth > 25 ? colors.status.warning : colors.status.danger}
+                      strokeWidth={SHIELD_STROKE_WIDTH}
+                      fill="transparent"
+                      strokeDasharray={`${SHIELD_CIRCUMFERENCE * (shieldHealth / 100)} ${SHIELD_CIRCUMFERENCE}`}
+                      strokeLinecap="round"
+                      rotation={-90}
+                      origin={`${SHIELD_SIZE / 2}, ${SHIELD_SIZE / 2}`}
+                    />
+                  </Svg>
+                  <View style={styles.shieldCenter}>
+                    <Shield 
+                      size={36} 
+                      color={shieldHealth > 50 ? colors.status.success : shieldHealth > 25 ? colors.status.warning : colors.status.danger} 
+                    />
+                    <Text style={styles.shieldPercent}>{shieldHealth}%</Text>
+                  </View>
+                </View>
+                <Text style={styles.shieldDescription}>
+                  {shieldHealth > 75 
+                    ? t('profile.shieldStrong')
+                    : shieldHealth > 50 
+                      ? t('profile.shieldWarn')
+                      : t('profile.shieldCritical')}
+                </Text>
+             </GlassCard>
+             
+             </View>
           )}
 
           {/* Logout */}
@@ -805,60 +848,101 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: 12,
     color: colors.text.primary,
     fontFamily: typography.fonts.medium,
-    fontSize: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 16,
   },
   vehicleOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   vehicleOption: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background.subtle,
   },
   vehicleOptionSelected: {
-    backgroundColor: colors.primary.DEFAULT,
     borderColor: colors.primary.DEFAULT,
+    backgroundColor: colors.primary.light + '20',
   },
   vehicleText: {
+    fontSize: 14,
     color: colors.text.secondary,
     fontFamily: typography.fonts.medium,
   },
   vehicleTextSelected: {
-    color: colors.text.inverse,
+    color: colors.primary.DEFAULT,
     fontFamily: typography.fonts.bold,
+  },
+  dopsContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
-    marginBottom: 16,
-    marginTop: 8,
+    marginBottom: 4,
   },
-  infoRow: {
+  sectionSubtitle: {
+    fontSize: 12,
+    color: colors.text.tertiary,
+    marginBottom: 16,
+  },
+  ringsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  manageUsersButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 0,
+    justifyContent: 'center',
+    padding: 12,
+    marginBottom: 20,
+    backgroundColor: colors.background.subtle,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.primary.DEFAULT,
+    borderStyle: 'dashed',
+  },
+  manageUsersText: {
+    fontSize: 16,
+    fontFamily: typography.fonts.bold,
+    color: colors.primary.DEFAULT,
+    marginLeft: 8,
+  },
+  companySettingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginBottom: 12,
+    backgroundColor: colors.text.primary, // Inverse bg
+    borderRadius: 12,
+  },
+  companySettingsText: {
+    fontSize: 16,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.inverse,
+    marginLeft: 8,
   },
   sliderContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   sliderLabelContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 4,
   },
   sliderValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: typography.fonts.bold,
     color: colors.primary.DEFAULT,
   },
@@ -866,62 +950,4 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: '100%',
     height: 40,
   },
-  dopsContainer: {
-    marginBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-    paddingBottom: 24,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    fontFamily: typography.fonts.medium,
-    marginBottom: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  ringsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  companySettingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary.DEFAULT,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    shadowColor: colors.primary.DEFAULT,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  companySettingsText: {
-    color: colors.text.inverse,
-    fontFamily: typography.fonts.bold,
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  manageUsersButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background.subtle,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.primary.DEFAULT,
-    borderStyle: 'dashed',
-  },
-  manageUsersText: {
-    color: colors.primary.DEFAULT,
-    fontFamily: typography.fonts.bold,
-    fontSize: 16,
-    marginLeft: 8,
-  },
 });
-

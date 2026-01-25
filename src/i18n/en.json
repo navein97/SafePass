@@ -191,15 +191,17 @@
     "agePlaceholder": "Enter your age",
     "vehicleType": "Vehicle Type",
     "vehicles": {
-      "motorcycle": "Motorcycle",
-      "car": "Car",
-      "bus": "Bus",
-      "truck": "Truck"
+      "containerHaulage": "Container Haulage",
+      "curtainSide": "Curtain Side",
+      "openCargo": "Open Cargo",
+      "smallTruck": "Small Trucks and Vans",
+      "tanker": "Tankers"
     },
     "companySettings": "Company Settings",
     "manageUsers": "Manage / Create Users",
     "dopsTitle": "Driver Operational Performance",
-    "dopsSubtitle": "DOPD - Final Aggregated Results",
+    "dopsSubtitle": "Operational Effectiveness, Operational Discipline, Professional Conduct",
+    "performanceTrend": "Performance Trend",
     "opEffectiveness": "Operational Effectiveness",
     "opDiscipline": "Operational Discipline",
     "profConduct": "Professional Conduct",
@@ -209,6 +211,13 @@
     "minutes": "min",
     "personalDetails": "Personal Details",
     "difficultyDistribution": "Difficulty Distribution"
+  },
+  "navigation": {
+    "profile": "Profile",
+    "quiz": "Quiz",
+    "team": "Team",
+    "notifications": "Notifications",
+    "leaderboard": "Leaderboard"
   },
   "audit": {
     "title": "Compliance Audit",

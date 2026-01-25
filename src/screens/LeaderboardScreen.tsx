@@ -603,7 +603,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
   },
   tabActive: {
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: '#CA8A04', // Darker Gold (yellow-600) instead of primary default
   },
   tabText: {
     fontFamily: 'Inter-Medium',
@@ -765,7 +765,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 4,
   },
   podiumScoreFirst: {
-    color: colors.primary.DEFAULT,
+    color: '#CA8A04', // Darker Gold
     fontSize: 18,
   },
   leaderboardItem: {

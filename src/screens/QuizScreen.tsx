@@ -212,7 +212,20 @@ export const QuizScreen = ({ navigation }: any) => {
   };
 
   // Feedback Rendering Logic
-  const currentQuestion = questions[currentIndex] || { options: [], text: '' }; // Fallback to avoid crash on empty
+  const { i18n } = useTranslation();
+  const rawQuestion = questions[currentIndex] || { options: [], text: '' }; 
+
+  // Language Selection Logic
+  const currentQuestion = useMemo(() => {
+     const isMalay = i18n.language === 'ms';
+     return {
+         ...rawQuestion,
+         text: (isMalay && rawQuestion.text_ms) ? rawQuestion.text_ms : rawQuestion.text,
+         options: (isMalay && rawQuestion.options_ms) ? rawQuestion.options_ms : rawQuestion.options,
+         explanation: (isMalay && rawQuestion.explanation_ms) ? rawQuestion.explanation_ms : rawQuestion.explanation
+     };
+  }, [rawQuestion, i18n.language]);
+
   const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
 
   const getOptionStyle = (index: number) => {
