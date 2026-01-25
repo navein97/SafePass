@@ -9,11 +9,10 @@ import { QuizService } from '../services/quizService';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import { Question } from '../types/models';
-import { ChevronRight, ChevronLeft, Check, XCircle, AlertCircle } from 'lucide-react-native';
+import { ChevronRight, Check, X, AlertCircle, Heart, Clock } from 'lucide-react-native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const QUIZ_IMAGES: Record<string, any> = {
   'stop_sign': require('../../assets/quiz/stop_sign.jpg'),
@@ -23,42 +22,51 @@ const QUIZ_IMAGES: Record<string, any> = {
   'warning': require('../../assets/quiz/warning.jpg'),
 };
 
+// Option letters
+const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+// End state types
+type QuizEndState = 'completed' | 'timeout' | 'out_of_lives' | null;
+
 export const QuizScreen = ({ navigation }: any) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  /* State for new logic */
-  const [currentAttempts, setCurrentAttempts] = useState(0);
-  const [disabledOptions, setDisabledOptions] = useState<number[]>([]);
-  const [answers, setAnswers] = useState<{ questionId: string; attempts: number; isCorrect: boolean }[]>([]);
-  
+  const [answers, setAnswers] = useState<{ questionId: string; selectedOptionIndex: number; isCorrect: boolean }[]>([]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingStatus, setLoadingStatus] = useState(t('common.initializing'));
   const [userId, setUserId] = useState<string>('');
+  
+  // 3 Lives System
+  const [lives, setLives] = useState(3);
+  
+  // Timer
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // End State
+  const [endState, setEndState] = useState<QuizEndState>(null);
+  const [finalScore, setFinalScore] = useState(0);
 
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number | null>(null); // Seconds
-  
+
+  // Timer Effect
   useEffect(() => {
-    if (questions.length > 0 && timeLeft !== null && timeLeft > 0) {
+    if (questions.length > 0 && timeLeft !== null && timeLeft > 0 && !endState) {
       timerRef.current = setTimeout(() => {
         setTimeLeft(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
       }, 1000);
-    } else if (timeLeft === 0) {
-        // Time's up!
-        Alert.alert(t('quiz.timeUpTitle', 'Time\'s Up!'), t('quiz.timeUpMessage', 'Submitting your current progress.'), [
-            { text: 'OK', onPress: () => handleSubmit(answers) }
-        ]);
+    } else if (timeLeft === 0 && !endState) {
+      handleEndQuiz('timeout');
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-    }
-  }, [timeLeft, questions]);
+    };
+  }, [timeLeft, questions, endState]);
 
   useEffect(() => {
     loadQuiz();
@@ -87,22 +95,20 @@ export const QuizScreen = ({ navigation }: any) => {
       console.log('User Profile loaded:', profile.region);
       setUserId(profile.id);
       
-      // Manager Redirect
       if (profile.role === 'manager') {
-          navigation.replace('ManagerQuickView'); // Or navigate, but replace is better for root tab logic if stack allows
-          return;
+        navigation.replace('ManagerQuickView');
+        return;
       }
 
       setLoadingStatus(t('quiz.loadingQuestionsFor', { region: profile.region }));
 
-      // Load Settings
       const savedCount = await AsyncStorage.getItem('QUIZ_QUESTION_COUNT');
       const savedDiff = await AsyncStorage.getItem('QUIZ_DIFFICULTY_PARAMS');
       
       const count = savedCount ? parseInt(savedCount, 10) : 5;
       let difficultySettings = undefined;
       if (savedDiff) {
-         try { difficultySettings = JSON.parse(savedDiff); } catch(e) {}
+        try { difficultySettings = JSON.parse(savedDiff); } catch(e) {}
       }
 
       const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region, count, difficultySettings);
@@ -119,12 +125,11 @@ export const QuizScreen = ({ navigation }: any) => {
 
       setQuestions(loadedQuestions);
 
-      // Initialize Timer
       const savedTimer = await AsyncStorage.getItem('QUIZ_TIMER_DURATION');
-      let calculatedDuration = loadedQuestions.length * 60; // Default fallback
+      let calculatedDuration = loadedQuestions.length * 60;
       
       if (savedTimer) {
-          calculatedDuration = parseInt(savedTimer, 10) * 60;
+        calculatedDuration = parseInt(savedTimer, 10) * 60;
       }
       
       setTimeLeft(calculatedDuration);
@@ -139,70 +144,75 @@ export const QuizScreen = ({ navigation }: any) => {
   };
 
   const handleOptionSelect = (index: number) => {
-    if (isAnswered || disabledOptions.includes(index)) return;
+    if (isAnswered) return;
 
-    const newAttempts = currentAttempts + 1;
-    setCurrentAttempts(newAttempts);
     setSelectedOption(index);
+    setIsAnswered(true);
 
-    const currentQuestion = questions[currentIndex];
-    const isCorrect = index === currentQuestion.correctOptionIndex;
+    const rawQuestion = questions[currentIndex];
+    const isCorrect = index === rawQuestion.correctOptionIndex;
 
-    if (isCorrect) {
-        // Correct Answer
-        setIsAnswered(true);
-        setAnswers([...answers, {
-            questionId: currentQuestion.id,
-            attempts: newAttempts,
-            isCorrect: true
-        }]);
-        // Auto-scroll logic
+    const newAnswer = {
+      questionId: rawQuestion.id,
+      selectedOptionIndex: index,
+      isCorrect
+    };
+
+    const updatedAnswers = [...answers, newAnswer];
+    setAnswers(updatedAnswers);
+
+    if (!isCorrect) {
+      const newLives = lives - 1;
+      setLives(newLives);
+      
+      if (newLives <= 0) {
         setTimeout(() => {
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-
-    } else {
-        // Incorrect Answer
-        if (newAttempts < 3) {
-            // Allow Retry
-            Alert.alert(
-                t('quiz.incorrectHeader', 'Incorrect'), 
-                t('quiz.tryAgainMessage', 'That is not correct. You have {remaining} tries left.', { remaining: 3 - newAttempts })
-            );
-            setDisabledOptions([...disabledOptions, index]);
-            setSelectedOption(null); // Reset selection
-        } else {
-            // Max Attempts Reached
-            setIsAnswered(true);
-             setAnswers([...answers, {
-                questionId: currentQuestion.id,
-                attempts: newAttempts,
-                isCorrect: false
-            }]);
-             setTimeout(() => {
-                scrollViewRef.current?.scrollToEnd({ animated: true });
-            }, 100);
-        }
+          handleEndQuiz('out_of_lives', updatedAnswers);
+        }, 1500);
+        return;
+      }
     }
+    
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
-  
-   const handleNext = () => {
+
+  const handleNext = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setSelectedOption(null);
       setIsAnswered(false);
-      setCurrentAttempts(0);
-      setDisabledOptions([]);
     } else {
-      handleSubmit(answers);
+      handleEndQuiz('completed');
     }
   };
 
-  const handleSubmit = async (finalAnswers: typeof answers) => {
+  const handleEndQuiz = async (state: QuizEndState, currentAnswers?: typeof answers) => {
+    const finalAnswers = currentAnswers || answers;
+    const correctCount = finalAnswers.filter(a => a.isCorrect).length;
+    const score = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
+    
+    setFinalScore(score);
+    setEndState(state);
+    
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+  };
+
+  const handleSubmitAndExit = async () => {
     try {
       setLoading(true);
       setLoadingStatus(t('quiz.submitting'));
-      const { score, attempt } = await QuizService.submitQuiz(userId, finalAnswers, questions);
+      
+      const formattedAnswers = answers.map(a => ({
+        questionId: a.questionId,
+        attempts: 1,
+        isCorrect: a.isCorrect
+      }));
+      
+      const { score, attempt } = await QuizService.submitQuiz(userId, formattedAnswers, questions);
       navigation.replace('Review', { attempt, questions });
     } catch (error) {
       console.error('Error submitting quiz:', error);
@@ -211,98 +221,143 @@ export const QuizScreen = ({ navigation }: any) => {
     }
   };
 
-  // Feedback Rendering Logic
-  const { i18n } = useTranslation();
-  const rawQuestion = questions[currentIndex] || { options: [], text: '' }; 
+  const handleTryAgain = () => {
+    setCurrentIndex(0);
+    setAnswers([]);
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setLives(3);
+    setEndState(null);
+    
+    const duration = questions.length * 60;
+    setTimeLeft(duration);
+  };
 
   // Language Selection Logic
+  const rawQuestion = questions[currentIndex] || { options: [], text: '' };
   const currentQuestion = useMemo(() => {
-     const isMalay = i18n.language === 'ms';
-     return {
-         ...rawQuestion,
-         text: (isMalay && rawQuestion.text_ms) ? rawQuestion.text_ms : rawQuestion.text,
-         options: (isMalay && rawQuestion.options_ms) ? rawQuestion.options_ms : rawQuestion.options,
-         explanation: (isMalay && rawQuestion.explanation_ms) ? rawQuestion.explanation_ms : rawQuestion.explanation
-     };
+    const isMalay = i18n.language === 'ms';
+    return {
+      ...rawQuestion,
+      text: (isMalay && rawQuestion.text_ms) ? rawQuestion.text_ms : rawQuestion.text,
+      options: (isMalay && rawQuestion.options_ms) ? rawQuestion.options_ms : rawQuestion.options,
+      explanation: (isMalay && rawQuestion.explanation_ms) ? rawQuestion.explanation_ms : rawQuestion.explanation
+    };
   }, [rawQuestion, i18n.language]);
 
-  const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
+  // Render Loading State
+  if (loading) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+          <Text style={styles.loadingText}>{loadingStatus}</Text>
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
 
-  const getOptionStyle = (index: number) => {
-    if (disabledOptions.includes(index)) {
-        return styles.optionWrong; // Start red if previously selected wrong
-    }
+  // Render End State Screen
+  if (endState) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.endStateContainer}>
+          <View style={styles.endStateCard}>
+            {endState === 'completed' ? (
+              <>
+                <Check size={80} color="#00C853" strokeWidth={3} />
+                <Text style={[styles.endStateTitle, { color: '#00C853' }]}>
+                  {t('quiz.missionAccomplished', 'MISSION\nACCOMPLISHED!')}
+                </Text>
+              </>
+            ) : endState === 'out_of_lives' ? (
+              <>
+                <X size={80} color="#FF3D00" />
+                <Text style={[styles.endStateTitle, { color: '#FF3D00' }]}>
+                  {t('quiz.outOfLives', 'OUT OF LIVES!')}
+                </Text>
+              </>
+            ) : (
+              <>
+                <AlertCircle size={80} color="#FF9800" />
+                <Text style={[styles.endStateTitle, { color: '#FF9800' }]}>
+                  {t('quiz.timeUp', "TIME'S UP!")}
+                </Text>
+              </>
+            )}
+            
+            <Text style={styles.endStateScore}>
+              {t('quiz.score', 'Score')}: {finalScore}%
+            </Text>
+            
+            <TouchableOpacity style={styles.doneButton} onPress={handleSubmitAndExit}>
+              <Text style={styles.doneButtonText}>{t('common.done', 'Done')}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.tryAgainButton} onPress={handleTryAgain}>
+              <Text style={styles.tryAgainText}>{t('common.tryAgain', 'Try Again')}</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
 
-    if (!isAnswered) {
-      return selectedOption === index ? styles.optionSelected : {};
-    }
+  if (questions.length === 0) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.loadingContainer}>
+          <Text style={styles.errorTitle}>{t('quiz.unableToLoad')}</Text>
+          <Text style={styles.errorText}>{t('quiz.noQuestionsFound')}</Text>
+          <GlassButton 
+            title={t('common.goBack')}
+            onPress={() => navigation.goBack()}
+            style={{ width: 200 }}
+          />
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
 
-    if (index === currentQuestion.correctOptionIndex) {
-      return styles.optionCorrect;
-    }
-
-    if (selectedOption === index && index !== currentQuestion.correctOptionIndex) {
-      return styles.optionWrong;
-    }
-
-    return styles.optionDisabled; // Dim other options
-  };
-
-  const getOptionIcon = (index: number) => {
-     if (disabledOptions.includes(index)) {
-         return <XCircle size={16} color={colors.status.danger} />;
-     }
-
-    if (!isAnswered) {
-      return selectedOption === index ? <View style={styles.radioInner} /> : null;
-    }
-    
-    if (index === currentQuestion.correctOptionIndex) {
-      return <Check size={16} color={colors.status.success} strokeWidth={4} />;
-    }
-
-    if (selectedOption === index && index !== currentQuestion.correctOptionIndex) {
-      return <XCircle size={16} color={colors.status.danger} />;
-    }
-
-    return null;
-  };
+  // Get correct answer letter
+  const correctAnswerLetter = OPTION_LETTERS[rawQuestion.correctOptionIndex];
 
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         
-        {/* Header / Progress / Timer */}
+        {/* Header: Lives on LEFT, Timer on RIGHT */}
         <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <ChevronLeft color={colors.text.primary} size={28} />
-            </TouchableOpacity>
-            
-            <View style={{ flex: 1 }}>
-                <Text style={styles.progressText}>
-                    {t('quiz.question')} {currentIndex + 1} {t('quiz.of')} {questions.length}
-                </Text>
+          <View style={styles.headerRow}>
+            {/* Lives - Left Side */}
+            <View style={styles.livesContainer}>
+              {[...Array(3)].map((_, i) => (
+                <Heart
+                  key={i}
+                  size={28}
+                  color="#FF4444"
+                  fill={i < lives ? '#FF4444' : 'transparent'}
+                  strokeWidth={2}
+                />
+              ))}
             </View>
 
-            {/* Timer Display */}
+            {/* Timer - Right Side */}
             {timeLeft !== null && (
-                <View style={[styles.timerContainer, timeLeft < 60 && styles.timerWarning]}>
-                    <Text style={[styles.timerText, timeLeft < 60 && { color: colors.status.danger }]}>
-                        {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-                    </Text>
-                </View>
+              <View style={[styles.timerPill, timeLeft < 60 && styles.timerWarning]}>
+                <Clock size={18} color={timeLeft < 60 ? '#FF3D00' : '#333'} />
+                <Text style={[styles.timerText, timeLeft < 60 && styles.timerTextWarning]}>
+                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                </Text>
+              </View>
             )}
           </View>
-          <View style={styles.progressBarBg}>
-            <LinearGradient
-              colors={colors.gradients.primary as any}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.progressBarFill, { width: `${progress}%` }]}
-            />
-          </View>
+
+          {/* Question Progress - Centered */}
+          <Text style={styles.progressText}>
+            {t('quiz.question', 'Question')} {currentIndex + 1} / {questions.length}
+          </Text>
         </View>
 
         <ScrollView 
@@ -311,7 +366,8 @@ export const QuizScreen = ({ navigation }: any) => {
           bounces={true} 
           showsVerticalScrollIndicator={false}
         >
-          <GlassCard style={styles.questionCard}>
+          {/* Question Card */}
+          <View style={styles.questionCard}>
             {currentQuestion.imageUrl && QUIZ_IMAGES[currentQuestion.imageUrl] && (
               <Image 
                 source={QUIZ_IMAGES[currentQuestion.imageUrl]}
@@ -320,84 +376,85 @@ export const QuizScreen = ({ navigation }: any) => {
               />
             )}
             <Text style={styles.questionText}>{currentQuestion.text}</Text>
-          </GlassCard>
-
-          <View style={styles.optionsContainer}>
-            {currentQuestion.options.map((option, index) => (
-              <TouchableOpacity
-                key={index}
-                activeOpacity={isAnswered ? 1 : 0.8}
-                onPress={() => handleOptionSelect(index)}
-                disabled={isAnswered}
-              >
-                <GlassCard 
-                  style={[
-                    styles.optionButton,
-                    getOptionStyle(index)
-                  ]}
-                  intensity={selectedOption === index || (isAnswered && index === currentQuestion.correctOptionIndex) ? 40 : 20}
-                >
-                  <View style={styles.optionContent}>
-                    <View style={[
-                      styles.radioCircle,
-                      isAnswered && index === currentQuestion.correctOptionIndex && styles.radioCorrect,
-                      isAnswered && selectedOption === index && index !== currentQuestion.correctOptionIndex && styles.radioWrong,
-                      !isAnswered && selectedOption === index && styles.radioSelected
-                    ]}>
-                      {getOptionIcon(index)}
-                    </View>
-                    <Text style={[
-                      styles.optionText,
-                      selectedOption === index && styles.optionTextSelected
-                    ]}>
-                      {option}
-                    </Text>
-                  </View>
-                </GlassCard>
-              </TouchableOpacity>
-            ))}
           </View>
 
-          {/* Instant Feedback Section */}
-          {isAnswered && (
-             <View style={styles.feedbackContainer}>
-                {selectedOption === currentQuestion.correctOptionIndex ? (
-                    <GlassCard style={[styles.feedbackCard, { borderColor: colors.status.success, borderLeftWidth: 4 }]}>
-                         <View style={styles.feedbackHeader}>
-                            <Check size={24} color={colors.status.success} />
-                            <Text style={[styles.feedbackTitle, { color: colors.status.success }]}>{t('quiz.correct')}</Text>
-                         </View>
-                         {currentQuestion.explanation && (
-                             <Text style={styles.feedbackText}>{currentQuestion.explanation}</Text>
-                         )}
-                    </GlassCard>
-                ) : (
-                    <GlassCard style={[styles.feedbackCard, { borderColor: colors.status.danger, borderLeftWidth: 4 }]}>
-                         <View style={styles.feedbackHeader}>
-                            <AlertCircle size={24} color={colors.status.danger} />
-                            <Text style={[styles.feedbackTitle, { color: colors.status.danger }]}>{t('quiz.incorrect')}</Text>
-                         </View>
-                         <Text style={styles.feedbackText}>
-                             {t('quiz.correctAnswerIs')} <Text style={{fontFamily: typography.fonts.bold}}>{currentQuestion.options[currentQuestion.correctOptionIndex]}</Text>.
-                         </Text>
-                         {currentQuestion.explanation && (
-                             <Text style={[styles.feedbackText, { marginTop: 8 }]}>{currentQuestion.explanation}</Text>
-                         )}
-                    </GlassCard>
-                )}
-             </View>
+          {/* Options with A, B, C, D */}
+          <View style={styles.optionsContainer}>
+            {currentQuestion.options.map((option, index) => {
+              const isSelected = selectedOption === index;
+              const isCorrectOption = index === rawQuestion.correctOptionIndex;
+              const userWasWrong = isAnswered && isSelected && !isCorrectOption;
+              const showAsCorrect = isAnswered && isCorrectOption; // Always show correct answer in green when answered
+              const isDimmed = isAnswered && !isSelected && !isCorrectOption;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={isAnswered ? 1 : 0.7}
+                  onPress={() => handleOptionSelect(index)}
+                  disabled={isAnswered}
+                  style={[
+                    styles.optionCard,
+                    showAsCorrect && styles.optionCorrect,
+                    userWasWrong && styles.optionWrong,
+                    isDimmed && styles.optionDimmed,
+                  ]}
+                >
+                  <Text style={[
+                    styles.optionLetter,
+                    showAsCorrect && styles.optionLetterCorrect,
+                    userWasWrong && styles.optionLetterWrong,
+                  ]}>
+                    {OPTION_LETTERS[index]}
+                  </Text>
+                  <Text style={[
+                    styles.optionText,
+                    showAsCorrect && styles.optionTextCorrect,
+                    userWasWrong && styles.optionTextWrong,
+                  ]}>
+                    {option}
+                  </Text>
+                  
+                  {/* Icons on the right */}
+                  {showAsCorrect && (
+                    <Check size={24} color="#00C853" strokeWidth={3} />
+                  )}
+                  {userWasWrong && (
+                    <X size={24} color="#FF3D00" strokeWidth={3} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Feedback: "The correct answer is X" */}
+          {isAnswered && selectedOption !== rawQuestion.correctOptionIndex && (
+            <View style={styles.feedbackCard}>
+              <AlertCircle size={20} color="#FF3D00" />
+              <Text style={styles.feedbackText}>
+                {t('quiz.correctAnswerIs', 'The correct answer is')} {correctAnswerLetter}
+              </Text>
+            </View>
+          )}
+
+          {/* Explanation Section */}
+          {isAnswered && currentQuestion.explanation && (
+            <View style={styles.coachingCard}>
+              <Text style={styles.coachingLabel}>{t('quiz.explanation', 'Explanation')}:</Text>
+              <Text style={styles.coachingText}>{currentQuestion.explanation}</Text>
+            </View>
           )}
 
         </ScrollView>
 
-        {isAnswered && (
+        {/* Next Button */}
+        {isAnswered && lives > 0 && (
           <View style={styles.footer}>
-            <GlassButton
-              title={currentIndex === questions.length - 1 ? t('quiz.finish') : t('common.next')}
-              onPress={handleNext}
-              icon={<ChevronRight color={colors.text.primary} size={20} />}
-              style={styles.nextButton}
-            />
+            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+              <Text style={styles.nextButtonText}>
+                {currentIndex === questions.length - 1 ? t('quiz.finish', 'Finish') : t('common.next', 'Next')}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </SafeAreaView>
@@ -433,165 +490,254 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 30,
     textAlign: 'center',
   },
+  
+  // Header
   header: {
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 12,
-    marginTop: 10,
   },
-  headerTop: {
+  headerRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  backButton: {
-    marginRight: 16,
+  livesContainer: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  timerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  timerWarning: {
+    backgroundColor: 'rgba(255, 61, 0, 0.15)',
+  },
+  timerText: {
+    fontFamily: typography.fonts.bold,
+    fontSize: 16,
+    color: '#333',
+  },
+  timerTextWarning: {
+    color: '#FF3D00',
   },
   progressText: {
+    textAlign: 'center',
     color: colors.text.secondary,
     fontFamily: typography.fonts.medium,
     fontSize: 16,
   },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: colors.background.subtle,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
+  
+  // Content
   content: {
-    padding: 24,
+    padding: 20,
+    paddingBottom: 40,
   },
   questionCard: {
-    marginBottom: 24,
-    minHeight: 150,
-    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   questionText: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: typography.fonts.bold,
-    color: colors.text.primary,
-    lineHeight: 32,
-    textAlign: 'center',
+    color: '#1A1A1A',
+    lineHeight: 28,
   },
   questionImage: {
     width: '100%',
-    height: 200,
-    marginBottom: 20,
+    height: 180,
+    marginBottom: 16,
     borderRadius: 8,
   },
+  
+  // Options
   optionsContainer: {
-    gap: 16,
+    gap: 12,
   },
-  optionButton: {
-    padding: 0,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  optionContent: {
+  optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  optionSelected: {
-    borderColor: colors.primary.DEFAULT,
-    backgroundColor: colors.mode === 'dark' ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255, 215, 0, 0.1)',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   optionCorrect: {
-    borderColor: colors.status.success,
-    backgroundColor: colors.mode === 'dark' ? 'rgba(0, 200, 83, 0.15)' : 'rgba(0, 200, 83, 0.1)',
+    backgroundColor: 'rgba(0, 200, 83, 0.15)',
+    borderColor: '#00C853',
   },
   optionWrong: {
-    borderColor: colors.status.danger,
-    backgroundColor: colors.mode === 'dark' ? 'rgba(255, 61, 0, 0.15)' : 'rgba(255, 61, 0, 0.1)',
+    backgroundColor: 'rgba(255, 61, 0, 0.12)',
+    borderColor: '#FF3D00',
   },
-  optionDisabled: {
+  optionDimmed: {
     opacity: 0.5,
   },
-  radioCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.text.secondary,
-    marginRight: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioSelected: {
-    borderColor: colors.primary.DEFAULT,
-  },
-  radioCorrect: {
-    borderColor: colors.status.success,
-    backgroundColor: 'rgba(0, 200, 83, 0.2)',
-  },
-  radioWrong: {
-     borderColor: colors.status.danger,
-     backgroundColor: 'rgba(255, 61, 0, 0.2)',
-  },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.primary.DEFAULT,
-  },
-  optionText: {
-    fontSize: 16,
-    color: colors.text.primary,
-    fontFamily: typography.fonts.medium,
-    flex: 1,
-  },
-  optionTextSelected: {
-    color: colors.primary.light,
-    fontFamily: typography.fonts.bold,
-  },
-  feedbackContainer: {
-    marginTop: 24,
-    marginBottom: 20,
-  },
-  feedbackCard: {
-    padding: 16,
-  },
-  feedbackHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  feedbackTitle: {
+  optionLetter: {
+    width: 32,
     fontSize: 18,
     fontFamily: typography.fonts.bold,
+    color: '#666',
+  },
+  optionLetterCorrect: {
+    color: '#00C853',
+  },
+  optionLetterWrong: {
+    color: '#FF3D00',
+  },
+  optionText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: typography.fonts.medium,
+    color: '#1A1A1A',
+    lineHeight: 22,
+  },
+  optionTextCorrect: {
+    color: '#00C853',
+  },
+  optionTextWrong: {
+    color: '#FF3D00',
+  },
+  
+  // Feedback
+  feedbackCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 61, 0, 0.08)',
+    borderWidth: 1.5,
+    borderColor: '#FF3D00',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 20,
+    gap: 10,
   },
   feedbackText: {
-    color: colors.text.primary,
     fontSize: 15,
-    lineHeight: 22,
-    fontFamily: typography.fonts.regular,
+    fontFamily: typography.fonts.medium,
+    color: '#FF3D00',
   },
+  
+  // Coaching
+  coachingCard: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  coachingLabel: {
+    fontSize: 14,
+    fontFamily: typography.fonts.bold,
+    color: '#666',
+    marginBottom: 6,
+  },
+  coachingText: {
+    fontSize: 15,
+    fontFamily: typography.fonts.regular,
+    color: '#333',
+    lineHeight: 22,
+  },
+  
+  // Footer
   footer: {
-    padding: 24,
-    paddingBottom: 34,
+    padding: 20,
+    paddingBottom: 30,
   },
   nextButton: {
+    backgroundColor: '#FFD700',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  nextButtonText: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: '#1A1A1A',
+  },
+  
+  // End State
+  endStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  endStateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 40,
+    alignItems: 'center',
     width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  timerContainer: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
+  endStateTitle: {
+    fontSize: 28,
+    fontFamily: typography.fonts.bold,
+    marginTop: 20,
+    marginBottom: 16,
+    textAlign: 'center',
+    lineHeight: 36,
   },
-  timerWarning: {
-    backgroundColor: 'rgba(255, 0, 0, 0.1)',
-    borderColor: 'red',
+  endStateScore: {
+    fontSize: 22,
+    fontFamily: typography.fonts.medium,
+    color: '#1A1A1A',
+    marginBottom: 32,
   },
-  timerText: {
-    fontFamily: typography.fonts.mono || typography.fonts.bold,
-    fontSize: 14,
-    color: colors.text.primary,
+  doneButton: {
+    backgroundColor: '#FFD700',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 60,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  doneButtonText: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: '#1A1A1A',
+  },
+  tryAgainButton: {
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 60,
+    width: '100%',
+    alignItems: 'center',
+  },
+  tryAgainText: {
+    fontSize: 16,
+    fontFamily: typography.fonts.medium,
+    color: '#666',
   },
 });
-

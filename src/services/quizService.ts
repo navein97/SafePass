@@ -31,7 +31,7 @@ export const QuizService = {
             const questions = data.map(q => {
                 // Shuffle options
                 const originalOptions = [...q.options];
-                const correctOptionText = originalOptions[q.correct_option_index];
+                const correctOptionText = originalOptions[q.correctOptionIndex];
 
                 // create an array of indices [0, 1, 2, ...]
                 const indices = originalOptions.map((_, i) => i);
