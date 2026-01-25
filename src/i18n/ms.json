@@ -23,7 +23,8 @@
     "notice": "Notis",
     "easy": "Mudah",
     "intermediate": "Pertengahan",
-    "hard": "Sukar"
+    "hard": "Sukar",
+    "continue": "Teruskan"
   },
   "auth": {
     "login": "Log Masuk",
@@ -172,7 +173,8 @@
     "noQuestionsFound": "Kami tidak dapat mencari sebarang soalan untuk wilayah anda, atau terdapat ralat sambungan.",
     "correctAnswerIs": "Jawapan yang betul ialah",
     "correctAnswer": "Jawapan Betul",
-    "option": "Pilihan"
+    "option": "Pilihan",
+    "tryAgainLater": "Cuba Lagi - Soalan ini mungkin muncul semula kemudian"
   },
   "profile": {
     "title": "Profil",

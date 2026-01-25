@@ -36,6 +36,8 @@ export const QuizScreen = ({ navigation }: any) => {
   const [answers, setAnswers] = useState<{ questionId: string; selectedOptionIndex: number; isCorrect: boolean }[]>([]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [isCurrentWrong, setIsCurrentWrong] = useState(false); // Track if current answer was wrong
+  const [retryQueue, setRetryQueue] = useState<Question[]>([]); // Questions to retry later
   const [loading, setLoading] = useState(true);
   const [loadingStatus, setLoadingStatus] = useState(t('common.initializing'));
   const [userId, setUserId] = useState<string>('');
@@ -143,6 +145,35 @@ export const QuizScreen = ({ navigation }: any) => {
     }
   };
 
+  // Helper function to shuffle options and update correct index
+  const shuffleQuestionOptions = (question: Question): Question => {
+    const originalOptions = [...question.options];
+    const correctOptionText = originalOptions[question.correctOptionIndex];
+    
+    // Create shuffled indices
+    const indices = originalOptions.map((_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    
+    // Reorder options
+    const shuffledOptions = indices.map(i => originalOptions[i]);
+    const newCorrectIndex = shuffledOptions.indexOf(correctOptionText);
+    
+    // Also shuffle options_ms if present
+    const shuffledOptionsMalay = question.options_ms 
+      ? indices.map(i => question.options_ms![i]) 
+      : undefined;
+    
+    return {
+      ...question,
+      options: shuffledOptions,
+      options_ms: shuffledOptionsMalay,
+      correctOptionIndex: newCorrectIndex,
+    };
+  };
+
   const handleOptionSelect = (index: number) => {
     if (isAnswered) return;
 
@@ -152,22 +183,35 @@ export const QuizScreen = ({ navigation }: any) => {
     const rawQuestion = questions[currentIndex];
     const isCorrect = index === rawQuestion.correctOptionIndex;
 
-    const newAnswer = {
-      questionId: rawQuestion.id,
-      selectedOptionIndex: index,
-      isCorrect
-    };
-
-    const updatedAnswers = [...answers, newAnswer];
-    setAnswers(updatedAnswers);
-
-    if (!isCorrect) {
+    // Only record answer if correct (wrong answers will be retried)
+    if (isCorrect) {
+      const newAnswer = {
+        questionId: rawQuestion.id,
+        selectedOptionIndex: index,
+        isCorrect
+      };
+      setAnswers(prev => [...prev, newAnswer]);
+    } else {
+      // Mark current as wrong (for UI feedback)
+      setIsCurrentWrong(true);
+      
+      // Add question to retry queue with shuffled options
+      const shuffledQuestion = shuffleQuestionOptions(rawQuestion);
+      setRetryQueue(prev => [...prev, shuffledQuestion]);
+      
+      // Deduct a life
       const newLives = lives - 1;
       setLives(newLives);
       
       if (newLives <= 0) {
+        // Record all answers including wrong ones for final scoring
+        const allAnswers = [...answers, {
+          questionId: rawQuestion.id,
+          selectedOptionIndex: index,
+          isCorrect: false
+        }];
         setTimeout(() => {
-          handleEndQuiz('out_of_lives', updatedAnswers);
+          handleEndQuiz('out_of_lives', allAnswers);
         }, 1500);
         return;
       }
@@ -179,11 +223,22 @@ export const QuizScreen = ({ navigation }: any) => {
   };
 
   const handleNext = () => {
+    // Reset state for next question
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setIsCurrentWrong(false);
+    
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      setSelectedOption(null);
-      setIsAnswered(false);
+    } else if (retryQueue.length > 0) {
+      // We've finished main questions, now handle retry queue
+      // Append retry questions to the main questions array
+      const retryQuestions = [...retryQueue];
+      setQuestions(prev => [...prev, ...retryQuestions]);
+      setRetryQueue([]); // Clear the retry queue
+      setCurrentIndex(currentIndex + 1); // Move to first retry question
     } else {
+      // All questions answered correctly
       handleEndQuiz('completed');
     }
   };
@@ -226,6 +281,8 @@ export const QuizScreen = ({ navigation }: any) => {
     setAnswers([]);
     setSelectedOption(null);
     setIsAnswered(false);
+    setIsCurrentWrong(false);
+    setRetryQueue([]);
     setLives(3);
     setEndState(null);
     
@@ -384,8 +441,9 @@ export const QuizScreen = ({ navigation }: any) => {
               const isSelected = selectedOption === index;
               const isCorrectOption = index === rawQuestion.correctOptionIndex;
               const userWasWrong = isAnswered && isSelected && !isCorrectOption;
-              const showAsCorrect = isAnswered && isCorrectOption; // Always show correct answer in green when answered
-              const isDimmed = isAnswered && !isSelected && !isCorrectOption;
+              // Only show correct answer if user got it RIGHT (not when wrong)
+              const showAsCorrect = isAnswered && isCorrectOption && !isCurrentWrong;
+              const isDimmed = isAnswered && !isSelected && !showAsCorrect;
 
               return (
                 <TouchableOpacity
@@ -427,18 +485,18 @@ export const QuizScreen = ({ navigation }: any) => {
             })}
           </View>
 
-          {/* Feedback: "The correct answer is X" */}
-          {isAnswered && selectedOption !== rawQuestion.correctOptionIndex && (
+          {/* Feedback: "Try Again" when wrong (no correct answer revealed) */}
+          {isAnswered && isCurrentWrong && (
             <View style={styles.feedbackCard}>
               <AlertCircle size={20} color="#FF3D00" />
               <Text style={styles.feedbackText}>
-                {t('quiz.correctAnswerIs', 'The correct answer is')} {correctAnswerLetter}
+                {t('quiz.tryAgainLater', 'Try Again - This question will reappear later')}
               </Text>
             </View>
           )}
 
-          {/* Explanation Section */}
-          {isAnswered && currentQuestion.explanation && (
+          {/* Explanation Section - Only show when answer is CORRECT */}
+          {isAnswered && !isCurrentWrong && currentQuestion.explanation && (
             <View style={styles.coachingCard}>
               <Text style={styles.coachingLabel}>{t('quiz.explanation', 'Explanation')}:</Text>
               <Text style={styles.coachingText}>{currentQuestion.explanation}</Text>
@@ -452,7 +510,11 @@ export const QuizScreen = ({ navigation }: any) => {
           <View style={styles.footer}>
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
               <Text style={styles.nextButtonText}>
-                {currentIndex === questions.length - 1 ? t('quiz.finish', 'Finish') : t('common.next', 'Next')}
+                {isCurrentWrong 
+                  ? t('common.continue', 'Continue')
+                  : currentIndex === questions.length - 1 && retryQueue.length === 0
+                    ? t('quiz.finish', 'Finish') 
+                    : t('common.next', 'Next')}
               </Text>
             </TouchableOpacity>
           </View>

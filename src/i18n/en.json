@@ -23,7 +23,8 @@
     "notice": "Notice",
     "easy": "Easy",
     "intermediate": "Intermediate",
-    "hard": "Hard"
+    "hard": "Hard",
+    "continue": "Continue"
   },
   "auth": {
     "login": "Login",
@@ -172,7 +173,8 @@
     "noQuestionsFound": "We couldn't find any questions for your region, or there was a connection error.",
     "correctAnswerIs": "The correct answer is",
     "correctAnswer": "Correct Answer",
-    "option": "Option"
+    "option": "Option",
+    "tryAgainLater": "Try Again - This question might reappear later"
   },
   "profile": {
     "title": "Profile",
