@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar, Image } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar, Image, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { QuizService } from '../services/quizService';
+import { BatchService } from '../services/batchService';
 import { AuthService } from '../services/authService';
-import { supabase } from '../lib/supabase';
+import { QuizStorageService, SavedQuizProgress } from '../services/quizStorageService';
 import { Question } from '../types/models';
-import { ChevronRight, Check, X, AlertCircle, Heart, Clock } from 'lucide-react-native';
+import { Check, X, AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { GradientBackground } from '../components/ui/GradientBackground';
-import { GlassCard } from '../components/ui/GlassCard';
-import { GlassButton } from '../components/ui/GlassButton';
 
 const QUIZ_IMAGES: Record<string, any> = {
   'stop_sign': require('../../assets/quiz/stop_sign.jpg'),
@@ -22,53 +19,32 @@ const QUIZ_IMAGES: Record<string, any> = {
   'warning': require('../../assets/quiz/warning.jpg'),
 };
 
-// Option letters
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-// End state types
-type QuizEndState = 'completed' | 'timeout' | 'out_of_lives' | null;
-
-export const QuizScreen = ({ navigation }: any) => {
+export const QuizScreen = ({ navigation, route }: any) => {
+  // Ensure batchNumber is a number
+  const rawBatchNumber = route.params?.batchNumber ?? 1;
+  const batchNumber = parseInt(String(rawBatchNumber), 10);
+  
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<{ questionId: string; selectedOptionIndex: number; isCorrect: boolean }[]>([]);
+  const [answers, setAnswers] = useState<{ questionId: string; attempts: number; isCorrect: boolean }[]>([]);
+  const [attemptCounts, setAttemptCounts] = useState<Record<number, number>>({});
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
-  const [isCurrentWrong, setIsCurrentWrong] = useState(false); // Track if current answer was wrong
-  const [retryQueue, setRetryQueue] = useState<Question[]>([]); // Questions to retry later
+  const [showFeedback, setShowFeedback] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingStatus, setLoadingStatus] = useState(t('common.initializing'));
   const [userId, setUserId] = useState<string>('');
+  const [startTime, setStartTime] = useState<number>(Date.now());
+  const [savedProgress, setSavedProgress] = useState<SavedQuizProgress | null>(null);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
   
-  // 3 Lives System
-  const [lives, setLives] = useState(3);
-  
-  // Timer
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // End State
-  const [endState, setEndState] = useState<QuizEndState>(null);
-  const [finalScore, setFinalScore] = useState(0);
-
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
-
-  // Timer Effect
-  useEffect(() => {
-    if (questions.length > 0 && timeLeft !== null && timeLeft > 0 && !endState) {
-      timerRef.current = setTimeout(() => {
-        setTimeLeft(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    } else if (timeLeft === 0 && !endState) {
-      handleEndQuiz('timeout');
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [timeLeft, questions, endState]);
 
   useEffect(() => {
     loadQuiz();
@@ -94,7 +70,6 @@ export const QuizScreen = ({ navigation }: any) => {
         return;
       }
 
-      console.log('User Profile loaded:', profile.region);
       setUserId(profile.id);
       
       if (profile.role === 'manager') {
@@ -102,76 +77,127 @@ export const QuizScreen = ({ navigation }: any) => {
         return;
       }
 
-      setLoadingStatus(t('quiz.loadingQuestionsFor', { region: profile.region }));
-
-      const savedCount = await AsyncStorage.getItem('QUIZ_QUESTION_COUNT');
-      const savedDiff = await AsyncStorage.getItem('QUIZ_DIFFICULTY_PARAMS');
-      
-      const count = savedCount ? parseInt(savedCount, 10) : 5;
-      let difficultySettings = undefined;
-      if (savedDiff) {
-        try { difficultySettings = JSON.parse(savedDiff); } catch(e) {}
+      // Check if user can access this batch
+      const canAccess = await BatchService.canAccessBatch(profile.id, batchNumber);
+      if (!canAccess) {
+        Alert.alert(
+          'Batch Locked',
+          `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
       }
 
-      const loadedQuestions = await QuizService.generateWeeklyQuiz(profile.region, count, difficultySettings);
-      console.log('Questions loaded for region:', loadedQuestions.length);
+      setLoadingStatus(`Loading Batch ${batchNumber} questions...`);
+
+      // Load batch questions
+      const loadedQuestions = await BatchService.getBatchQuestions(batchNumber);
+      console.log(`Loaded ${loadedQuestions.length} questions for Batch ${batchNumber}`);
       
       if (loadedQuestions.length === 0) {
         Alert.alert(
-          t('quiz.noQuestionsTitle'), 
-          t('quiz.noQuestionsMessage', { region: profile.region })
+          'No Questions',
+          `No questions found for Batch ${batchNumber}`
         );
         navigation.goBack();
         return;
       }
 
       setQuestions(loadedQuestions);
-
-      const savedTimer = await AsyncStorage.getItem('QUIZ_TIMER_DURATION');
-      let calculatedDuration = loadedQuestions.length * 60;
       
-      if (savedTimer) {
-        calculatedDuration = parseInt(savedTimer, 10) * 60;
+      // Check for saved progress
+      const saved = await QuizStorageService.loadProgress(profile.id, batchNumber);
+      if (saved && saved.currentIndex > 0) {
+        setSavedProgress(saved);
+        setShowResumePrompt(true);
+      } else {
+        setStartTime(Date.now());
       }
-      
-      setTimeLeft(calculatedDuration);
 
     } catch (error) {
       console.error('Error loading quiz:', error);
-      Alert.alert(t('common.error'), t('quiz.loadFailed'));
+      Alert.alert(t('common.error'), 'Failed to load quiz');
       navigation.goBack();
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper function to shuffle options and update correct index
-  const shuffleQuestionOptions = (question: Question): Question => {
-    const originalOptions = [...question.options];
-    const correctOptionText = originalOptions[question.correctOptionIndex];
-    
-    // Create shuffled indices
-    const indices = originalOptions.map((_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
+  // Restore saved progress
+  const restoreProgress = () => {
+    if (savedProgress) {
+      setCurrentIndex(savedProgress.currentIndex);
+      setAnswers(savedProgress.answers);
+      setAttemptCounts(savedProgress.attemptCounts);
+      setStartTime(savedProgress.startTime);
+      setShowResumePrompt(false);
+      setSavedProgress(null);
     }
-    
-    // Reorder options
-    const shuffledOptions = indices.map(i => originalOptions[i]);
-    const newCorrectIndex = shuffledOptions.indexOf(correctOptionText);
-    
-    // Also shuffle options_ms if present
-    const shuffledOptionsMalay = question.options_ms 
-      ? indices.map(i => question.options_ms![i]) 
-      : undefined;
-    
-    return {
-      ...question,
-      options: shuffledOptions,
-      options_ms: shuffledOptionsMalay,
-      correctOptionIndex: newCorrectIndex,
-    };
+  };
+
+  // Start fresh (discard saved progress)
+  const startFresh = async () => {
+    if (userId) {
+      await QuizStorageService.clearProgress(userId, batchNumber);
+    }
+    setStartTime(Date.now());
+    setShowResumePrompt(false);
+    setSavedProgress(null);
+  };
+
+  // Save current progress to local storage
+  const saveProgressLocally = async () => {
+    if (userId && questions.length > 0) {
+      await QuizStorageService.saveProgress({
+        batchNumber,
+        currentIndex,
+        answers,
+        attemptCounts,
+        startTime,
+        savedAt: Date.now(),
+        userId,
+      });
+    }
+  };
+  
+  const handleBack = () => {
+    // Platform-agnostic confirmation with save option
+    const title = t('common.exitQuiz') || 'Exit Quiz?';
+    const message = t('common.saveExitMessage') || 
+      'Would you like to save your progress and continue later?';
+
+    if (Platform.OS === 'web') {
+      // Web: Use confirm for simple yes/no, save progress if confirmed
+      const saveAndExit = window.confirm(`${title}\n\n${message}\n\nClick OK to Save & Exit, Cancel to continue quiz.`);
+      if (saveAndExit) {
+        saveProgressLocally().then(() => {
+          navigation.navigate('MainTabs', { screen: 'Mission' });
+        });
+      }
+    } else {
+      Alert.alert(
+        title,
+        message,
+        [
+          { text: t('common.cancel') || 'Cancel', style: 'cancel' },
+          { 
+            text: t('common.saveAndExitButton') || 'Save & Exit',
+            onPress: async () => {
+              await saveProgressLocally();
+              navigation.navigate('MainTabs', { screen: 'Mission' });
+            }
+          },
+          { 
+            text: t('common.exitWithoutSaving') || 'Exit Without Saving', 
+            style: 'destructive',
+            onPress: async () => {
+              await QuizStorageService.clearProgress(userId, batchNumber);
+              navigation.navigate('MainTabs', { screen: 'Mission' });
+            }
+          }
+        ]
+      );
+    }
   };
 
   const handleOptionSelect = (index: number) => {
@@ -182,39 +208,29 @@ export const QuizScreen = ({ navigation }: any) => {
 
     const rawQuestion = questions[currentIndex];
     const isCorrect = index === rawQuestion.correctOptionIndex;
+    const currentAttempts = (attemptCounts[currentIndex] || 0) + 1;
 
-    // Only record answer if correct (wrong answers will be retried)
+    setAttemptCounts(prev => ({
+      ...prev,
+      [currentIndex]: currentAttempts
+    }));
+
     if (isCorrect) {
-      const newAnswer = {
+      // Record correct answer
+      setAnswers(prev => [...prev, {
         questionId: rawQuestion.id,
-        selectedOptionIndex: index,
-        isCorrect
-      };
-      setAnswers(prev => [...prev, newAnswer]);
+        attempts: currentAttempts,
+        isCorrect: true
+      }]);
+      setShowFeedback(false);
+      
+      // Auto-advance to next question after 1 second
+      setTimeout(() => {
+        handleNext();
+      }, 1000);
     } else {
-      // Mark current as wrong (for UI feedback)
-      setIsCurrentWrong(true);
-      
-      // Add question to retry queue with shuffled options
-      const shuffledQuestion = shuffleQuestionOptions(rawQuestion);
-      setRetryQueue(prev => [...prev, shuffledQuestion]);
-      
-      // Deduct a life
-      const newLives = lives - 1;
-      setLives(newLives);
-      
-      if (newLives <= 0) {
-        // Record all answers including wrong ones for final scoring
-        const allAnswers = [...answers, {
-          questionId: rawQuestion.id,
-          selectedOptionIndex: index,
-          isCorrect: false
-        }];
-        setTimeout(() => {
-          handleEndQuiz('out_of_lives', allAnswers);
-        }, 1500);
-        return;
-      }
+      // Show feedback
+      setShowFeedback(true);
     }
     
     setTimeout(() => {
@@ -222,73 +238,84 @@ export const QuizScreen = ({ navigation }: any) => {
     }, 100);
   };
 
-  const handleNext = () => {
-    // Reset state for next question
+  const handleRetry = () => {
     setSelectedOption(null);
     setIsAnswered(false);
-    setIsCurrentWrong(false);
+    setShowFeedback(false);
+  };
+
+  const handleNext = () => {
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setShowFeedback(false);
     
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
-    } else if (retryQueue.length > 0) {
-      // We've finished main questions, now handle retry queue
-      // Append retry questions to the main questions array
-      const retryQuestions = [...retryQueue];
-      setQuestions(prev => [...prev, ...retryQuestions]);
-      setRetryQueue([]); // Clear the retry queue
-      setCurrentIndex(currentIndex + 1); // Move to first retry question
     } else {
-      // All questions answered correctly
-      handleEndQuiz('completed');
+      handleFinish();
     }
   };
 
-  const handleEndQuiz = async (state: QuizEndState, currentAnswers?: typeof answers) => {
-    const finalAnswers = currentAnswers || answers;
-    const correctCount = finalAnswers.filter(a => a.isCorrect).length;
-    const score = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
-    
-    setFinalScore(score);
-    setEndState(state);
-    
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-  };
-
-  const handleSubmitAndExit = async () => {
+  const handleFinish = async () => {
     try {
+      console.log('Starting handleFinish...');
       setLoading(true);
-      setLoadingStatus(t('quiz.submitting'));
+      setLoadingStatus('Submitting your answers...');
       
-      const formattedAnswers = answers.map(a => ({
-        questionId: a.questionId,
-        attempts: 1,
-        isCorrect: a.isCorrect
-      }));
+      const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000);
+      console.log(`Submitting attempt for User: ${userId}, Batch: ${batchNumber}, Time: ${timeSpentSeconds}s`);
       
-      const { score, attempt } = await QuizService.submitQuiz(userId, formattedAnswers, questions);
-      navigation.replace('Review', { attempt, questions });
+      const result = await BatchService.submitBatchAttempt(
+        userId,
+        batchNumber,
+        answers,
+        questions,
+        timeSpentSeconds
+      );
+
+      console.log('Submission result:', result);
+
+      if (result.success && result.progress) {
+        // Clear saved progress since quiz is complete
+        await QuizStorageService.clearProgress(userId, batchNumber);
+        
+        const avgScore = await BatchService.getBatchAverageScore(userId, batchNumber);
+        const passed = avgScore >= 60;
+        
+        const title = passed ? 'Batch Completed!' : 'Batch Attempt Recorded';
+        const message = `Score: ${result.progress.score.toFixed(2)}%\nAverage: ${avgScore.toFixed(2)}%\n\n${
+          passed 
+            ? batchNumber < 4 ? `Batch ${batchNumber + 1} is now unlocked!` : 'Congratulations! You have completed all batches!'
+            : `You need ${(60 - avgScore).toFixed(2)}% more to pass this batch.`
+        }`;
+
+        // Platform-specific alert handling
+        if (Platform.OS === 'web') {
+          window.alert(`${title}\n\n${message}`);
+          navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } });
+        } else {
+          Alert.alert(title, message, [
+            { text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } }) }
+          ]);
+        }
+      } else {
+        console.error('Submission returned failure');
+        Alert.alert('Error', 'Failed to submit batch attempt. Please try again.');
+        // Don't auto navigate on error
+      }
     } catch (error) {
-      console.error('Error submitting quiz:', error);
-      Alert.alert(t('common.error'), t('quiz.submitFailed'));
+      console.error('Error finishing quiz:', error);
+      Alert.alert('Error', 'Failed to submit answers. Please check your connection.');
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleTryAgain = () => {
-    setCurrentIndex(0);
-    setAnswers([]);
-    setSelectedOption(null);
-    setIsAnswered(false);
-    setIsCurrentWrong(false);
-    setRetryQueue([]);
-    setLives(3);
-    setEndState(null);
-    
-    const duration = questions.length * 60;
-    setTimeLeft(duration);
-  };
+  // Calculate current progress
+  const attemptedCount = answers.length;
+  const correctCount = answers.filter(a => a.isCorrect).length;
+  const accuracy = attemptedCount > 0 ? (correctCount / attemptedCount) * 100 : 0;
+  const completion = (attemptedCount / questions.length) * 100;
 
   // Language Selection Logic
   const rawQuestion = questions[currentIndex] || { options: [], text: '' };
@@ -314,107 +341,88 @@ export const QuizScreen = ({ navigation }: any) => {
     );
   }
 
-  // Render End State Screen
-  if (endState) {
+  if (questions.length === 0) {
     return (
       <GradientBackground>
-        <SafeAreaView style={styles.endStateContainer}>
-          <View style={styles.endStateCard}>
-            {endState === 'completed' ? (
-              <>
-                <Check size={80} color="#00C853" strokeWidth={3} />
-                <Text style={[styles.endStateTitle, { color: '#00C853' }]}>
-                  {t('quiz.missionAccomplished', 'MISSION\nACCOMPLISHED!')}
-                </Text>
-              </>
-            ) : endState === 'out_of_lives' ? (
-              <>
-                <X size={80} color="#FF3D00" />
-                <Text style={[styles.endStateTitle, { color: '#FF3D00' }]}>
-                  {t('quiz.outOfLives', 'OUT OF LIVES!')}
-                </Text>
-              </>
-            ) : (
-              <>
-                <AlertCircle size={80} color="#FF9800" />
-                <Text style={[styles.endStateTitle, { color: '#FF9800' }]}>
-                  {t('quiz.timeUp', "TIME'S UP!")}
-                </Text>
-              </>
-            )}
-            
-            <Text style={styles.endStateScore}>
-              {t('quiz.score', 'Score')}: {finalScore}%
+        <SafeAreaView style={styles.loadingContainer}>
+          <Text style={styles.errorTitle}>Unable to Load Questions</Text>
+          <Text style={styles.errorText}>No questions found for this batch</Text>
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
+  // Resume Prompt
+  if (showResumePrompt && savedProgress) {
+    const savedQuestion = savedProgress.currentIndex + 1;
+    const totalQuestions = questions.length;
+    const answeredCount = savedProgress.answers.length;
+    
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.resumeContainer}>
+          <View style={styles.resumeCard}>
+            <Text style={styles.resumeTitle}>{t('quiz.savedProgressTitle') || 'Resume Quiz?'}</Text>
+            <Text style={styles.resumeMessage}>
+              {t('quiz.savedProgressMessage', { 
+                question: savedQuestion, 
+                total: totalQuestions,
+                answered: answeredCount 
+              }) || `You have saved progress at Question ${savedQuestion} of ${totalQuestions}.\n\n${answeredCount} questions answered.`}
             </Text>
             
-            <TouchableOpacity style={styles.doneButton} onPress={handleSubmitAndExit}>
-              <Text style={styles.doneButtonText}>{t('common.done', 'Done')}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.tryAgainButton} onPress={handleTryAgain}>
-              <Text style={styles.tryAgainText}>{t('common.tryAgain', 'Try Again')}</Text>
-            </TouchableOpacity>
+            <View style={styles.resumeButtons}>
+              <TouchableOpacity 
+                style={[styles.resumeButton, styles.resumeButtonPrimary]} 
+                onPress={restoreProgress}
+              >
+                <Text style={styles.resumeButtonTextPrimary}>
+                  {t('quiz.resumeButton', { question: savedQuestion }) || `Resume from Q${savedQuestion}`}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.resumeButton, styles.resumeButtonSecondary]} 
+                onPress={startFresh}
+              >
+                <Text style={styles.resumeButtonTextSecondary}>
+                  {t('quiz.startFreshButton') || 'Start Fresh'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
       </GradientBackground>
     );
   }
-
-  if (questions.length === 0) {
-    return (
-      <GradientBackground>
-        <SafeAreaView style={styles.loadingContainer}>
-          <Text style={styles.errorTitle}>{t('quiz.unableToLoad')}</Text>
-          <Text style={styles.errorText}>{t('quiz.noQuestionsFound')}</Text>
-          <GlassButton 
-            title={t('common.goBack')}
-            onPress={() => navigation.goBack()}
-            style={{ width: 200 }}
-          />
-        </SafeAreaView>
-      </GradientBackground>
-    );
-  }
-
-  // Get correct answer letter
-  const correctAnswerLetter = OPTION_LETTERS[rawQuestion.correctOptionIndex];
 
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         
-        {/* Header: Lives on LEFT, Timer on RIGHT */}
+        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerRow}>
-            {/* Lives - Left Side */}
-            <View style={styles.livesContainer}>
-              {[...Array(3)].map((_, i) => (
-                <Heart
-                  key={i}
-                  size={28}
-                  color="#FF4444"
-                  fill={i < lives ? '#FF4444' : 'transparent'}
-                  strokeWidth={2}
-                />
-              ))}
-            </View>
-
-            {/* Timer - Right Side */}
-            {timeLeft !== null && (
-              <View style={[styles.timerPill, timeLeft < 60 && styles.timerWarning]}>
-                <Clock size={18} color={timeLeft < 60 ? '#FF3D00' : colors.text.primary} />
-                <Text style={[styles.timerText, { color: colors.text.primary }, timeLeft < 60 && styles.timerTextWarning]}>
-                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-                </Text>
-              </View>
-            )}
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+              <ArrowLeft size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+            <Text style={styles.batchTitle}>Batch {batchNumber}</Text>
+            <View style={{ width: 24 }} />
           </View>
-
-          {/* Question Progress - Centered */}
           <Text style={styles.progressText}>
-            {t('quiz.question', 'Question')} {currentIndex + 1} / {questions.length}
+            Question {currentIndex + 1} / {questions.length}
           </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Attempted</Text>
+              <Text style={styles.statValue}>{attemptedCount}/{questions.length} ({completion.toFixed(0)}%)</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Accuracy</Text>
+              <Text style={styles.statValue}>{correctCount}/{attemptedCount} ({accuracy.toFixed(0)}%)</Text>
+            </View>
+          </View>
         </View>
 
         <ScrollView 
@@ -441,8 +449,7 @@ export const QuizScreen = ({ navigation }: any) => {
               const isSelected = selectedOption === index;
               const isCorrectOption = index === rawQuestion.correctOptionIndex;
               const userWasWrong = isAnswered && isSelected && !isCorrectOption;
-              // Only show correct answer if user got it RIGHT (not when wrong)
-              const showAsCorrect = isAnswered && isCorrectOption && !isCurrentWrong;
+              const showAsCorrect = isAnswered && isCorrectOption && !showFeedback;
               const isDimmed = isAnswered && !isSelected && !showAsCorrect;
 
               return (
@@ -473,7 +480,6 @@ export const QuizScreen = ({ navigation }: any) => {
                     {option}
                   </Text>
                   
-                  {/* Icons on the right */}
                   {showAsCorrect && (
                     <Check size={24} color="#00C853" strokeWidth={3} />
                   )}
@@ -485,40 +491,40 @@ export const QuizScreen = ({ navigation }: any) => {
             })}
           </View>
 
-          {/* Feedback: "Try Again" when wrong (no correct answer revealed) */}
-          {isAnswered && isCurrentWrong && (
+          {/* Feedback: "Try Again" when wrong */}
+          {showFeedback && (
             <View style={styles.feedbackCard}>
               <AlertCircle size={20} color="#FF3D00" />
               <Text style={styles.feedbackText}>
-                {t('quiz.tryAgainLater', 'Try Again - This question will reappear later')}
+                Incorrect. Try again! (Attempt {(attemptCounts[currentIndex] || 0)})
               </Text>
             </View>
           )}
 
           {/* Explanation Section - Only show when answer is CORRECT */}
-          {isAnswered && !isCurrentWrong && currentQuestion.explanation && (
+          {isAnswered && !showFeedback && currentQuestion.explanation && (
             <View style={styles.coachingCard}>
-              <Text style={styles.coachingLabel}>{t('quiz.explanation', 'Explanation')}:</Text>
+              <Text style={styles.coachingLabel}>Explanation:</Text>
               <Text style={styles.coachingText}>{currentQuestion.explanation}</Text>
             </View>
           )}
 
         </ScrollView>
 
-        {/* Next Button */}
-        {isAnswered && lives > 0 && (
-          <View style={styles.footer}>
+        {/* Action Buttons */}
+        <View style={styles.footer}>
+          {showFeedback ? (
+            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          ) : isAnswered && (
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
               <Text style={styles.nextButtonText}>
-                {isCurrentWrong 
-                  ? t('common.continue', 'Continue')
-                  : currentIndex === questions.length - 1 && retryQueue.length === 0
-                    ? t('quiz.finish', 'Finish') 
-                    : t('common.next', 'Next')}
+                {currentIndex === questions.length - 1 ? 'Finish' : 'Next'}
               </Text>
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
       </SafeAreaView>
     </GradientBackground>
   );
@@ -559,44 +565,48 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
-  headerRow: {
+  headerTopRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  livesContainer: {
-    flexDirection: 'row',
-    gap: 4,
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
   },
-  timerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.subtle,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  timerWarning: {
-    backgroundColor: 'rgba(255, 61, 0, 0.15)',
-    borderColor: '#FF3D00',
-  },
-  timerText: {
+  batchTitle: {
+    fontSize: 24,
     fontFamily: typography.fonts.bold,
-    fontSize: 16,
     color: colors.text.primary,
-  },
-  timerTextWarning: {
-    color: '#FF3D00',
+    textAlign: 'center',
+    marginBottom: 4,
   },
   progressText: {
     textAlign: 'center',
     color: colors.text.secondary,
     fontFamily: typography.fonts.medium,
-    fontSize: 16,
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontFamily: typography.fonts.medium,
+  },
+  statValue: {
+    fontSize: 15,
+    color: colors.text.primary,
+    fontFamily: typography.fonts.bold,
+    marginTop: 2,
   },
   
   // Content
@@ -699,6 +709,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 15,
     fontFamily: typography.fonts.medium,
     color: '#FF3D00',
+    flex: 1,
   },
   
   // Coaching
@@ -742,65 +753,83 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.bold,
     color: '#1A1A1A',
   },
+  retryButton: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  retryButtonText: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: '#FFFFFF',
+  },
   
-  // End State
-  endStateContainer: {
+  // Resume Prompt Styles
+  resumeContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
   },
-  endStateCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 40,
-    alignItems: 'center',
+  resumeCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 30,
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 400,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
-    elevation: 6,
+    elevation: 8,
   },
-  endStateTitle: {
-    fontSize: 28,
+  resumeTitle: {
+    fontSize: 24,
     fontFamily: typography.fonts.bold,
-    marginTop: 20,
+    color: '#1A1A1A',
     marginBottom: 16,
     textAlign: 'center',
-    lineHeight: 36,
   },
-  endStateScore: {
-    fontSize: 22,
-    fontFamily: typography.fonts.medium,
-    color: '#1A1A1A',
-    marginBottom: 32,
+  resumeMessage: {
+    fontSize: 16,
+    fontFamily: typography.fonts.regular,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
   },
-  doneButton: {
-    backgroundColor: '#FFD700',
+  resumeButtons: {
+    width: '100%',
+    gap: 12,
+  },
+  resumeButton: {
     borderRadius: 12,
     paddingVertical: 16,
-    paddingHorizontal: 60,
-    width: '100%',
+    paddingHorizontal: 24,
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center',
   },
-  doneButtonText: {
-    fontSize: 18,
+  resumeButtonPrimary: {
+    backgroundColor: '#FFD700',
+  },
+  resumeButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#CCC',
+  },
+  resumeButtonTextPrimary: {
+    fontSize: 16,
     fontFamily: typography.fonts.bold,
     color: '#1A1A1A',
   },
-  tryAgainButton: {
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 60,
-    width: '100%',
-    alignItems: 'center',
-  },
-  tryAgainText: {
+  resumeButtonTextSecondary: {
     fontSize: 16,
     fontFamily: typography.fonts.medium,
     color: '#666',

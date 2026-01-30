@@ -49,14 +49,10 @@ export const ScoringService = {
             if (weights.professionalism) totalPossible.professionalism += weights.professionalism;
             if (weights.discipline) totalPossible.discipline += weights.discipline;
 
-            // Add to earned totals if correct, with WEIGHTING based on attempts
+            // Add to earned totals if correct, with NO weighting penalties as per client request (Simple Average)
             if (answer.isCorrect) {
-                let attemptMultiplier = 1.0;
-                const attempts = answer.attempts || 1;
-
-                if (attempts === 1) attemptMultiplier = 1.0;
-                else if (attempts === 2) attemptMultiplier = 0.5;
-                else if (attempts >= 3) attemptMultiplier = 0.25;
+                // Client requested simple average, so full marks regardless of attempt count
+                const attemptMultiplier = 1.0;
 
                 if (weights.operation) earned.operation += weights.operation * attemptMultiplier;
                 if (weights.professionalism) earned.professionalism += weights.professionalism * attemptMultiplier;
@@ -77,16 +73,14 @@ export const ScoringService = {
     },
 
     calculateWeightedAverage(currentScore: number, history: number[]): number {
-        // History: array of previous scores (last 5 days)
-        // Formula: (Today * 0.7) + (AverageOfHistory * 0.3)
-        // This rewards consistency but prioritizes current performance.
-
+        // Updated to Simple Average as requested
         if (history.length === 0) return currentScore;
 
         const historySum = history.reduce((sum, val) => sum + val, 0);
-        const historyAvg = historySum / history.length;
+        // Add current score to history sum for total average
+        const totalSum = historySum + currentScore;
+        const totalCount = history.length + 1;
 
-        const weightedScore = (currentScore * 0.7) + (historyAvg * 0.3);
-        return Math.round(weightedScore);
+        return Math.round(totalSum / totalCount);
     }
 };

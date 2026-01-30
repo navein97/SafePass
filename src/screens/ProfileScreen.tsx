@@ -50,6 +50,8 @@ interface ProfileData {
   division?: string;
   area?: string;
   totalScore?: number;
+  current_batch?: number;
+  total_batches_completed?: number;
 }
 
 export const ProfileScreen = ({ navigation }: any) => {
@@ -90,8 +92,12 @@ export const ProfileScreen = ({ navigation }: any) => {
   const shieldHealth = profile?.shieldHealth || 100; // Percentage
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadProfile();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const loadProfile = async () => {
     try {
@@ -112,6 +118,8 @@ export const ProfileScreen = ({ navigation }: any) => {
         operationalDiscipline: userProfile.operational_discipline || 0.25,
         professionalConduct: userProfile.professional_conduct || 0.12,
         totalScore: userProfile.totalScore || 0,
+        current_batch: userProfile.current_batch || 1,
+        total_batches_completed: userProfile.total_batches_completed || 0,
       });
 
       // Load History
@@ -373,104 +381,49 @@ export const ProfileScreen = ({ navigation }: any) => {
                   <Text style={styles.sectionTitle}>{t('profile.settings')}</Text>
                </View>
 
-               {/* Question Count Slider */}
+               {/* Question Count Slider (Fixed) */}
                <View style={styles.sliderContainer}>
                  <View style={styles.sliderLabelContainer}>
-                   <Text style={styles.inputLabel}>{t('profile.questionsCount')}</Text>
-                   <Text style={styles.sliderValue}>{questionCount}</Text>
+                   <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>{t('profile.questionsCount')} (Fixed)</Text>
+                   <Text style={[styles.sliderValue, {color: colors.text.secondary}]}>30</Text>
                  </View>
                   <Slider
                      style={styles.slider}
-                     minimumValue={5}
-                     maximumValue={39} 
+                     minimumValue={30}
+                     maximumValue={30} 
                      step={1}
-                     value={questionCount}
-                     onValueChange={(val) => handleSettingChange('count', val)}
-                     minimumTrackTintColor={colors.primary.DEFAULT}
+                     value={30}
+                     disabled={true}
+                     minimumTrackTintColor={colors.border}
                      maximumTrackTintColor={colors.border}
-                     thumbTintColor={colors.primary.DEFAULT}
+                     thumbTintColor={colors.text.tertiary}
                    />
+                   <Text style={[styles.statLabel, {textAlign: 'left', marginTop: 4}]}>
+                     Standardized to 30 questions per batch for fair leaderboard ranking
+                   </Text>
                 </View>
 
-                {/* Timer Duration Slider */}
-                <View style={styles.sliderContainer}>
-                   <View style={styles.sliderLabelContainer}>
-                     <Text style={styles.inputLabel}>{t('profile.timerDuration')}</Text>
-                     <Text style={styles.sliderValue}>{timerDuration} {t('profile.minutes')}</Text>
-                   </View>
-                   <Slider
-                     style={styles.slider}
-                     minimumValue={1}
-                     maximumValue={39}
-                     step={1}
-                     value={timerDuration}
-                     onValueChange={(val) => handleSettingChange('timer', val)}
-                     minimumTrackTintColor={colors.status.info}
-                     maximumTrackTintColor={colors.border}
-                     thumbTintColor={colors.status.info}
-                   />
-                </View>
-
-                {/* Difficulty Settings */}
+                {/* Difficulty Settings (Fixed) */}
                 <View style={{ marginTop: 24, marginBottom: 16 }}>
-                   <Text style={styles.inputLabel}>{t('profile.difficultyDistribution')} (Total: {difficultyParams.easy + difficultyParams.intermediate + difficultyParams.hard}%)</Text>
+                   <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>Question Distribution (Pre-set per Batch)</Text>
                    
-                   {/* Easy */}
-                   <View style={styles.sliderContainer}>
-                      <View style={styles.sliderLabelContainer}>
-                         <Text style={[styles.inputLabel, { fontSize: 12 }]}>{t('common.easy')}</Text>
-                         <Text style={styles.sliderValue}>{difficultyParams.easy}%</Text>
-                      </View>
-                      <Slider
-                         style={styles.slider}
-                         minimumValue={0}
-                         maximumValue={100}
-                         step={10}
-                         value={difficultyParams.easy}
-                         onValueChange={(val) => handleDifficultyChange('easy', val)}
-                         minimumTrackTintColor={colors.status.success}
-                         maximumTrackTintColor={colors.border}
-                         thumbTintColor={colors.status.success}
-                      />
-                   </View>
-
-                   {/* Intermediate */}
-                   <View style={styles.sliderContainer}>
-                      <View style={styles.sliderLabelContainer}>
-                         <Text style={[styles.inputLabel, { fontSize: 12 }]}>{t('common.intermediate')}</Text>
-                         <Text style={styles.sliderValue}>{difficultyParams.intermediate}%</Text>
-                      </View>
-                      <Slider
-                         style={styles.slider}
-                         minimumValue={0}
-                         maximumValue={100}
-                         step={10}
-                         value={difficultyParams.intermediate}
-                         onValueChange={(val) => handleDifficultyChange('intermediate', val)}
-                         minimumTrackTintColor={colors.status.warning}
-                         maximumTrackTintColor={colors.border}
-                         thumbTintColor={colors.status.warning}
-                      />
-                   </View>
-
-                   {/* Hard */}
-                   <View style={styles.sliderContainer}>
-                      <View style={styles.sliderLabelContainer}>
-                         <Text style={[styles.inputLabel, { fontSize: 12 }]}>{t('common.hard')}</Text>
-                         <Text style={styles.sliderValue}>{difficultyParams.hard}%</Text>
-                      </View>
-                      <Slider
-                         style={styles.slider}
-                         minimumValue={0}
-                         maximumValue={100}
-                         step={10}
-                         value={difficultyParams.hard}
-                         onValueChange={(val) => handleDifficultyChange('hard', val)}
-                         minimumTrackTintColor={colors.status.danger}
-                         maximumTrackTintColor={colors.border}
-                         thumbTintColor={colors.status.danger}
-                      />
-                   </View>
+                   {/* Visual Only Sliders */}
+                   {['Easy', 'Intermediate', 'Hard'].map((level, idx) => (
+                    <View key={level} style={styles.sliderContainer}>
+                       <View style={styles.sliderLabelContainer}>
+                          <Text style={[styles.inputLabel, { fontSize: 12, color: colors.text.secondary }]}>{level}</Text>
+                          <Text style={[styles.sliderValue, { color: colors.text.secondary }]}>Mixed</Text>
+                       </View>
+                       <Slider
+                          style={styles.slider}
+                          value={50} // Dummy value
+                          disabled={true}
+                          minimumTrackTintColor={colors.border}
+                          maximumTrackTintColor={colors.border}
+                          thumbTintColor={colors.text.tertiary}
+                       />
+                    </View>
+                   ))}
                 </View>
 
                {/* Save Button */}
@@ -573,63 +526,23 @@ export const ProfileScreen = ({ navigation }: any) => {
                 />
              </GlassCard>
 
-             {/* Weekly Streak Card */}
+             {/* Batch Progress Card */}
              <GlassCard style={styles.streakCard}>
                <View style={styles.flameContainer}>
                  <LinearGradient
-                   colors={[colors.streak.flame, colors.streak.flameGlow]}
+                   colors={[colors.primary.DEFAULT, colors.gradients.gold[1] as string]}
                    style={styles.flameGlow}
                  >
-                   <Flame size={32} color="#FFF" fill="#FFF" />
+                   <BookOpen size={32} color="#FFF" />
                  </LinearGradient>
                </View>
-               <Text style={styles.statValue}>{streakWeeks}</Text>
-               <Text style={styles.statLabel}>{t('profile.weeklyStreak')}</Text>
-             </GlassCard>
-
-             {/* Safety Shield - Only for Staff */}
-             <GlassCard style={styles.shieldCard}>
-                <Text style={styles.shieldTitle}>{t('profile.safetyShield')}</Text>
-                <View style={styles.shieldContainer}>
-                  <Svg width={SHIELD_SIZE} height={SHIELD_SIZE} style={styles.shieldSvg}>
-                    {/* Background Circle */}
-                    <Circle
-                      cx={SHIELD_SIZE / 2}
-                      cy={SHIELD_SIZE / 2}
-                      r={SHIELD_RADIUS}
-                      stroke={colors.background.subtle}
-                      strokeWidth={SHIELD_STROKE_WIDTH}
-                      fill="transparent"
-                    />
-                    {/* Progress Circle */}
-                    <Circle
-                      cx={SHIELD_SIZE / 2}
-                      cy={SHIELD_SIZE / 2}
-                      r={SHIELD_RADIUS}
-                      stroke={shieldHealth > 50 ? colors.status.success : shieldHealth > 25 ? colors.status.warning : colors.status.danger}
-                      strokeWidth={SHIELD_STROKE_WIDTH}
-                      fill="transparent"
-                      strokeDasharray={`${SHIELD_CIRCUMFERENCE * (shieldHealth / 100)} ${SHIELD_CIRCUMFERENCE}`}
-                      strokeLinecap="round"
-                      rotation={-90}
-                      origin={`${SHIELD_SIZE / 2}, ${SHIELD_SIZE / 2}`}
-                    />
-                  </Svg>
-                  <View style={styles.shieldCenter}>
-                    <Shield 
-                      size={36} 
-                      color={shieldHealth > 50 ? colors.status.success : shieldHealth > 25 ? colors.status.warning : colors.status.danger} 
-                    />
-                    <Text style={styles.shieldPercent}>{shieldHealth}%</Text>
-                  </View>
-                </View>
-                <Text style={styles.shieldDescription}>
-                  {shieldHealth > 75 
-                    ? t('profile.shieldStrong')
-                    : shieldHealth > 50 
-                      ? t('profile.shieldWarn')
-                      : t('profile.shieldCritical')}
-                </Text>
+               <Text style={styles.statValue}>
+                 {profile?.total_batches_completed === 4 ? 'Complete' : `Batch ${profile?.current_batch || 1}`}
+               </Text>
+               <Text style={styles.statLabel}>Current Progress</Text>
+               <Text style={[styles.statLabel, { marginTop: 8, color: colors.status.success }]}>
+                 {profile?.total_batches_completed || 0} / 4 Batches Completed
+               </Text>
              </GlassCard>
              
              </View>

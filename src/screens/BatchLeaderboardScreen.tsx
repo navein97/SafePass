@@ -1,0 +1,592 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+  Dimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Trophy, Download, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { useTheme } from '../context/ThemeContext';
+import { AuthService } from '../services/authService';
+import { BatchService } from '../services/batchService';
+import { ExcelExportService } from '../services/excelExportService';
+import { GradientBackground } from '../components/ui/GradientBackground';
+import { typography } from '../theme/typography';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface LeaderboardEntry {
+  userId: string;
+  userName: string;
+  staffId: string;
+  averageScore: number;
+  accuracy: number;
+  completion: number;
+  attemptCount: number;
+  age: number | null;
+  vehicleType: string | null;
+  componentScores: {
+    operation: number;
+    discipline: number;
+    professionalism: number;
+  };
+}
+
+type BatchTab = 1 | 2 | 3 | 4;
+
+export function BatchLeaderboardScreen({ navigation }: any) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const [selectedBatch, setSelectedBatch] = useState<BatchTab>(1);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isManager, setIsManager] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadLeaderboard();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // Reload when batch selection changes
+  useEffect(() => {
+    loadLeaderboard();
+    setExpandedUserId(null); // Reset expanded item when switching batches
+  }, [selectedBatch]);
+
+  useEffect(() => {
+    checkUserRole();
+  }, []);
+
+  const checkUserRole = async () => {
+    const { profile } = await AuthService.getUserProfile();
+    setIsManager(profile?.role === 'manager');
+  };
+
+  const loadLeaderboard = async () => {
+    try {
+      setLoading(true);
+      
+      // Get all users' batch stats
+      const stats = await BatchService.getAllUsersBatchStats();
+      
+      // Filter for selected batch and transform
+      const batchLeaderboard: LeaderboardEntry[] = stats
+        .map(user => {
+          const batchData = user.batches.find(b => b.batchNumber === selectedBatch);
+          return {
+            userId: user.userId,
+            userName: user.userName,
+            staffId: user.staffId,
+            averageScore: batchData?.averageScore || 0,
+            accuracy: batchData?.accuracy || 0,
+            completion: batchData?.completion || 0,
+            attemptCount: batchData?.attemptCount || 0,
+            age: (user as any).age || null,
+            vehicleType: (user as any).vehicleType || null,
+            componentScores: batchData?.componentScores || {
+              operation: 0,
+              discipline: 0,
+              professionalism: 0,
+            },
+          };
+        })
+        .filter(entry => entry.attemptCount > 0) // Only show users who have attempted
+        .sort((a, b) => b.averageScore - a.averageScore); // Sort by score descending
+
+      setLeaderboard(batchLeaderboard);
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadLeaderboard();
+    setRefreshing(false);
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setExportingExcel(true);
+      await ExcelExportService.exportLeaderboard();
+      alert('Excel file exported successfully!');
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      alert('Failed to export Excel file');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const renderBatchTabs = () => (
+    <View style={styles.tabsContainer}>
+      {([1, 2, 3, 4] as BatchTab[]).map((batch) => (
+        <TouchableOpacity
+          key={batch}
+          style={[styles.tab, selectedBatch === batch && styles.tabActive]}
+          onPress={() => setSelectedBatch(batch)}
+        >
+          <Text style={[styles.tabText, selectedBatch === batch && styles.tabTextActive]}>
+            Batch {batch}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderPodium = () => {
+    const top3 = leaderboard.slice(0, 3);
+    if (top3.length === 0) return null;
+
+    const podiumOrder = [
+      { position: 2, index: 1, height: 100, color: colors.leaderboard.silver },
+      { position: 1, index: 0, height: 140, color: colors.leaderboard.gold },
+      { position: 3, index: 2, height: 80, color: colors.leaderboard.bronze },
+    ];
+
+    return (
+      <View style={styles.podiumContainer}>
+        <Text style={styles.podiumTitle}>🏆 Top 3</Text>
+        <View style={styles.podiumRow}>
+          {podiumOrder.map((item) => {
+            const user = top3[item.index];
+            if (!user) return <View key={item.position} style={{ flex: 1 }} />;
+
+            return (
+              <View key={item.position} style={[styles.podiumItem, { flex: 1 }]}>
+                <Text style={styles.podiumName}>{user.userName.split(' ')[0]}</Text>
+                <Text style={styles.podiumScore}>{user.averageScore.toFixed(1)}%</Text>
+                <View
+                  style={[
+                    styles.podiumBase,
+                    {
+                      height: item.height,
+                      backgroundColor: item.color,
+                    },
+                  ]}
+                >
+                  <Text style={styles.podiumRank}>{item.position}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
+  const renderLeaderboardItem = (entry: LeaderboardEntry, index: number) => {
+    const rank = index + 1;
+    const passed = entry.averageScore >= 60;
+    const isExpanded = expandedUserId === entry.userId;
+
+    return (
+      <TouchableOpacity 
+        key={entry.userId} 
+        style={[styles.leaderboardItem, !passed && styles.leaderboardItemFailed]}
+        onPress={() => setExpandedUserId(isExpanded ? null : entry.userId)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.leaderboardItemHeader}>
+          <View style={styles.rankBadge}>
+            <Text style={styles.rankText}>{rank}</Text>
+          </View>
+
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{entry.userName}</Text>
+            <Text style={styles.userSubtext}>{entry.staffId}</Text>
+          </View>
+
+          <View style={styles.scoreInfo}>
+            <Text style={[styles.scoreText, passed && styles.scoreTextPassed, !passed && styles.scoreTextFailed]}>
+              {entry.averageScore.toFixed(1)}%
+            </Text>
+            <Text style={styles.scoreSubtext}>
+              {entry.attemptCount} {entry.attemptCount === 1 ? 'attempt' : 'attempts'}
+            </Text>
+          </View>
+
+          {/* Dropdown indicator */}
+          <View style={styles.chevronContainer}>
+            {isExpanded ? (
+              <ChevronUp size={20} color={colors.text.secondary} />
+            ) : (
+              <ChevronDown size={20} color={colors.text.secondary} />
+            )}
+          </View>
+        </View>
+
+        {isExpanded && (
+          <View style={styles.expandedDetails}>
+            {/* Personal Details */}
+            <View style={styles.personalDetailsRow}>
+              <View style={styles.personalDetailItem}>
+                <Text style={styles.dopLabel}>{t('profile.age', 'Age')}</Text>
+                <Text style={styles.personalDetailValue}>
+                  {entry.age ? `${entry.age} yrs` : '-'}
+                </Text>
+              </View>
+              <View style={styles.personalDetailItem}>
+                <Text style={styles.dopLabel}>{t('profile.vehicleType', 'Vehicle')}</Text>
+                <Text style={styles.personalDetailValue}>
+                  {entry.vehicleType || '-'}
+                </Text>
+              </View>
+            </View>
+
+            {/* DOP Scores */}
+            <Text style={styles.dopTitle}>{t('profile.dopsTitle', 'Driver Operational Performance')}</Text>
+            <View style={styles.dopRow}>
+              <View style={styles.dopItem}>
+                <Text style={styles.dopLabel}>{t('leaderboard.operation', 'Operation')}</Text>
+                <Text style={[styles.dopValue, entry.componentScores.operation >= 60 && styles.dopValuePassed]}>
+                  {entry.componentScores.operation}%
+                </Text>
+              </View>
+              <View style={styles.dopItem}>
+                <Text style={styles.dopLabel}>{t('leaderboard.discipline', 'Discipline')}</Text>
+                <Text style={[styles.dopValue, entry.componentScores.discipline >= 60 && styles.dopValuePassed]}>
+                  {entry.componentScores.discipline}%
+                </Text>
+              </View>
+              <View style={styles.dopItem}>
+                <Text style={styles.dopLabel}>{t('leaderboard.professionalism', 'Prof.')}</Text>
+                <Text style={[styles.dopValue, entry.componentScores.professionalism >= 60 && styles.dopValuePassed]}>
+                  {entry.componentScores.professionalism}%
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <GradientBackground>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Leaderboard</Text>
+          {isManager && (
+            <TouchableOpacity
+              style={styles.exportButton}
+              onPress={handleExportExcel}
+              disabled={exportingExcel}
+            >
+              {exportingExcel ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Download size={18} color="#FFF" />
+                  <Text style={styles.exportButtonText}>Export</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {renderBatchTabs()}
+
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+            </View>
+          ) : (
+            <>
+              {renderPodium()}
+
+              <View style={styles.listContainer}>
+                <Text style={styles.listTitle}>All Rankings</Text>
+                {leaderboard.length === 0 ? (
+                  <Text style={styles.emptyText}>No users have attempted this batch yet</Text>
+                ) : (
+                  leaderboard.map((entry, index) => renderLeaderboardItem(entry, index))
+                )}
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </GradientBackground>
+  );
+}
+
+const createStyles = (colors: any) => StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary.DEFAULT,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  exportButtonText: {
+    fontSize: 14,
+    fontFamily: typography.fonts.bold,
+    color: '#FFF',
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: colors.background.card,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tabActive: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.DEFAULT,
+  },
+  tabText: {
+    fontSize: 14,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.primary,
+  },
+  tabTextActive: {
+    color: '#000000', // Black text on yellow for best contrast
+    fontFamily: typography.fonts.bold,
+  },
+  content: {
+    padding: 20,
+  },
+  loadingContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+  },
+  podiumContainer: {
+    backgroundColor: colors.background.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  podiumTitle: {
+    fontSize: 20,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  podiumRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  podiumItem: {
+    alignItems: 'center',
+  },
+  podiumName: {
+    fontSize: 14,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.primary,
+    marginBottom: 4,
+  },
+  podiumScore: {
+    fontSize: 16,
+    fontFamily: typography.fonts.bold,
+    color: colors.primary.DEFAULT,
+    marginBottom: 8,
+  },
+  podiumBase: {
+    width: '100%',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 12,
+  },
+  podiumRank: {
+    fontSize: 24,
+    fontFamily: typography.fonts.bold,
+    color: '#FFF',
+  },
+  listContainer: {
+    backgroundColor: colors.background.card,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  listTitle: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    marginBottom: 16,
+  },
+  leaderboardItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border || '#E0E0E0',
+  },
+  leaderboardItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  leaderboardItemFailed: {
+    opacity: 0.6,
+  },
+  rankBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.background.subtle || colors.background.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  rankText: {
+    fontSize: 14,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.secondary,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+  },
+  userSubtext: {
+    fontSize: 12,
+    fontFamily: typography.fonts.regular,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  scoreInfo: {
+    alignItems: 'flex-end',
+  },
+  scoreText: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+  },
+  scoreTextPassed: {
+    color: '#00C853',
+  },
+  scoreTextFailed: {
+    color: '#FF6B6B',
+  },
+  scoreSubtext: {
+    fontSize: 11,
+    fontFamily: typography.fonts.regular,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  chevronContainer: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  expandedDetails: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border || 'rgba(255,255,255,0.1)',
+  },
+  personalDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border || 'rgba(255,255,255,0.1)',
+  },
+  personalDetailItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  personalDetailValue: {
+    fontSize: 14,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    marginTop: 4,
+  },
+  dopTitle: {
+    fontSize: 12,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  dopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  dopItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  dopLabel: {
+    fontSize: 11,
+    fontFamily: typography.fonts.regular,
+    color: colors.text.tertiary || colors.text.secondary,
+    marginBottom: 4,
+  },
+  dopValue: {
+    fontSize: 16,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+  },
+  dopValuePassed: {
+    color: '#00C853',
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: typography.fonts.regular,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+});

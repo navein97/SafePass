@@ -1,0 +1,42 @@
+
+--- READING DOCX: c:\Users\ACER\SafePass\Application Rules for User Application.docx ---
+Total MCQ= 150-200. The number of MCQs may increase as per the users’ needs as the framework that is driving the MCQs can produce up to 500 MCQs
+30-50 MCQ per batch. As such, there could be anywhere from 7 batches (7 batches X 30= 210MCQs) to 3 batches (3 batches X 50=150 MCQs) for the prototype application.
+The master user (MU) can determine the numbers of batches that users can attempt at a single period. That is MU can allow only one batch, two batch or all the batches at once. But by default, it will be only batch at one period. The following batch will only allow to be attempted by users once the users complete the 1st batch. For example, user completes batch 1, thereafter moves to batch 2 and so forth. The term “complete batch” is defined as the minimum passing percentage /mark. For example, the number of MCQ per batch is 30 MCQ and the passing percentage has been set as 50% as such the user must achieve 50% correct answer before he is allowed to move to the next stage which is stage 2. By default, we could set the passing mark as 60% correct, but we should allow the MU to set the minimum marks that is required for users to progress to the next batch. For the protype application, the MU is only allowed to set timers for the entire groups of users and NOT by individual users.
+The MU can set time [ (a) the time allowed to answer each MCQ and (b) each batch). But by default, there will not be any time limit to answer each MCQ and each batch.
+On the results section, there is 2 parts. 
+The 1st part is the number of correct answers against the number of MCQ attempeted. For example, the 1st batch has 30 MCQs. The user has attempted 20 MCQ out 30 MCQs and he has achieved 10 correct answers. As such the result should be displayed as 10(correct answers)/ 20 (completed MCQs) = 10/20 = 0.5 or 50%. The results should also be displayed as 10 (correct answers)/30 (the 1st batch total MCQs) = 10/30=0.33 or 33%. The 1st part of the results section provides the user performance on level of the number of correct answers against the number of MCQs, either completed or not completed. 
+Part 1 of display should be like the following.
+Completed (MCQ) = 40% 
+(remarks = you have 18 more questions to go to move to level batch 2!)
+Correct answers = 49 %
+(remarks = you need minimum 50% to go level batch 2)
+The 2nd part of the results absorbs the results of the 1st part, and it must be mapped to DOPD. For example, an MCQ is mapped to 0.5 mark to Operational Effectiveness, 0.25 to Operational Discipline and 0.25 to Professional Conduct. As such the leader board should display.
+OE = 0.50
+OD =0.25
+PC = 0.25
+However, to ensure the calculation logic is protected, the DOPD display should only appear after 5-10 MCQ and must be weighted average. This may ensure that users do not re-engineer the DOPD components in the MCQ
+Each MCQ will be given unlimited number of tries for the users. However, the try will stop once the correct answer (CA) is recorded. The marks captured for each try on the MCQ are the following.
+1st attempt = 1 mark
+2nd attempt = 0.5 mark
+3rd attempt = 0.25 mark 
+4th attempt and above = 0 mark
+Users must complete the entire batch for re-attempt. Re-attempts of batch will take place in the following situations
+If the user marks fall below the passing mark (pls refer to 3)
+If user wants to improve their understanding and improvce their marks
+Or the MU requires it
+Users must complete the passing marks set by MU to proceed to the subsequent batches. However, application will have a default setting at 60% (pls refer to item 3)
+Marks for reattempt will be as weighted average. That the total marks for all MCQ attempts are divided by the number of batches attempted. 
+The ongoing marks for the current batch will be displayed following item no 5. All the completed batches marks will also be displayed.
+A DOPD (Performance Dashboard sample);
+
+--- READING EXCEL: c:\Users\ACER\SafePass\Master User Report Page or Leader Board.xlsx ---
+Sheet names: ['Sheet1']
+
+--- SHEET: Sheet1 ---
+  Driver Name   Staff ID  Division   Region Batch 1 Unnamed: 5 Unnamed: 6 Unnamed: 7 Unnamed: 8 Unnamed: 9 Batch 2 Unnamed: 11 Unnamed: 12 Unnamed: 13 Unnamed: 14 Unnamed: 15 Batch 3 Unnamed: 17 Unnamed: 18 Unnamed: 19 Unnamed: 20 Unnamed: 21 Batch 4 Unnamed: 23 Unnamed: 24 Unnamed: 25 Unnamed: 26 Unnamed: 27 Batch 4.1 Unnamed: 29 Unnamed: 30 Unnamed: 31 Unnamed: 32 Unnamed: 33                     DOPD             Unnamed: 35           Unnamed: 36 Unnamed: 37  Time/ Minutes
+0          NaN        NaN      NaN      NaN  Marks         MCQ         %         MCQ      Batch         %   Marks          MCQ          %          MCQ       Batch          %   Marks          MCQ          %          MCQ       Batch          %   Marks          MCQ          %          MCQ       Batch          %     Marks          MCQ          %          MCQ       Batch          %   Operational Excellence   Opertional Discipline   Proffesional Conduct  Risk level            NaN
+1      Chandra    12345.0        A  KUANTAN      10         20        0.5         20         30   0.666667      10          20         0.5          20          30    0.666667      10          20         0.5          20          30    0.666667      10          20         0.5          20          30    0.666667        10          20         0.5          20          30    0.666667                     0.25                    0.28                  0.12         NaN          32.00
+2        Mohan    13456.0        A  KUANTAN      25         30   0.833333         30         30          1      21          30         0.7          30          30           1      18          25        0.72          25          30    0.833333     NaN         NaN         NaN         NaN         NaN         NaN       NaN         NaN         NaN         NaN         NaN         NaN                     0.55                     0.6                  0.62         NaN           1.45
+
+Columns: ['Driver Name ', 'Staff ID ', 'Division', 'Region', 'Batch 1', 'Unnamed: 5', 'Unnamed: 6', 'Unnamed: 7', 'Unnamed: 8', 'Unnamed: 9', 'Batch 2', 'Unnamed: 11', 'Unnamed: 12', 'Unnamed: 13', 'Unnamed: 14', 'Unnamed: 15', 'Batch 3', 'Unnamed: 17', 'Unnamed: 18', 'Unnamed: 19', 'Unnamed: 20', 'Unnamed: 21', 'Batch 4', 'Unnamed: 23', 'Unnamed: 24', 'Unnamed: 25', 'Unnamed: 26', 'Unnamed: 27', 'Batch 4.1', 'Unnamed: 29', 'Unnamed: 30', 'Unnamed: 31', 'Unnamed: 32', 'Unnamed: 33', 'DOPD', 'Unnamed: 35', 'Unnamed: 36', 'Unnamed: 37', 'Time/ Minutes']

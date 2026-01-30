@@ -24,7 +24,15 @@
     "easy": "Mudah",
     "intermediate": "Pertengahan",
     "hard": "Sukar",
-    "continue": "Teruskan"
+    "continue": "Teruskan",
+    "saveAndExit": "Simpan & Keluar?",
+    "saveProgressMessage": "Anda sedang keluar dari kuiz. Kemajuan semasa anda akan dihantar. Soalan yang tidak dijawab akan ditanda salah. Adakah anda mahu meneruskan?",
+    "exitNoSave": "Keluar tanpa Simpan",
+    "exitQuiz": "Keluar Kuiz?",
+    "exitQuizMessage": "Adakah anda mahu keluar dari kuiz? Menekan OK akan kembali tanpa menyimpan.",
+    "exitWithoutSaving": "Keluar Tanpa Simpan",
+    "saveExitMessage": "Adakah anda mahu menyimpan kemajuan dan meneruskan nanti?",
+    "saveAndExitButton": "Simpan & Keluar"
   },
   "auth": {
     "login": "Log Masuk",
@@ -174,7 +182,11 @@
     "correctAnswerIs": "Jawapan yang betul ialah",
     "correctAnswer": "Jawapan Betul",
     "option": "Pilihan",
-    "tryAgainLater": "Cuba Lagi - Soalan ini mungkin muncul semula kemudian"
+    "tryAgainLater": "Cuba Lagi - Soalan ini mungkin muncul semula kemudian",
+    "savedProgressTitle": "Sambung Kuiz?",
+    "savedProgressMessage": "Anda mempunyai kemajuan tersimpan pada Soalan {{question}} daripada {{total}}.\n\n{{answered}} soalan telah dijawab.",
+    "resumeButton": "Sambung dari S{{question}}",
+    "startFreshButton": "Mula Semula"
   },
   "profile": {
     "title": "Profil",

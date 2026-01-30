@@ -24,7 +24,15 @@
     "easy": "Easy",
     "intermediate": "Intermediate",
     "hard": "Hard",
-    "continue": "Continue"
+    "continue": "Continue",
+    "saveAndExit": "Save & Exit?",
+    "saveProgressMessage": "You are exiting the quiz. Your current progress will be submitted. Unanswered questions will be marked incorrect. Do you want to proceed?",
+    "exitNoSave": "Exit w/o Saving",
+    "exitQuiz": "Exit Quiz?",
+    "exitQuizMessage": "Do you want to exit the quiz? Pressing OK will go back without saving.",
+    "exitWithoutSaving": "Exit Without Saving",
+    "saveExitMessage": "Would you like to save your progress and continue later?",
+    "saveAndExitButton": "Save & Exit"
   },
   "auth": {
     "login": "Login",
@@ -174,7 +182,11 @@
     "correctAnswerIs": "The correct answer is",
     "correctAnswer": "Correct Answer",
     "option": "Option",
-    "tryAgainLater": "Try Again - This question might reappear later"
+    "tryAgainLater": "Try Again - This question might reappear later",
+    "savedProgressTitle": "Resume Quiz?",
+    "savedProgressMessage": "You have saved progress at Question {{question}} of {{total}}.\n\n{{answered}} questions answered.",
+    "resumeButton": "Resume from Q{{question}}",
+    "startFreshButton": "Start Fresh"
   },
   "profile": {
     "title": "Profile",

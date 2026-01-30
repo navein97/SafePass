@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { Trophy, ChevronLeft, AlertTriangle } from 'lucide-react-native';
+import { Trophy, ChevronLeft, AlertTriangle, Download } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
+import { ExcelExportService } from '../services/excelExportService';
 import { supabase } from '../lib/supabase';
 import { getWeek, getYear } from 'date-fns';
 import { GradientBackground } from '../components/ui/GradientBackground';
@@ -26,6 +27,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
   const { colors, theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -43,6 +45,19 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      await ExcelExportService.exportLeaderboard();
+      Alert.alert(t('common.success'), t('manager.exportSuccess'));
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert(t('common.error'), t('manager.exportError'));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -117,7 +132,13 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
             <ChevronLeft color={colors.text.primary} size={24} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('manager.weeklyLeaderboard')}</Text>
-          <View style={{ width: 24 }} />
+          <TouchableOpacity onPress={handleExport} disabled={exporting}>
+             {exporting ? (
+                 <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+             ) : (
+                 <Download color={colors.text.primary} size={24} />
+             )}
+          </TouchableOpacity>
         </View>
 
         <ScrollView 

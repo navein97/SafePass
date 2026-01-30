@@ -16,7 +16,7 @@ const MILESTONES = [
 ];
 
 export const MilestoneTracker = ({ currentPoints }: MilestoneTrackerProps) => {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
 
   // Determine current level and next milestone
   let currentLevel = MILESTONES[0];
@@ -37,10 +37,13 @@ export const MilestoneTracker = ({ currentPoints }: MilestoneTrackerProps) => {
       progress = (current / range) * 100;
   }
 
+  // Dynamic background colors for dark/light mode
+  const bgElement = theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background.card, borderColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.background.card, borderColor: (colors as any).border?.DEFAULT || colors.border || '#E5E7EB' }]}>
       <View style={styles.header}>
-        <View style={styles.badgeContainer}>
+        <View style={[styles.badgeContainer, { backgroundColor: bgElement }]}>
              <Trophy size={20} color={currentLevel.color} />
         </View>
         <View style={styles.textContainer}>
@@ -52,7 +55,7 @@ export const MilestoneTracker = ({ currentPoints }: MilestoneTrackerProps) => {
         )}
       </View>
 
-      <View style={styles.progressBarBg}>
+      <View style={[styles.progressBarBg, { backgroundColor: bgElement }]}>
          <LinearGradient
             colors={[currentLevel.color, nextLevel ? nextLevel.color : currentLevel.color]}
             start={{ x: 0, y: 0 }}

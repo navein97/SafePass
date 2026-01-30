@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet, ViewStyle } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
+import { useTheme } from '../context/ThemeContext';
 
 interface PerformanceRingProps {
   score: number; // 0 to 1
@@ -23,6 +24,7 @@ export const PerformanceRing: React.FC<PerformanceRingProps> = ({
   strokeWidth = 10,
   style,
 }) => {
+  const { colors } = useTheme();
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -56,7 +58,7 @@ export const PerformanceRing: React.FC<PerformanceRingProps> = ({
               cx={size / 2}
               cy={size / 2}
               r={radius}
-              stroke="#E5E7EB"
+              stroke={(colors as any).border?.DEFAULT || colors.border || '#E5E7EB'}
               strokeWidth={strokeWidth}
               fill="transparent"
             />
@@ -75,11 +77,11 @@ export const PerformanceRing: React.FC<PerformanceRingProps> = ({
           </G>
         </Svg>
         <View style={styles.centerTextContainer}>
-          <Text style={styles.scoreText}>{(score * 100).toFixed(0)}%</Text>
+          <Text style={[styles.scoreText, { color: colors.text.primary }]}>{(score * 100).toFixed(0)}%</Text>
         </View>
       </View>
       <View style={styles.labelContainer}>
-        <Text style={styles.labelText} numberOfLines={2}>{label}</Text>
+        <Text style={[styles.labelText, { color: colors.text.secondary }]} numberOfLines={2}>{label}</Text>
         <Text style={[styles.subLabelText, { color: ringColor }]}>{displaySubLabel}</Text>
       </View>
     </View>
@@ -99,7 +101,6 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1F2937',
   },
   labelContainer: {
     marginTop: 8,
@@ -108,7 +109,6 @@ const styles = StyleSheet.create({
   labelText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4B5563',
     textAlign: 'center',
   },
   subLabelText: {

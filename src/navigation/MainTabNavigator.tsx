@@ -11,11 +11,12 @@ import {
 import { useTheme } from '../context/ThemeContext';
 
 // Screens
+// Screens
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SocialScreen } from '../screens/SocialScreen';
-import { QuizScreen } from '../screens/QuizScreen';
+import { MissionScreen } from '../screens/MissionScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
-import { LeaderboardScreen } from '../screens/LeaderboardScreen';
+import { BatchLeaderboardScreen } from '../screens/BatchLeaderboardScreen';
 import { ManagerQuickViewScreen } from '../screens/ManagerQuickViewScreen';
 
 const Tab = createBottomTabNavigator();
@@ -96,7 +97,7 @@ export function MainTabNavigator() {
 
       <Tab.Screen
         name="Mission"
-        component={role === 'manager' ? ManagerQuickViewScreen : QuizScreen}
+        component={role === 'manager' ? ManagerQuickViewScreen : MissionScreen}
         options={{
           tabBarLabel: role === 'manager' ? t('navigation.team') : t('navigation.quiz'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (
@@ -116,7 +117,7 @@ export function MainTabNavigator() {
       />
       <Tab.Screen
         name="Leaderboard"
-        component={LeaderboardScreen}
+        component={BatchLeaderboardScreen}
         options={{
           tabBarLabel: t('navigation.leaderboard'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (
