@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { AuthService } from '../services/authService';
 import { BatchService } from '../services/batchService';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { typography } from '../theme/typography';
 import { Lock, CheckCircle, PlayCircle, AlertCircle } from 'lucide-react-native';
@@ -35,89 +35,107 @@ export function MissionScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState('');
   const [batchStatuses, setBatchStatuses] = useState<BatchStatus[]>([]);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
-  // Cache mechanism - don't reload if data was fetched recently
-  const lastLoadTime = React.useRef<number>(0);
-  const CACHE_DURATION_MS = 10000; // 10 seconds cache
+  // Ref to track if it's the very first load to avoid spinner on subsequent visits
+  const isFirstLoadRef = useRef(true);
+  // Cache timestamp
+  const lastLoadTime = useRef<number>(0);
+  const CACHE_DURATION_MS = 10000; // 10 seconds
 
-  // Use focus effect to refresh data whenever user returns to this screen
-  React.useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      // Check if we need to force refresh (after quiz completion)
-      const shouldRefresh = route.params?.refresh === true;
-      if (shouldRefresh) {
-        // Reset the refresh param to prevent repeated refreshes
-        navigation.setParams({ refresh: false } as any);
-      }
-      loadBatchStatuses(shouldRefresh);
-    });
+  // useFocusEffect is safer than useEffect for screen focus events
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true; // Prevents state updates if screen unmounts
 
-    return unsubscribe;
-  }, [navigation, route.params?.refresh]);
+      const loadData = async () => {
+        // Check if we need to force refresh from QuizScreen params
+        const shouldRefresh = route.params?.refresh === true;
+        
+        // Cache Check: Skip if data is fresh and we aren't forced to refresh
+        const now = Date.now();
+        if (!shouldRefresh && lastLoadTime.current > 0 && (now - lastLoadTime.current) < CACHE_DURATION_MS) {
+          return; 
+        }
 
-  const loadBatchStatuses = async (forceRefresh = false) => {
-    try {
-      // Skip reload if data was loaded recently (unless force refresh)
-      const now = Date.now();
-      if (!forceRefresh && lastLoadTime.current > 0 && (now - lastLoadTime.current) < CACHE_DURATION_MS) {
-        // Data is still fresh, skip reload
-        return;
-      }
-      
-      // Only show loading spinner on initial load, not when returning from quiz
-      if (isInitialLoad) {
-        setLoading(true);
-      }
-      
-      const { profile } = await AuthService.getUserProfile();
+        // Clear the refresh param so we don't loop
+        if (shouldRefresh) {
+          navigation.setParams({ refresh: undefined } as any);
+        }
 
-      if (!profile) return;
+        // Only show spinner on the very first mount or explicit refresh
+        if (isFirstLoadRef.current) {
+          setLoading(true);
+        }
 
-      // Redirect managers
-      if (profile.role === 'manager') {
-        navigation.navigate('ManagerQuickView' as never);
-        return;
-      }
+        try {
+          // 1. Get User Profile
+          const { profile } = await AuthService.getUserProfile();
+          if (!isActive || !profile) return;
 
-      setUserId(profile.id);
+          // Redirect managers immediately
+          if (profile.role === 'manager') {
+            navigation.navigate('ManagerQuickView' as never);
+            return;
+          }
 
-      // Fetch all batch data in parallel instead of sequentially
-      const batchNumbers = [1, 2, 3, 4];
-      const [accessResults, scoreResults, attemptResults] = await Promise.all([
-        Promise.all(batchNumbers.map(i => BatchService.canAccessBatch(profile.id, i))),
-        Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(profile.id, i))),
-        Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(profile.id, i))),
-      ]);
+          // 2. Fetch Batch Data Sequentially to prevent network hang
+          // (Fetching 12 requests at once can freeze the network layer on mobile)
+          const batchNumbers = [1, 2, 3, 4];
+          const statuses: BatchStatus[] = [];
 
-      // Build statuses array from parallel results
-      const statuses: BatchStatus[] = batchNumbers.map((batchNum, index) => ({
-        batchNumber: batchNum,
-        canAccess: accessResults[index],
-        averageScore: scoreResults[index],
-        attemptCount: attemptResults[index].length,
-        passed: scoreResults[index] >= 60,
-      }));
+          // Create a promise with a timeout to prevent infinite loading
+          const fetchPromise = async () => {
+            // we use a simple loop or Promise.all on smaller chunks
+            const accessResults = await Promise.all(batchNumbers.map(i => BatchService.canAccessBatch(profile.id, i)));
+            const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(profile.id, i)));
+            const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(profile.id, i)));
+            
+            return batchNumbers.map((batchNum, index) => ({
+              batchNumber: batchNum,
+              canAccess: accessResults[index],
+              averageScore: scoreResults[index],
+              attemptCount: attemptResults[index].length,
+              passed: scoreResults[index] >= 60,
+            }));
+          };
 
-      setBatchStatuses(statuses);
-      lastLoadTime.current = Date.now(); // Update cache timestamp
-    } catch (error) {
-      console.error('Error loading batch statuses:', error);
-      // Only show error alert on initial failures
-      if (isInitialLoad) {
-        Alert.alert(t('common.error', 'Error'), 'Failed to load batch progress');
-      }
-    } finally {
-      setLoading(false);
-      setIsInitialLoad(false);
-    }
-  };
+          // Race the fetch against a 10-second timeout
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timed out')), 10000)
+          );
+
+          const resultStatuses = await Promise.race([fetchPromise(), timeoutPromise]) as BatchStatus[];
+
+          if (isActive) {
+            setBatchStatuses(resultStatuses);
+            lastLoadTime.current = Date.now();
+            isFirstLoadRef.current = false; // Mark first load as complete
+          }
+
+        } catch (error) {
+          console.error('Error loading batch statuses:', error);
+          if (isActive && isFirstLoadRef.current) {
+            Alert.alert(t('common.error', 'Error'), 'Failed to load batch progress');
+          }
+        } finally {
+          if (isActive) {
+            setLoading(false);
+          }
+        }
+      };
+
+      loadData();
+
+      return () => {
+        isActive = false; // Cleanup flag
+      };
+    }, [route.params?.refresh, navigation]) // Re-run if refresh param changes
+  );
 
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
     if (canAccess) {
-      // @ts-ignore - navigation type mismatch
+      // @ts-ignore
       navigation.navigate('Quiz', { batchNumber });
     }
   };
@@ -127,7 +145,7 @@ export function MissionScreen() {
       <GradientBackground>
         <SafeAreaView style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-          <Text style={styles.loadingText}>{t('mission.loading', 'Loading...')}</Text>
+          <Text style={styles.loadingText}>{t('mission.loading', 'Loading training data...')}</Text>
         </SafeAreaView>
       </GradientBackground>
     );
