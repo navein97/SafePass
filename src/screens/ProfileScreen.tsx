@@ -92,6 +92,10 @@ export const ProfileScreen = ({ navigation }: any) => {
   const shieldHealth = profile?.shieldHealth || 100; // Percentage
 
   useEffect(() => {
+    // Load immediately on mount
+    loadProfile();
+
+    // Also reload whenever the screen comes into focus
     const unsubscribe = navigation.addListener('focus', () => {
       loadProfile();
     });
