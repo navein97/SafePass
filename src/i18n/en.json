@@ -256,7 +256,9 @@
     "errorRequired": "Please fill in required fields",
     "success": "Success",
     "userCreated": "User {{fullName}} created!",
-    "errorCreate": "Failed to create user"
+    "errorCreate": "Failed to create user",
+    "thailand": "Thailand",
+    "singapore": "Singapore"
   },
   "company": {
     "settings": "Company Settings",

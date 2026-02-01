@@ -256,7 +256,9 @@
     "errorRequired": "Sila isi ruangan yang diperlukan",
     "success": "Berjaya",
     "userCreated": "Pengguna {{fullName}} dicipta!",
-    "errorCreate": "Gagal mencipta pengguna"
+    "errorCreate": "Gagal mencipta pengguna",
+    "thailand": "Thailand",
+    "singapore": "Singapura"
   },
   "company": {
     "settings": "Tetapan Syarikat",

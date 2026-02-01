@@ -30,22 +30,34 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   const [region, setRegion] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
+  // Error State
+  const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
+
   const vehicleOptions = [
-    'Container Haulage',
-    'Curtain Side',
-    'Open Cargo',
-    'Small Truck'
+    { label: t('profile.vehicles.containerHaulage'), value: 'Container Haulage' },
+    { label: t('profile.vehicles.curtainSide'), value: 'Curtain Side' },
+    { label: t('profile.vehicles.openCargo'), value: 'Open Cargo' },
+    { label: t('profile.vehicles.smallTruck'), value: 'Small Truck' }
   ];
 
   const regionOptions = [
-    { label: 'Malaysia', value: 'MY' },
-    { label: 'Thailand', value: 'TH' },
-    { label: 'Singapore', value: 'SG' }
+    { label: t('common.malaysia'), value: 'MY' },
+    { label: t('user.thailand', 'Thailand'), value: 'TH' },
+    { label: t('user.singapore', 'Singapore'), value: 'SG' }
   ];
 
   const handleCreateUser = async () => {
-    if (!fullName || !employeeId || !age || !vehicleType || !region) {
-        Alert.alert(t('common.error'), t('user.errorRequired', 'Please fill in all mandatory fields'));
+    // Validate fields
+    const newErrors: { [key: string]: boolean } = {};
+    if (!fullName) newErrors.fullName = true;
+    if (!employeeId) newErrors.employeeId = true;
+    if (!age) newErrors.age = true;
+    if (!vehicleType) newErrors.vehicleType = true;
+    if (!region) newErrors.region = true;
+    if (!phoneNumber) newErrors.phoneNumber = true;
+
+    if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
         return;
     }
 
@@ -76,6 +88,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 setVehicleType('');
                 setRegion('');
                 setPhoneNumber('');
+                setErrors({});
             }}]
         );
         
@@ -93,6 +106,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         backgroundColor: colors.background.subtle,
         color: colors.text.primary,
         borderColor: colors.border,
+    },
+    errorBorder: {
+        borderColor: colors.status?.danger || '#FF3B30', // Fallback red
+        borderWidth: 1.5,
     }
   };
 
@@ -118,18 +135,32 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 
               <Text style={[styles.label, dynamicStyles.label]}>{t('auth.fullName')}</Text>
               <TextInput 
-                  style={[styles.input, dynamicStyles.input]}
+                  style={[
+                      styles.input, 
+                      dynamicStyles.input,
+                      errors.fullName && dynamicStyles.errorBorder
+                  ]}
                   value={fullName}
-                  onChangeText={setFullName}
+                  onChangeText={(text) => {
+                      setFullName(text);
+                      if (text) setErrors(prev => ({ ...prev, fullName: false }));
+                  }}
                   placeholder={t('auth.fullName')}
                   placeholderTextColor={colors.text.tertiary}
               />
               
               <Text style={[styles.label, dynamicStyles.label]}>{t('auth.employeeId')}</Text>
               <TextInput 
-                  style={[styles.input, dynamicStyles.input]}
+                  style={[
+                      styles.input, 
+                      dynamicStyles.input,
+                      errors.employeeId && dynamicStyles.errorBorder
+                  ]}
                   value={employeeId}
-                  onChangeText={setEmployeeId}
+                  onChangeText={(text) => {
+                      setEmployeeId(text);
+                      if (text) setErrors(prev => ({ ...prev, employeeId: false }));
+                  }}
                   placeholder="naveinrex97 / chandrajeimohan"
                   placeholderTextColor={colors.text.tertiary}
                   autoCapitalize="characters"
@@ -139,20 +170,34 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={[styles.label, dynamicStyles.label]}>{t('profile.age', 'Age')}</Text>
                   <TextInput 
-                      style={[styles.input, dynamicStyles.input]}
+                      style={[
+                          styles.input, 
+                          dynamicStyles.input,
+                          errors.age && dynamicStyles.errorBorder
+                      ]}
                       value={age}
-                      onChangeText={setAge}
+                      onChangeText={(text) => {
+                          setAge(text);
+                          if (text) setErrors(prev => ({ ...prev, age: false }));
+                      }}
                       placeholder="25"
                       placeholderTextColor={colors.text.tertiary}
                       keyboardType="numeric"
                   />
                 </View>
                 <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.phone', 'Phone (Optional)')}</Text>
+                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.phone', 'Phone')}</Text>
                   <TextInput 
-                      style={[styles.input, dynamicStyles.input]}
+                      style={[
+                          styles.input, 
+                          dynamicStyles.input,
+                          errors.phoneNumber && dynamicStyles.errorBorder
+                      ]}
                       value={phoneNumber}
-                      onChangeText={setPhoneNumber}
+                      onChangeText={(text) => {
+                          setPhoneNumber(text);
+                          if (text) setErrors(prev => ({ ...prev, phoneNumber: false }));
+                      }}
                       placeholder="+60..."
                       placeholderTextColor={colors.text.tertiary}
                       keyboardType="phone-pad"
@@ -168,9 +213,13 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                     style={[
                       styles.optionChip,
                       { borderColor: colors.border },
-                      region === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
+                      region === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
+                      errors.region && !region && { borderColor: colors.status?.danger || '#FF3B30' }
                     ]}
-                    onPress={() => setRegion(opt.value)}
+                    onPress={() => {
+                        setRegion(opt.value);
+                        setErrors(prev => ({ ...prev, region: false }));
+                    }}
                   >
                     <Text style={[
                       styles.optionText,
@@ -182,25 +231,29 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
               </View>
 
               <Text style={[styles.label, dynamicStyles.label]}>{t('profile.vehicleType', 'Vehicle Type')}</Text>
-              <div style={styles.optionsWrap}>
+              <View style={styles.optionsWrap}>
                 {vehicleOptions.map((opt) => (
                   <TouchableOpacity
-                    key={opt}
+                    key={opt.value}
                     style={[
                       styles.optionChip,
                       { borderColor: colors.border },
-                      vehicleType === opt && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
+                      vehicleType === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
+                      errors.vehicleType && !vehicleType && { borderColor: colors.status?.danger || '#FF3B30' }
                     ]}
-                    onPress={() => setVehicleType(opt)}
+                    onPress={() => {
+                        setVehicleType(opt.value);
+                        setErrors(prev => ({ ...prev, vehicleType: false }));
+                    }}
                   >
                     <Text style={[
                       styles.optionText,
                       { color: colors.text.secondary },
-                      vehicleType === opt && { color: '#000', fontFamily: typography.fonts.bold }
-                    ]}>{opt}</Text>
+                      vehicleType === opt.value && { color: '#000', fontFamily: typography.fonts.bold }
+                    ]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
-              </div>
+              </View>
 
               <View style={{ marginTop: 24, marginBottom: 10 }}>
                   <GlassButton 
