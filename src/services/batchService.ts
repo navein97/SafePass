@@ -391,7 +391,7 @@ export const BatchService = {
             // 1. Get all participants (exclude only managers)
             const { data: users, error: userError } = await supabase
                 .from('profiles')
-                .select('id, full_name, email, division, region, employee_id, role, age, vehicle_type')
+                .select('id, full_name, division, region, employee_id, role, age, vehicle_type')
                 .neq('role', 'manager')
                 .order('full_name');
 
@@ -469,8 +469,8 @@ export const BatchService = {
 
                 return {
                     userId: user.id,
-                    userName: user.full_name || user.email,
-                    staffId: user.employee_id || user.email,
+                    userName: user.full_name || 'Staff',
+                    staffId: user.employee_id,
                     division: user.division || '-',
                     region: user.region || 'MY',
                     age: (user as any).age || null,

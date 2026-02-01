@@ -100,12 +100,24 @@ export const ProfileScreen = ({ navigation }: any) => {
   }, [navigation]);
 
   const loadProfile = async () => {
+    setLoading(true);
+    
+    // Set a safety timeout as a secondary defense
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+    }, 10000);
+
     try {
-      setLoading(true);
       const { profile: userProfile, error } = await AuthService.getUserProfile();
       
       if (error) {
+        console.error('Profile fetch error:', error);
         Alert.alert('Error', t('common.errorLoading', 'Failed to load profile'));
+        return;
+      }
+
+      if (!userProfile) {
+        Alert.alert('Error', 'User profile not found');
         return;
       }
 
@@ -114,7 +126,7 @@ export const ProfileScreen = ({ navigation }: any) => {
         streak: userProfile.streak || 0,
         shieldHealth: userProfile.shield_health || 100,
         managerLevel: userProfile.manager_level,
-        operationalEffectiveness: userProfile.operational_effectiveness || 0.75, // Default for demo
+        operationalEffectiveness: userProfile.operational_effectiveness || 0.75,
         operationalDiscipline: userProfile.operational_discipline || 0.25,
         professionalConduct: userProfile.professional_conduct || 0.12,
         totalScore: userProfile.totalScore || 0,
@@ -140,11 +152,9 @@ export const ProfileScreen = ({ navigation }: any) => {
             try { setDifficultyParams(JSON.parse(savedDiff)); } catch (e) {}
         }
       } else {
-        // Prioritize profile data from Supabase
         let initialAge = userProfile.age ? userProfile.age.toString() : '';
         let initialVehicle = userProfile.vehicle_type || '';
 
-        // If missing in Supabase, try to fallback to AsyncStorage
         if (!initialAge && userProfile.id) {
              const savedAge = await AsyncStorage.getItem(`USER_AGE_${userProfile.id}`);
              if (savedAge) initialAge = savedAge;
@@ -158,10 +168,11 @@ export const ProfileScreen = ({ navigation }: any) => {
         setAge(initialAge);
         setVehicleType(initialVehicle);
       }
-
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error('Fatal loadProfile error:', error);
+      Alert.alert('System Error', 'An unexpected error occurred while loading your profile.');
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };

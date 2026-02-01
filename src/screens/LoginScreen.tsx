@@ -15,25 +15,22 @@ import { GlassCard } from '../components/ui/GlassCard';
 export const LoginScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
   const { colors, theme } = useTheme();
-  const [email, setEmail] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({ email: '', password: '', general: '' });
+  const [errors, setErrors] = useState({ employeeId: '', password: '', general: '' });
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
     let isValid = true;
-    const newErrors = { email: '', password: '', general: '' };
+    const newErrors = { employeeId: '', password: '', general: '' };
 
-    if (!email.trim()) {
-      newErrors.email = t('auth.emailRequired');
+    if (!employeeId.trim()) {
+      newErrors.employeeId = t('auth.employeeIdRequired', 'Employee ID is required');
       isValid = false;
-    } else if (!Validation.isValidEmail(email)) {
-      newErrors.email = t('auth.invalidEmail');
-      isValid = false;
-    }
+    } 
 
     if (!password) {
       newErrors.password = t('auth.passwordRequired');
@@ -51,7 +48,7 @@ export const LoginScreen = ({ navigation }: any) => {
     setErrors(prev => ({ ...prev, general: '' }));
 
     const { session, error } = await AuthService.signIn({
-      email,
+      employeeId,
       password,
     });
 
@@ -95,17 +92,16 @@ export const LoginScreen = ({ navigation }: any) => {
                 ) : null}
 
                 <GlassInput
-                  label={t('auth.employeeId') + ' / Email'}
-                  placeholder="driver@company.com"
-                  value={email}
+                  label={t('auth.employeeId', 'Employee ID')}
+                  placeholder="naveinrex97 / chandrajeimohan"
+                  value={employeeId}
                   onChangeText={(text) => {
-                    setEmail(text);
-                    if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                    setEmployeeId(text);
+                    if (errors.employeeId) setErrors(prev => ({ ...prev, employeeId: '' }));
                   }}
                   autoCapitalize="none"
-                  keyboardType="email-address"
                   editable={!loading}
-                  error={errors.email}
+                  error={errors.employeeId}
                   leftIcon={<Mail size={20} color={colors.text.secondary} />}
                 />
 
@@ -139,23 +135,19 @@ export const LoginScreen = ({ navigation }: any) => {
                   style={styles.loginButton}
                 />
 
-                <TouchableOpacity 
+                {/* <TouchableOpacity 
                   style={styles.forgotPasswordButton}
                   onPress={() => navigation.navigate('ForgotPassword')}
                   disabled={loading}
                 >
                   <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
-                <TouchableOpacity 
-                  style={styles.linkButton}
-                  onPress={() => navigation.navigate('Register')}
-                  disabled={loading}
-                >
+                <View style={styles.linkButton}>
                   <Text style={styles.linkText}>
-                    {t('auth.noAccount')} <Text style={styles.linkTextBold}>{t('auth.registerNow')}</Text>
+                    {t('auth.contactManager', 'Only managers can create accounts')}
                   </Text>
-                </TouchableOpacity>
+                </View>
               </View>
             </GlassCard>
           </ScrollView>
@@ -164,6 +156,7 @@ export const LoginScreen = ({ navigation }: any) => {
     </GradientBackground>
   );
 };
+
 
 const createStyles = (colors: any) => StyleSheet.create({
   safeArea: {

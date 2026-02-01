@@ -1,7 +1,7 @@
 import React from 'react';
 import { TextInput, View, StyleSheet, Text, TextInputProps, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { colors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 interface GlassInputProps extends TextInputProps {
   label?: string;
@@ -20,16 +20,25 @@ export const GlassInput: React.FC<GlassInputProps> = ({
   style,
   ...props
 }) => {
+  const { colors } = useTheme();
+
   return (
     <View style={[styles.container, containerStyle]}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={styles.inputWrapper}>
+      {label ? <Text style={[styles.label, { color: colors.text.secondary }]}>{label}</Text> : null}
+      <View style={[
+        styles.inputWrapper, 
+        { 
+          backgroundColor: colors.background.glass,
+          borderColor: colors.background.glassBorder 
+        }
+      ]}>
         <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={styles.contentContainer}>
           {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
           <TextInput
             style={[
               styles.input, 
+              { color: colors.text.primary },
               leftIcon ? styles.inputWithLeftIcon : undefined, 
               rightIcon ? styles.inputWithRightIcon : undefined, 
               style
@@ -41,7 +50,7 @@ export const GlassInput: React.FC<GlassInputProps> = ({
           {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
         </View>
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: colors.status.danger }]}>{error}</Text> : null}
     </View>
   );
 };
@@ -51,7 +60,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    color: colors.text.secondary,
     fontSize: 14,
     marginBottom: 8,
     fontWeight: '500',
@@ -60,8 +68,6 @@ const styles = StyleSheet.create({
   inputWrapper: {
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: colors.background.glass,
-    borderColor: colors.background.glassBorder,
     borderWidth: 1,
     height: 50,
   },
@@ -72,7 +78,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: colors.text.primary,
     fontSize: 16,
     paddingHorizontal: 16,
     height: '100%',
@@ -94,9 +99,9 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   error: {
-    color: colors.status.danger,
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
   },
 });
+

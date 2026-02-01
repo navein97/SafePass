@@ -3,16 +3,19 @@ import { Region } from '../types/models';
 import { Platform } from 'react-native';
 
 export interface SignUpData {
-    email: string;
+    email?: string;
     password: string;
     fullName: string;
     employeeId: string;
-    region: Region;
-    [key: string]: any; // Allow extra fields
+    region: Region | string;
+    age?: number;
+    vehicle_type?: string;
+    phone_number?: string;
+    [key: string]: any;
 }
 
 export interface SignInData {
-    email: string;
+    employeeId: string; // Employee ID or email
     password: string;
 }
 
@@ -22,33 +25,31 @@ export const AuthService = {
      */
     async signUp(data: SignUpData) {
         try {
-            // Use web URL for web platform, deep link for mobile
+            // Generate dummy email if none provided
+            const email = data.email || `${data.employeeId.toLowerCase()}@safepass.internal`;
+
             const redirectUrl = Platform.OS === 'web'
                 ? 'https://safepass-kappa.vercel.app/auth/callback'
                 : 'safepass://auth/callback';
 
             const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: data.email,
+                email: email,
                 password: data.password,
                 options: {
                     emailRedirectTo: redirectUrl,
                     data: {
                         full_name: data.fullName,
                         employee_id: data.employeeId,
-                        ...data // Pass all data including region, role, department
+                        region: data.region,
+                        age: data.age,
+                        vehicle_type: data.vehicle_type,
+                        phone_number: data.phone_number,
+                        role: data.role || 'driver'
                     },
                 },
             });
 
             if (authError) throw authError;
-
-            // Debug logging
-            console.log('✅ Signup successful!');
-            console.log('📧 Email sent to:', data.email);
-            console.log('🔗 Redirect URL:', redirectUrl);
-            console.log('👤 User ID:', authData.user?.id);
-            console.log('✉️ Email confirmation required:', !authData.user?.email_confirmed_at);
-
             return { user: authData.user, error: null };
         } catch (error: any) {
             console.error('Sign up error:', error);
@@ -57,67 +58,22 @@ export const AuthService = {
     },
 
     /**
-     * Resend confirmation email
-     */
-    async resendConfirmationEmail(email: string) {
-        try {
-            const redirectUrl = Platform.OS === 'web'
-                ? 'https://safepass-kappa.vercel.app/auth/callback'
-                : 'safepass://auth/callback';
-
-            const { error } = await supabase.auth.resend({
-                type: 'signup',
-                email: email,
-                options: {
-                    emailRedirectTo: redirectUrl,
-                },
-            });
-
-            if (error) throw error;
-
-            console.log('✅ Confirmation email resent to:', email);
-            return { error: null };
-        } catch (error: any) {
-            console.error('Resend email error:', error);
-            return { error: error.message };
-        }
-    },
-
-    /**
-     * Send password reset email
-     */
-    async resetPassword(email: string) {
-        try {
-            const redirectUrl = Platform.OS === 'web'
-                ? 'https://safepass-kappa.vercel.app/auth/callback' // Update with your actual reset password page URL if different
-                : 'safepass://auth/callback'; // Deep link for mobile app handling
-
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: redirectUrl,
-            });
-
-            if (error) throw error;
-
-            console.log('✅ Password reset email sent to:', email);
-            return { error: null };
-        } catch (error: any) {
-            console.error('Reset password error:', error);
-            return { error: error.message };
-        }
-    },
-
-    /**
-     * Sign in existing user
+     * Sign in existing user (supports Email or Employee ID)
      */
     async signIn(data: SignInData) {
         try {
+            // Convert Employee ID to internal email format directly
+            // This removes the need for the 'email' column in the profiles table
+            const email = data.employeeId.includes('@')
+                ? data.employeeId
+                : `${data.employeeId.toLowerCase().trim()}@safepass.internal`;
+
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: data.email,
+                email: email,
                 password: data.password,
             });
 
             if (authError) throw authError;
-
             return { session: authData.session, user: authData.user, error: null };
         } catch (error: any) {
             console.error('Sign in error:', error);
@@ -126,20 +82,19 @@ export const AuthService = {
     },
 
     /**
-     * Update user password
+     * Delete a user account (Manager only)
      */
-    async updatePassword(password: string) {
+    async deleteUser(userId: string) {
         try {
-            const { data, error } = await supabase.auth.updateUser({
-                password: password
+            const { error } = await supabase.rpc('delete_user', {
+                target_user_id: userId
             });
 
             if (error) throw error;
-
-            return { data, error: null };
+            return { success: true, error: null };
         } catch (error: any) {
-            console.error('Update password error:', error);
-            return { data: null, error: error.message };
+            console.error('Delete user error:', error);
+            return { success: false, error: error.message };
         }
     },
 
@@ -158,29 +113,12 @@ export const AuthService = {
     },
 
     /**
-     * Get current session
-     */
-    async getSession() {
-        try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) throw error;
-            return { session, error: null };
-        } catch (error: any) {
-            console.error('Get session error:', error);
-            return { session: null, error: error.message };
-        }
-    },
-
-    /**
      * Get current user profile
      */
     async getUserProfile() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
-
-            if (!user) {
-                return { profile: null, error: 'No user logged in' };
-            }
+            if (!user) return { profile: null, error: 'No user logged in' };
 
             const { data: profile, error } = await supabase
                 .from('profiles')
@@ -189,7 +127,6 @@ export const AuthService = {
                 .single();
 
             if (error) throw error;
-
             return { profile, error: null };
         } catch (error: any) {
             console.error('Get profile error:', error);
@@ -210,7 +147,6 @@ export const AuthService = {
                 .single();
 
             if (error) throw error;
-
             return { data, error: null };
         } catch (error: any) {
             console.error('Update profile error:', error);
@@ -218,9 +154,6 @@ export const AuthService = {
         }
     },
 
-    /**
-     * Listen to auth state changes
-     */
     onAuthStateChange(callback: (event: string, session: any) => void) {
         return supabase.auth.onAuthStateChange(callback);
     },

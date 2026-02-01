@@ -11,7 +11,9 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Trophy, Download, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Trophy, Download, ChevronDown, ChevronUp, Trash2, AlertTriangle, X } from 'lucide-react-native';
+import { GlassButton } from '../components/ui/GlassButton';
+import { TextInput, Alert, Modal } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { AuthService } from '../services/authService';
 import { BatchService } from '../services/batchService';
@@ -52,6 +54,12 @@ export function BatchLeaderboardScreen({ navigation }: any) {
   const [isManager, setIsManager] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  
+  // Deletion State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<LeaderboardEntry | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -131,6 +139,32 @@ export function BatchLeaderboardScreen({ navigation }: any) {
       alert('Failed to export Excel file');
     } finally {
       setExportingExcel(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    if (deleteConfirmText !== userToDelete.staffId) {
+      Alert.alert(t('common.error'), t('user.deleteConfirmError', 'Employee ID does not match'));
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const { success, error } = await AuthService.deleteUser(userToDelete.userId);
+      
+      if (!success) throw new Error(error);
+
+      Alert.alert(t('common.success'), t('user.deleteSuccess', 'User deleted successfully'));
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      setDeleteConfirmText('');
+      loadLeaderboard();
+    } catch (error: any) {
+      Alert.alert(t('common.error'), error.message || 'Failed to delete user');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -272,6 +306,22 @@ export function BatchLeaderboardScreen({ navigation }: any) {
                 </Text>
               </View>
             </View>
+
+            {/* Manager Actions */}
+            {isManager && (
+              <View style={styles.managerActions}>
+                <TouchableOpacity 
+                  style={styles.deleteButton}
+                  onPress={() => {
+                    setUserToDelete(entry);
+                    setShowDeleteModal(true);
+                  }}
+                >
+                  <Trash2 size={16} color={colors.status.danger} />
+                  <Text style={styles.deleteButtonText}>{t('user.deleteAccount', 'Delete Account')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       </TouchableOpacity>
@@ -326,6 +376,60 @@ export function BatchLeaderboardScreen({ navigation }: any) {
             </>
           )}
         </ScrollView>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          visible={showDeleteModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <AlertTriangle size={24} color={colors.status.danger} />
+                <Text style={styles.modalTitle}>{t('user.deleteTitle', 'Delete Driver Account')}</Text>
+                <TouchableOpacity onPress={() => setShowDeleteModal(false)}>
+                  <X size={24} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalText}>
+                {t('user.deleteConfirmText', 'Are you sure? This action cannot be undone. All quiz history and compliance logs for this user will be permanently deleted.')}
+              </Text>
+
+              <View style={styles.verificationBox}>
+                <Text style={styles.verifyLabel}>
+                  {t('user.deleteVerifyLabel', 'To confirm, type "{{username}}" in the box below', { username: userToDelete?.staffId })}
+                </Text>
+                <TextInput
+                  style={[styles.verifyInput, { borderColor: deleteConfirmText === userToDelete?.staffId ? colors.status.success : colors.border }]}
+                  value={deleteConfirmText}
+                  onChangeText={setDeleteConfirmText}
+                  placeholder={userToDelete?.staffId}
+                  placeholderTextColor={colors.text.tertiary}
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <GlassButton
+                  title={t('common.cancel')}
+                  onPress={() => setShowDeleteModal(false)}
+                  variant="secondary"
+                  style={{ flex: 1 }}
+                />
+                <GlassButton
+                  title={isDeleting ? t('common.deleting', 'Deleting...') : t('common.delete', 'Delete')}
+                  onPress={handleDeleteUser}
+                  variant="danger"
+                  style={{ flex: 1 }}
+                  disabled={isDeleting || deleteConfirmText !== userToDelete?.staffId}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </GradientBackground>
   );
@@ -588,5 +692,83 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  managerActions: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.status.danger + '40',
+    backgroundColor: colors.status.danger + '10',
+    gap: 6,
+  },
+  deleteButtonText: {
+    fontSize: 12,
+    fontFamily: typography.fonts.bold,
+    color: colors.status.danger,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.background.card,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    marginLeft: 12,
+  },
+  modalText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.text.secondary,
+    fontFamily: typography.fonts.regular,
+    marginBottom: 24,
+  },
+  verificationBox: {
+    marginBottom: 24,
+  },
+  verifyLabel: {
+    fontSize: 13,
+    color: colors.text.primary,
+    fontFamily: typography.fonts.medium,
+    marginBottom: 8,
+  },
+  verifyInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: colors.text.primary,
+    fontFamily: typography.fonts.bold,
+    backgroundColor: colors.background.subtle,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
   },
 });
