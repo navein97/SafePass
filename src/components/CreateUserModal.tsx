@@ -50,13 +50,13 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     const handleCreateUser = async () => {
     // Validate fields
     const newErrors: { [key: string]: boolean } = {};
-    if (!fullName) newErrors.fullName = true;
-    if (!employeeId) newErrors.employeeId = true;
+    if (!fullName.trim()) newErrors.fullName = true;
+    if (!employeeId.trim()) newErrors.employeeId = true;
     if (!password) newErrors.password = true;
     if (!age) newErrors.age = true;
     if (!vehicleType) newErrors.vehicleType = true;
     if (!region) newErrors.region = true;
-    if (!phoneNumber) newErrors.phoneNumber = true;
+    if (!phoneNumber.trim()) newErrors.phoneNumber = true;
 
     if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
@@ -67,13 +67,13 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         setLoading(true);
         
         const { error } = await AuthService.signUp({
-            fullName,
-            employeeId,
+            fullName: fullName.trim(),
+            employeeId: employeeId.trim(),
             password,
             age: parseInt(age),
             vehicle_type: vehicleType,
             region,
-            phone_number: phoneNumber,
+            phone_number: phoneNumber.trim(),
             role: 'driver'
         });
         
@@ -97,7 +97,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         );
         
     } catch (error: any) {
-        Alert.alert(t('common.error'), error.message || t('user.errorCreate'));
+        let errorMessage = error.message || t('user.errorCreate');
+        
+        // Handle duplicate user error specifically
+        if (errorMessage.includes('already registered') || errorMessage.includes('duplicate')) {
+            errorMessage = t('user.errorDuplicate', 'A user with this Employee ID already exists.');
+        }
+        
+        Alert.alert(t('common.error'), errorMessage);
     } finally {
         setLoading(false);
     }

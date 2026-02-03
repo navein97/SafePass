@@ -25,8 +25,9 @@ export const AuthService = {
      */
     async signUp(data: SignUpData) {
         try {
-            // Generate dummy email if none provided
-            const email = data.email || `${data.employeeId.toLowerCase()}@safepass.internal`;
+            // Generate dummy email if none provided - ensure it's lowercase and trimmed to prevent duplicates
+            const normalizedId = data.employeeId.trim().toLowerCase();
+            const email = data.email?.trim().toLowerCase() || `${normalizedId}@safepass.internal`;
 
             const redirectUrl = Platform.OS === 'web'
                 ? 'https://safepass-kappa.vercel.app/auth/callback'
@@ -38,12 +39,12 @@ export const AuthService = {
                 options: {
                     emailRedirectTo: redirectUrl,
                     data: {
-                        full_name: data.fullName,
-                        employee_id: data.employeeId,
+                        full_name: data.fullName.trim(),
+                        employee_id: data.employeeId.trim(), // Keep original case for display if needed, or normalize?. Usually IDs are case insensitive but let's just trim.
                         region: data.region,
                         age: data.age,
                         vehicle_type: data.vehicle_type,
-                        phone_number: data.phone_number,
+                        phone_number: data.phone_number?.trim(),
                         role: data.role || 'driver'
                     },
                 },
