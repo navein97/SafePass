@@ -157,4 +157,64 @@ export const AuthService = {
     onAuthStateChange(callback: (event: string, session: any) => void) {
         return supabase.auth.onAuthStateChange(callback);
     },
+
+    /**
+     * Get all users (Manager only)
+     */
+    async getAllUsers() {
+        try {
+            const { data: users, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return { users, error: null };
+        } catch (error: any) {
+            console.error('Get all users error:', error);
+            return { users: null, error: error.message };
+        }
+    },
+
+    /**
+     * Reset user password (Manager only)
+     * Note: This requires a backend function 'reset_user_password'
+     */
+    async adminResetPassword(userId: string) {
+        try {
+            // Attempt to call RPC function
+            const { error } = await supabase.rpc('reset_user_password', {
+                target_user_id: userId,
+                new_password: '123456' // Default password
+            });
+
+            if (error) {
+                // If RPC fails (e.g. not found), throw error to be handled by UI
+                // In a real app we might need a different strategy if RPC isn't available
+                throw error;
+            }
+            return { success: true, error: null };
+        } catch (error: any) {
+            console.error('Reset password error:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    /**
+     * Change user password (Manager only)
+     */
+    async changeUserPassword(userId: string, newPassword: string) {
+        try {
+            const { error } = await supabase.rpc('change_user_password', {
+                target_user_id: userId,
+                new_password: newPassword
+            });
+
+            if (error) throw error;
+            return { success: true, error: null };
+        } catch (error: any) {
+            console.error('Change password error:', error);
+            return { success: false, error: error.message };
+        }
+    },
 };

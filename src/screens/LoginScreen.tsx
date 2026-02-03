@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -79,8 +79,12 @@ export const LoginScreen = ({ navigation }: any) => {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.header}>
-              <Text style={styles.title}>SafePass</Text>
-              <Text style={styles.subtitle}>{t('auth.welcome')}</Text>
+              <Image 
+                source={require('../../assets/logo.png')} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.subtitle}>{t('auth.welcomeDriver360', 'Welcome to CNG Driver 360')}</Text>
             </View>
 
             <GlassCard style={styles.formCard}>
@@ -93,7 +97,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
                 <GlassInput
                   label={t('auth.employeeId', 'Employee ID')}
-                  placeholder="naveinrex97 / chandrajeimohan"
+                  placeholder="MY-CNG001"
                   value={employeeId}
                   onChangeText={(text) => {
                     setEmployeeId(text);
@@ -171,15 +175,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 40,
     alignItems: 'center',
   },
-  title: {
-    fontSize: 42,
-    fontFamily: typography.fonts.bold,
-    color: colors.mode === 'light' ? colors.primary.dark : colors.primary.DEFAULT,
-    marginBottom: 8,
-    textAlign: 'center',
-    textShadowColor: colors.primary.dark,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+  logo: {
+    width: 280,
+    height: 100,
+    marginBottom: 16,
   },
   subtitle: {
     fontSize: typography.sizes.lg,

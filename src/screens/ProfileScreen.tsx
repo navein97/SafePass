@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car } from 'lucide-react-native';
+import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { GradientBackground } from '../components/ui/GradientBackground';
@@ -42,6 +42,10 @@ interface ProfileData {
   age?: string;
   vehicleType?: string;
   // Master User Fields
+  designation?: string;
+  companyName?: string;
+  address?: string;
+  contactNumber?: string;
   managerLevel?: 1 | 2;
   operationalEffectiveness?: number;
   operationalDiscipline?: number;
@@ -64,6 +68,14 @@ export const ProfileScreen = ({ navigation }: any) => {
   // Staff State
   const [age, setAge] = useState('');
   const [vehicleType, setVehicleType] = useState('');
+  
+  // Master Profile State
+  const [showMasterDetails, setShowMasterDetails] = useState(false);
+  const [showTeamSettings, setShowTeamSettings] = useState(false);
+  const [designation, setDesignation] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [address, setAddress] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
   
   // Manager State
   const [questionCount, setQuestionCount] = useState(5);
@@ -136,7 +148,17 @@ export const ProfileScreen = ({ navigation }: any) => {
         totalScore: userProfile.totalScore || 0,
         current_batch: userProfile.current_batch || 1,
         total_batches_completed: userProfile.total_batches_completed || 0,
+        designation: userProfile.designation || '',
+        companyName: userProfile.company_name || '',
+        address: userProfile.address || '',
+        contactNumber: userProfile.phone_number || '', // Mapped from phone_number
       });
+
+      // Load Form State
+      setDesignation(userProfile.designation || '');
+      setCompanyName(userProfile.company_name || '');
+      setAddress(userProfile.address || '');
+      setContactNumber(userProfile.phone_number || '');
 
       // Load History
       if (userProfile.id) {
@@ -194,7 +216,11 @@ export const ProfileScreen = ({ navigation }: any) => {
     try {
         const { error } = await AuthService.updateProfile(profile.id, {
             age: parseInt(age) || null,
-            vehicle_type: vehicleType
+            vehicle_type: vehicleType,
+            designation: designation,
+            company_name: companyName,
+            address: address,
+            phone_number: contactNumber
         });
         
         if (error) throw error;
@@ -346,6 +372,76 @@ export const ProfileScreen = ({ navigation }: any) => {
             </View>
           </GlassCard>
 
+          {/* Master Profile Details - For ALL Users */}
+          <GlassCard style={styles.inputCard}>
+                 <TouchableOpacity 
+                    style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        marginBottom: showMasterDetails ? 16 : 0, 
+                        padding: 16, 
+                        backgroundColor: colors.background.subtle, 
+                        borderRadius: 12,
+                    }}
+                    onPress={() => setShowMasterDetails(!showMasterDetails)}
+                 >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <User size={20} color={colors.primary.DEFAULT} />
+                        <Text style={{ fontSize: 16, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
+                            Profile Details
+                        </Text>
+                    </View>
+                    {showMasterDetails ? <ChevronUp size={20} color={colors.text.secondary} /> : <ChevronDown size={20} color={colors.text.secondary} />}
+                 </TouchableOpacity>
+
+                 {showMasterDetails && (
+                    <View style={{ marginBottom: 16 }}>
+                        <Text style={styles.inputLabel}>Full Name / Designation</Text>
+                        <TextInput 
+                            style={styles.textInput}
+                            placeholder="e.g. Senior Driver"
+                            placeholderTextColor={colors.text.tertiary}
+                            value={designation}
+                            onChangeText={setDesignation}
+                        />
+                        
+                        <Text style={styles.inputLabel}>Company Name</Text>
+                        <TextInput 
+                            style={styles.textInput}
+                            placeholder="e.g. Transport Co."
+                            placeholderTextColor={colors.text.tertiary}
+                            value={companyName}
+                            onChangeText={setCompanyName}
+                        />
+
+                        <Text style={styles.inputLabel}>Address</Text>
+                        <TextInput 
+                            style={styles.textInput}
+                            placeholder="Full Address"
+                            placeholderTextColor={colors.text.tertiary}
+                            value={address}
+                            onChangeText={setAddress}
+                        />
+
+                        <Text style={styles.inputLabel}>Contact Number</Text>
+                        <TextInput 
+                            style={styles.textInput}
+                            placeholder="+60..."
+                            placeholderTextColor={colors.text.tertiary}
+                            value={contactNumber}
+                            onChangeText={setContactNumber}
+                        />
+                    </View>
+                 )}
+
+                 <GlassButton
+                   title={t('common.save')}
+                   onPress={handleSavePersonalDetails}
+                   style={{ marginTop: 8 }}
+                 />
+          </GlassCard>
+
           {/* Manager Settings */}
           {isManager ? (
             <GlassCard style={styles.inputCard}>
@@ -359,7 +455,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                )}
 
                  {/* Manage Users Button - For all Managers */}
-                 <TouchableOpacity style={styles.manageUsersButton} onPress={() => setShowCreateUser(true)}>
+                 <TouchableOpacity style={styles.manageUsersButton} onPress={() => navigation.navigate('UserManagement')}>
                     <UserPlus size={24} color={colors.primary.DEFAULT} />
                     <Text style={styles.manageUsersText}>{t('profile.manageUsers')}</Text>
                  </TouchableOpacity>
@@ -391,55 +487,76 @@ export const ProfileScreen = ({ navigation }: any) => {
                   </View>
                </View>
 
-               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, marginTop: 24 }}>
-                  <Settings size={24} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
-                  <Text style={styles.sectionTitle}>{t('profile.settings')}</Text>
-               </View>
+               <TouchableOpacity 
+                    style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        marginTop: 24,
+                        marginBottom: showTeamSettings ? 16 : 0, 
+                        padding: 16, 
+                        backgroundColor: colors.background.subtle, 
+                        borderRadius: 12,
+                    }}
+                    onPress={() => setShowTeamSettings(!showTeamSettings)}
+                 >
+                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <Settings size={20} color={colors.primary.DEFAULT} />
+                        <Text style={{ fontSize: 16, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
+                            {t('profile.settings')}
+                        </Text>
+                     </View>
+                     {showTeamSettings ? <ChevronUp size={20} color={colors.text.secondary} /> : <ChevronDown size={20} color={colors.text.secondary} />}
+                 </TouchableOpacity>
 
-               {/* Question Count Slider (Fixed) */}
-               <View style={styles.sliderContainer}>
-                 <View style={styles.sliderLabelContainer}>
-                   <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>{t('profile.questionsCount')} (Fixed)</Text>
-                   <Text style={[styles.sliderValue, {color: colors.text.secondary}]}>30</Text>
-                 </View>
-                  <Slider
-                     style={styles.slider}
-                     minimumValue={30}
-                     maximumValue={30} 
-                     step={1}
-                     value={30}
-                     disabled={true}
-                     minimumTrackTintColor={colors.border}
-                     maximumTrackTintColor={colors.border}
-                     thumbTintColor={colors.text.tertiary}
-                   />
-                   <Text style={[styles.statLabel, {textAlign: 'left', marginTop: 4}]}>
-                     Standardized to 30 questions per batch for fair leaderboard ranking
-                   </Text>
-                </View>
+                 {showTeamSettings && (
+                    <View>
+                        {/* Question Count Slider (Fixed) */}
+                        <View style={styles.sliderContainer}>
+                            <View style={styles.sliderLabelContainer}>
+                            <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>{t('profile.questionsCount')} (Fixed)</Text>
+                            <Text style={[styles.sliderValue, {color: colors.text.secondary}]}>30</Text>
+                            </View>
+                            <Slider
+                                style={styles.slider}
+                                minimumValue={30}
+                                maximumValue={30} 
+                                step={1}
+                                value={30}
+                                disabled={true}
+                                minimumTrackTintColor={colors.border}
+                                maximumTrackTintColor={colors.border}
+                                thumbTintColor={colors.text.tertiary}
+                            />
+                            <Text style={[styles.statLabel, {textAlign: 'left', marginTop: 4}]}>
+                                Standardized to 30 questions per batch for fair leaderboard ranking
+                            </Text>
+                        </View>
 
-                {/* Difficulty Settings (Fixed) */}
-                <View style={{ marginTop: 24, marginBottom: 16 }}>
-                   <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>Question Distribution (Pre-set per Batch)</Text>
-                   
-                   {/* Visual Only Sliders */}
-                   {['Easy', 'Intermediate', 'Hard'].map((level, idx) => (
-                    <View key={level} style={styles.sliderContainer}>
-                       <View style={styles.sliderLabelContainer}>
-                          <Text style={[styles.inputLabel, { fontSize: 12, color: colors.text.secondary }]}>{level}</Text>
-                          <Text style={[styles.sliderValue, { color: colors.text.secondary }]}>Mixed</Text>
-                       </View>
-                       <Slider
-                          style={styles.slider}
-                          value={50} // Dummy value
-                          disabled={true}
-                          minimumTrackTintColor={colors.border}
-                          maximumTrackTintColor={colors.border}
-                          thumbTintColor={colors.text.tertiary}
-                       />
+                        {/* Difficulty Settings (Fixed) */}
+                        <View style={{ marginTop: 24, marginBottom: 16 }}>
+                            <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>Question Distribution (Pre-set per Batch)</Text>
+                            
+                            {/* Visual Only Sliders */}
+                            {['Easy', 'Intermediate', 'Hard'].map((level, idx) => (
+                                <View key={level} style={styles.sliderContainer}>
+                                <View style={styles.sliderLabelContainer}>
+                                    <Text style={[styles.inputLabel, { fontSize: 12, color: colors.text.secondary }]}>{level}</Text>
+                                    <Text style={[styles.sliderValue, { color: colors.text.secondary }]}>Mixed</Text>
+                                </View>
+                                <Slider
+                                    style={styles.slider}
+                                    value={50} // Dummy value
+                                    disabled={true}
+                                    minimumTrackTintColor={colors.border}
+                                    maximumTrackTintColor={colors.border}
+                                    thumbTintColor={colors.text.tertiary}
+                                />
+                                </View>
+                            ))}
+                        </View>
                     </View>
-                   ))}
-                </View>
+                 )}
 
                {/* Save Button */}
                <GlassButton
@@ -475,8 +592,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                       { key: 'Container Haulage', label: t('profile.vehicles.containerHaulage') },
                       { key: 'Curtain Side', label: t('profile.vehicles.curtainSide') },
                       { key: 'Open Cargo', label: t('profile.vehicles.openCargo') },
-                      { key: 'Small Truck', label: t('profile.vehicles.smallTruck') },
-                      { key: 'Tanker', label: t('profile.vehicles.tanker') }
+                      { key: 'Small Truck', label: t('profile.vehicles.smallTruck') }
                     ].map((v) => (
                       <TouchableOpacity
                         key={v.key}

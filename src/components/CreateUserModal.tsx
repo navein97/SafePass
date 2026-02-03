@@ -13,9 +13,10 @@ interface CreateUserModalProps {
   onClose: () => void;
   currentUserLevel: 1 | 2;
   currentUserDepartment?: string;
+  onUserCreated?: () => void;
 }
 
-export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClose, currentUserLevel, currentUserDepartment }) => {
+export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClose, currentUserLevel, currentUserDepartment, onUserCreated }) => {
   const { t } = useTranslation();
   const { colors } = useTheme();
   
@@ -46,11 +47,12 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     { label: t('user.singapore', 'Singapore'), value: 'SG' }
   ];
 
-  const handleCreateUser = async () => {
+    const handleCreateUser = async () => {
     // Validate fields
     const newErrors: { [key: string]: boolean } = {};
     if (!fullName) newErrors.fullName = true;
     if (!employeeId) newErrors.employeeId = true;
+    if (!password) newErrors.password = true;
     if (!age) newErrors.age = true;
     if (!vehicleType) newErrors.vehicleType = true;
     if (!region) newErrors.region = true;
@@ -78,12 +80,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         if (error) throw new Error(error);
 
         Alert.alert(
-            t('user.success'), 
-            t('user.userCreated', { fullName, email: `${employeeId}@safepass.internal`, password }),
+            'Success', 
+            `New user created!\n\nName: ${fullName}\nEmployee ID: ${employeeId}\nPassword: ${password}`,
             [{ text: 'OK', onPress: () => {
+                if (onUserCreated) onUserCreated();
                 onClose();
                 setFullName('');
                 setEmployeeId('');
+                setPassword('123456');
                 setAge('');
                 setVehicleType('');
                 setRegion('');
@@ -161,9 +165,26 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       setEmployeeId(text);
                       if (text) setErrors(prev => ({ ...prev, employeeId: false }));
                   }}
-                  placeholder="naveinrex97 / chandrajeimohan"
+                  placeholder="MY-CNG001"
                   placeholderTextColor={colors.text.tertiary}
                   autoCapitalize="characters"
+              />
+
+              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password', 'Password')}</Text>
+              <TextInput 
+                  style={[
+                      styles.input, 
+                      dynamicStyles.input,
+                      errors.password && dynamicStyles.errorBorder
+                  ]}
+                  value={password}
+                  onChangeText={(text) => {
+                      setPassword(text);
+                      if (text) setErrors(prev => ({ ...prev, password: false }));
+                  }}
+                  placeholder="Enter password"
+                  placeholderTextColor={colors.text.tertiary}
+                  secureTextEntry
               />
 
               <View style={styles.row}>

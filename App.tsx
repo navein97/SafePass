@@ -20,6 +20,7 @@ import { ResetPasswordScreen } from './src/screens/ResetPasswordScreen';
 import { QuizScreen } from './src/screens/QuizScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
 import { ManagerQuickViewScreen } from './src/screens/ManagerQuickViewScreen';
+import { UserManagementScreen } from './src/screens/UserManagementScreen';
 import { colors } from './src/theme/colors';
 
 import { NotificationService } from './src/services/notificationService';
@@ -102,6 +103,7 @@ function AppContent() {
             <Stack.Screen name="Quiz" component={QuizScreen} />
             <Stack.Screen name="Review" component={ReviewScreen} />
             <Stack.Screen name="ManagerQuickView" component={ManagerQuickViewScreen} />
+            <Stack.Screen name="UserManagement" component={UserManagementScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { colors } from '../theme/colors';
+import { supabase } from '../lib/supabase';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -86,5 +87,35 @@ export const NotificationService = {
                 minute: 0,
             },
         });
+    },
+
+    /**
+     * Send an in-app notification to a user
+     */
+    async sendNotification({ userId, title, body, data }: { userId: string, title: string, body: string, data?: any }) {
+        try {
+            // requires 'notifications' table in supabase
+            const { error } = await supabase
+                .from('notifications')
+                .insert({
+                    user_id: userId,
+                    title,
+                    message: body,
+                    data,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
+
+            if (error) throw error;
+            return { success: true };
+        } catch (error: any) {
+            console.error('Send notification error:', error);
+            // If table doesn't exist, we just log it for now as we can't create tables from client
+            if (error.code === '42P01') { // undefined_table
+                console.warn('Notifications table missing. Skipping persistence.');
+                return { success: false, error: 'Notifications table not set up' };
+            }
+            throw error;
+        }
     }
 };
