@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Modal, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
+import { Toast } from './Toast';
 import { X, UserPlus } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 
@@ -34,6 +35,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 
   // Error State
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
+  
+  // Toast State
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
   const vehicleOptions = [
     { label: t('profile.vehicles.containerHaulage'), value: 'Container Haulage' },
@@ -85,23 +91,25 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         
         if (error) throw new Error(error);
 
-        Alert.alert(
-            'Success', 
-            `New user created!\n\nName: ${fullName}\nEmployee ID: ${employeeId}\nPassword: ${password}`,
-            [{ text: 'OK', onPress: () => {
-                if (onUserCreated) onUserCreated();
-                onClose();
-                setFullName('');
-                setEmployeeId('');
-                setPassword('123456');
-                setAge('');
-                setVehicleType('');
-                setRegion('');
-                setPhoneNumber('');
-                setRole('driver');
-                setErrors({});
-            }}]
-        );
+        // Show success toast
+        setToastMessage(`User created! Name: ${fullName}, ID: ${employeeId}, Password: ${password}`);
+        setToastType('success');
+        setToastVisible(true);
+        
+        // Reset form and close after a delay
+        setTimeout(() => {
+            if (onUserCreated) onUserCreated();
+            onClose();
+            setFullName('');
+            setEmployeeId('');
+            setPassword('123456');
+            setAge('');
+            setVehicleType('');
+            setRegion('');
+            setPhoneNumber('');
+            setRole('driver');
+            setErrors({});
+        }, 4000); // Give user time to see the success message
         
     } catch (error: any) {
         let errorMessage = error.message || t('user.errorCreate');
@@ -111,7 +119,9 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
             errorMessage = t('user.errorDuplicate', 'A user with this Employee ID already exists.');
         }
         
-        Alert.alert(t('common.error'), errorMessage);
+        setToastMessage(errorMessage);
+        setToastType('error');
+        setToastVisible(true);
     } finally {
         setLoading(false);
     }
@@ -133,6 +143,12 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Toast 
+        visible={toastVisible} 
+        message={toastMessage} 
+        type={toastType} 
+        onHide={() => setToastVisible(false)} 
+      />
       <View style={styles.modalOverlay}>
         <ScrollView 
           style={styles.scrollView}
