@@ -72,6 +72,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   // Master Profile State
   const [showMasterDetails, setShowMasterDetails] = useState(false);
   const [showTeamSettings, setShowTeamSettings] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [designation, setDesignation] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [address, setAddress] = useState('');
@@ -155,6 +156,7 @@ export const ProfileScreen = ({ navigation }: any) => {
       });
 
       // Load Form State
+      setFullName(userProfile.full_name || '');
       setDesignation(userProfile.designation || '');
       setCompanyName(userProfile.company_name || '');
       setAddress(userProfile.address || '');
@@ -215,9 +217,10 @@ export const ProfileScreen = ({ navigation }: any) => {
     if (!profile?.id) return;
     try {
         const { error } = await AuthService.updateProfile(profile.id, {
+            full_name: fullName.trim(),
             age: parseInt(age) || null,
             vehicle_type: vehicleType,
-            designation: designation,
+            designation: designation.trim(),
             company_name: companyName,
             address: address,
             phone_number: contactNumber
@@ -397,7 +400,16 @@ export const ProfileScreen = ({ navigation }: any) => {
 
                  {showMasterDetails && (
                     <View style={{ marginBottom: 16 }}>
-                        <Text style={styles.inputLabel}>Full Name / Designation</Text>
+                        <Text style={styles.inputLabel}>Full Name</Text>
+                        <TextInput 
+                            style={styles.textInput}
+                            placeholder="e.g. John Doe"
+                            placeholderTextColor={colors.text.tertiary}
+                            value={fullName}
+                            onChangeText={setFullName}
+                        />
+                        
+                        <Text style={styles.inputLabel}>Designation</Text>
                         <TextInput 
                             style={styles.textInput}
                             placeholder="e.g. Senior Driver"
@@ -487,7 +499,8 @@ export const ProfileScreen = ({ navigation }: any) => {
                   </View>
                </View>
 
-               <TouchableOpacity 
+               {/* Team Quiz Settings - HIDDEN per user request */}
+               {/* <TouchableOpacity 
                     style={{ 
                         flexDirection: 'row', 
                         alignItems: 'center', 
@@ -511,7 +524,6 @@ export const ProfileScreen = ({ navigation }: any) => {
 
                  {showTeamSettings && (
                     <View>
-                        {/* Question Count Slider (Fixed) */}
                         <View style={styles.sliderContainer}>
                             <View style={styles.sliderLabelContainer}>
                             <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>{t('profile.questionsCount')} (Fixed)</Text>
@@ -533,11 +545,9 @@ export const ProfileScreen = ({ navigation }: any) => {
                             </Text>
                         </View>
 
-                        {/* Difficulty Settings (Fixed) */}
                         <View style={{ marginTop: 24, marginBottom: 16 }}>
                             <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>Question Distribution (Pre-set per Batch)</Text>
                             
-                            {/* Visual Only Sliders */}
                             {['Easy', 'Intermediate', 'Hard'].map((level, idx) => (
                                 <View key={level} style={styles.sliderContainer}>
                                 <View style={styles.sliderLabelContainer}>
@@ -546,7 +556,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                                 </View>
                                 <Slider
                                     style={styles.slider}
-                                    value={50} // Dummy value
+                                    value={50}
                                     disabled={true}
                                     minimumTrackTintColor={colors.border}
                                     maximumTrackTintColor={colors.border}
@@ -556,7 +566,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                             ))}
                         </View>
                     </View>
-                 )}
+                 )} */}
 
                {/* Save Button */}
                <GlassButton

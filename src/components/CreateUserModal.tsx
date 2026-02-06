@@ -30,6 +30,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   const [vehicleType, setVehicleType] = useState('');
   const [region, setRegion] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [role, setRole] = useState<'driver' | 'manager'>('driver');
 
   // Error State
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
@@ -45,6 +46,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     { label: t('common.malaysia'), value: 'MY' },
     { label: t('user.thailand', 'Thailand'), value: 'TH' },
     { label: t('user.singapore', 'Singapore'), value: 'SG' }
+  ];
+
+  const roleOptions = [
+    { label: t('user.driver', 'Driver'), value: 'driver' },
+    { label: t('user.manager', 'Manager'), value: 'manager' }
   ];
 
     const handleCreateUser = async () => {
@@ -74,7 +80,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
             vehicle_type: vehicleType,
             region,
             phone_number: phoneNumber.trim(),
-            role: 'driver'
+            role: role
         });
         
         if (error) throw new Error(error);
@@ -92,6 +98,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 setVehicleType('');
                 setRegion('');
                 setPhoneNumber('');
+                setRole('driver');
                 setErrors({});
             }}]
         );
@@ -137,7 +144,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
               <View style={styles.header}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <UserPlus size={24} color={colors.primary.DEFAULT} style={{ marginRight: 10 }} />
-                    <Text style={[styles.title, dynamicStyles.title]}>{t('user.createTitle', 'Create New Driver')}</Text>
+                    <Text style={[styles.title, dynamicStyles.title]}>{t('user.createTitle', 'Create New User')}</Text>
                   </View>
                   <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                       <X size={20} color={colors.text.primary} />
@@ -278,6 +285,27 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       styles.optionText,
                       { color: colors.text.secondary },
                       vehicleType === opt.value && { color: '#000', fontFamily: typography.fonts.bold }
+                    ]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.label, dynamicStyles.label]}>{t('user.role', 'Role')}</Text>
+              <View style={styles.optionsGrid}>
+                {roleOptions.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.optionChip,
+                      { borderColor: colors.border },
+                      role === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
+                    ]}
+                    onPress={() => setRole(opt.value as 'driver' | 'manager')}
+                  >
+                    <Text style={[
+                      styles.optionText,
+                      { color: colors.text.secondary },
+                      role === opt.value && { color: '#000', fontFamily: typography.fonts.bold }
                     ]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
