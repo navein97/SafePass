@@ -26,7 +26,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   // Form State
   const [fullName, setFullName] = useState('');
   const [employeeId, setEmployeeId] = useState('');
-  const [password, setPassword] = useState('123456'); // Default password
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [age, setAge] = useState('');
   const [vehicleType, setVehicleType] = useState('');
   const [region, setRegion] = useState('');
@@ -65,6 +66,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     if (!fullName.trim()) newErrors.fullName = true;
     if (!employeeId.trim()) newErrors.employeeId = true;
     if (!password) newErrors.password = true;
+    if (!confirmPassword) newErrors.confirmPassword = true;
+    if (password !== confirmPassword) {
+        newErrors.password = true;
+        newErrors.confirmPassword = true;
+    }
     if (!age) newErrors.age = true;
     if (!vehicleType) newErrors.vehicleType = true;
     if (!region) newErrors.region = true;
@@ -102,7 +108,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
             onClose();
             setFullName('');
             setEmployeeId('');
-            setPassword('123456');
+            setPassword('');
+            setConfirmPassword('');
             setAge('');
             setVehicleType('');
             setRegion('');
@@ -216,6 +223,28 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                   placeholderTextColor={colors.text.tertiary}
                   secureTextEntry
               />
+
+              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.confirmPassword', 'Confirm Password')}</Text>
+              <TextInput 
+                  style={[
+                      styles.input, 
+                      dynamicStyles.input,
+                      errors.confirmPassword && dynamicStyles.errorBorder
+                  ]}
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                      setConfirmPassword(text);
+                      if (text) setErrors(prev => ({ ...prev, confirmPassword: false }));
+                  }}
+                  placeholder="Re-enter password"
+                  placeholderTextColor={colors.text.tertiary}
+                  secureTextEntry
+              />
+              {errors.confirmPassword && password !== confirmPassword && (
+                  <Text style={[styles.errorText, { color: colors.status?.danger || '#FF3B30' }]}>
+                      {t('auth.passwordsDoNotMatch', 'Passwords do not match')}
+                  </Text>
+              )}
 
               <View style={styles.row}>
                 <View style={{ flex: 1, marginRight: 8 }}>
@@ -412,5 +441,11 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 13,
     fontFamily: typography.fonts.medium,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: typography.fonts.regular,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
