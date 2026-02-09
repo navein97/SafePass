@@ -104,6 +104,11 @@ export const LoginScreen = ({ navigation }: any) => {
                     if (errors.employeeId) setErrors(prev => ({ ...prev, employeeId: '' }));
                   }}
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="off"
+                  spellCheck={false}
+                  textContentType="none"
+                  importantForAutofill="no"
                   editable={!loading}
                   error={errors.employeeId}
                   leftIcon={<Mail size={20} color={colors.text.secondary} />}
