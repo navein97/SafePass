@@ -6,7 +6,7 @@ import { typography } from '../theme/typography';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Toast } from './Toast';
-import { X, UserPlus } from 'lucide-react-native';
+import { X, UserPlus, Eye, EyeOff } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 
 interface CreateUserModalProps {
@@ -33,6 +33,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   const [region, setRegion] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [role, setRole] = useState<'driver' | 'manager'>('driver');
+
+  // Password Visibility State
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Error State
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
@@ -208,38 +212,64 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
               />
 
               <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password', 'Password')}</Text>
-              <TextInput 
-                  style={[
-                      styles.input, 
-                      dynamicStyles.input,
-                      errors.password && dynamicStyles.errorBorder
-                  ]}
-                  value={password}
-                  onChangeText={(text) => {
-                      setPassword(text);
-                      if (text) setErrors(prev => ({ ...prev, password: false }));
-                  }}
-                  placeholder="Enter password"
-                  placeholderTextColor={colors.text.tertiary}
-                  secureTextEntry
-              />
+              <View>
+                  <TextInput 
+                      style={[
+                          styles.input, 
+                          dynamicStyles.input,
+                          errors.password && dynamicStyles.errorBorder,
+                          { paddingRight: 50 }
+                      ]}
+                      value={password}
+                      onChangeText={(text) => {
+                          setPassword(text);
+                          if (text) setErrors(prev => ({ ...prev, password: false }));
+                      }}
+                      placeholder="Enter password"
+                      placeholderTextColor={colors.text.tertiary}
+                      secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity 
+                      style={styles.eyeIcon} 
+                      onPress={() => setShowPassword(!showPassword)}
+                  >
+                      {showPassword ? (
+                          <EyeOff size={20} color={colors.text.tertiary} />
+                      ) : (
+                          <Eye size={20} color={colors.text.tertiary} />
+                      )}
+                  </TouchableOpacity>
+              </View>
 
               <Text style={[styles.label, dynamicStyles.label]}>{t('auth.confirmPassword', 'Confirm Password')}</Text>
-              <TextInput 
-                  style={[
-                      styles.input, 
-                      dynamicStyles.input,
-                      errors.confirmPassword && dynamicStyles.errorBorder
-                  ]}
-                  value={confirmPassword}
-                  onChangeText={(text) => {
-                      setConfirmPassword(text);
-                      if (text) setErrors(prev => ({ ...prev, confirmPassword: false }));
-                  }}
-                  placeholder="Re-enter password"
-                  placeholderTextColor={colors.text.tertiary}
-                  secureTextEntry
-              />
+              <View>
+                  <TextInput 
+                      style={[
+                          styles.input, 
+                          dynamicStyles.input,
+                          errors.confirmPassword && dynamicStyles.errorBorder,
+                          { paddingRight: 50 }
+                      ]}
+                      value={confirmPassword}
+                      onChangeText={(text) => {
+                          setConfirmPassword(text);
+                          if (text) setErrors(prev => ({ ...prev, confirmPassword: false }));
+                      }}
+                      placeholder="Re-enter password"
+                      placeholderTextColor={colors.text.tertiary}
+                      secureTextEntry={!showConfirmPassword}
+                  />
+                  <TouchableOpacity 
+                      style={styles.eyeIcon} 
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                      {showConfirmPassword ? (
+                          <EyeOff size={20} color={colors.text.tertiary} />
+                      ) : (
+                          <Eye size={20} color={colors.text.tertiary} />
+                      )}
+                  </TouchableOpacity>
+              </View>
               {errors.confirmPassword && password !== confirmPassword && (
                   <Text style={[styles.errorText, { color: colors.status?.danger || '#FF3B30' }]}>
                       {t('auth.passwordsDoNotMatch', 'Passwords do not match')}
@@ -447,5 +477,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.regular,
     marginTop: 4,
     marginLeft: 4,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
