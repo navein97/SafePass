@@ -61,7 +61,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 
   const roleOptions = [
     { label: t('user.driver', 'Driver'), value: 'driver' },
-    { label: t('user.manager', 'Manager'), value: 'manager' }
+    ...(currentUserLevel === 1 ? [{ label: t('user.manager', 'Manager'), value: 'manager' }] : [])
   ];
 
     const handleCreateUser = async () => {
@@ -96,7 +96,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
             vehicle_type: vehicleType,
             region,
             phone_number: phoneNumber.trim(),
-            role: role
+            role: role,
+            manager_level: role === 'manager' ? 2 : undefined
         });
         
         if (error) throw new Error(error);

@@ -45,7 +45,8 @@ export const AuthService = {
                         age: data.age,
                         vehicle_type: data.vehicle_type,
                         phone_number: data.phone_number?.trim(),
-                        role: data.role || 'driver'
+                        role: data.role || 'driver',
+                        manager_level: data.manager_level
                     },
                 },
             });

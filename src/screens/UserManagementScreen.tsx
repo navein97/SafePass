@@ -20,6 +20,7 @@ interface UserProfile {
     full_name: string;
     employee_id: string;
     role: 'driver' | 'manager';
+    manager_level?: 1 | 2;
     safety_index?: number;
     total_batches_completed?: number;
     // Add other fields as needed
@@ -30,6 +31,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
     const { colors, theme } = useTheme();
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currentUserProfile, setCurrentUserProfile] = useState<any>(null); // Store current user profile
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -46,19 +48,36 @@ export const UserManagementScreen = ({ navigation }: any) => {
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     useEffect(() => {
-        loadUsers();
+        loadData();
     }, []);
 
-    const loadUsers = async () => {
+    const loadData = async () => {
         setLoading(true);
+        try {
+            // Load current user profile first to determine permissions
+            const { profile: currentProfile, error: profileError } = await AuthService.getUserProfile();
+            if (profileError) throw new Error(profileError);
+            setCurrentUserProfile(currentProfile);
+
+            // Load all users
+            const { users: allUsers, error: usersError } = await AuthService.getAllUsers();
+            if (usersError) throw new Error(usersError);
+            setUsers(allUsers || []);
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to load data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadUsers = async () => {
+         // Helper to refresh just the user list
         try {
             const { users: allUsers, error } = await AuthService.getAllUsers();
             if (error) throw new Error(error);
             setUsers(allUsers || []);
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to load users');
-        } finally {
-            setLoading(false);
+            console.error('Refresh users error:', error);
         }
     };
 
@@ -135,12 +154,18 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 }} style={styles.actionButton}>
                     <Text>🔔</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleChangePasswordPress(item)} style={styles.actionButton}>
-                    <Key size={20} color={colors.text.secondary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDeletePress(item)} style={styles.actionButton}>
-                    <Trash2 size={20} color={colors.status.danger} />
-                </TouchableOpacity>
+                {/* Hide change password for Master (Level 1) users */}
+                {item.manager_level !== 1 && (
+                    <TouchableOpacity onPress={() => handleChangePasswordPress(item)} style={styles.actionButton}>
+                        <Key size={20} color={colors.text.secondary} />
+                    </TouchableOpacity>
+                )}
+                {/* Hide delete for Master (Level 1) users */}
+                {item.manager_level !== 1 && (
+                    <TouchableOpacity onPress={() => handleDeletePress(item)} style={styles.actionButton}>
+                        <Trash2 size={20} color={colors.status.danger} />
+                    </TouchableOpacity>
+                )}
             </View>
         </GlassCard>
     );
@@ -205,7 +230,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 <CreateUserModal 
                     visible={showCreateModal}
                     onClose={() => setShowCreateModal(false)}
-                    currentUserLevel={2}
+                    currentUserLevel={currentUserProfile?.manager_level || 2}
                     onUserCreated={() => {
                         setShowCreateModal(false);
                         loadUsers();

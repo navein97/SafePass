@@ -568,12 +568,12 @@ export const ProfileScreen = ({ navigation }: any) => {
                     </View>
                  )} */}
 
-               {/* Save Button */}
-               <GlassButton
+{/* Save Button - Hidden as settings are hidden */}
+               {/* <GlassButton
                  title={t('common.save')}
                  onPress={handleSaveSettings}
                  style={{ marginTop: 8 }}
-               />
+               /> */}
             </GlassCard>
           ) : (
             <View>
