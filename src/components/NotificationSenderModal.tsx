@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { GlassCard } from './ui/GlassCard';
 import { GlassButton } from './ui/GlassButton';
-import { X, Send } from 'lucide-react-native';
+import { X, Send, CheckSquare, Square } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { NotificationService } from '../services/notificationService';
 
@@ -20,13 +20,13 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
     const { colors } = useTheme();
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
-    const [target, setTarget] = useState<'specific' | 'all'>('specific');
+    const [targetGroups, setTargetGroups] = useState({
+        managers: false,
+        drivers: false,
+        everyone: false
+    });
     
-    useEffect(() => {
-        if (preselectedUser) {
-            setTarget('specific');
-        }
-    }, [preselectedUser]);
+
 
     const handleSend = async () => {
         if (!message.trim()) {
@@ -34,22 +34,57 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
             return;
         }
 
-        if (!preselectedUser) {
-            Alert.alert('Error', 'No user selected');
+        if (!preselectedUser && !targetGroups.managers && !targetGroups.drivers) {
+            Alert.alert('Error', 'Please select at least one recipient recipient group or user');
             return;
         }
 
         try {
             setLoading(true);
+
+            if (preselectedUser) {
+                // Send to specific user
+                await NotificationService.sendNotification({
+                    userId: preselectedUser.id,
+                    title: 'New Message',
+                    body: message
+                });
+                Alert.alert('Success', `Message sent to ${preselectedUser.name}`);
+            } else {
+                // Bulk Send
+                const { users, error } = await AuthService.getAllUsers();
+                if (error || !users) throw new Error(error || 'Failed to fetch users');
+
+                let recipients = [];
+                if (targetGroups.everyone) {
+                    recipients = users;
+                } else if (targetGroups.managers && targetGroups.drivers) {
+                    recipients = users;
+                } else if (targetGroups.managers) {
+                    recipients = users.filter(u => u.role === 'manager');
+                } else if (targetGroups.drivers) {
+                    recipients = users.filter(u => u.role === 'driver');
+                }
+
+                if (recipients.length === 0) {
+                    Alert.alert('Info', 'No matching users found to send message to.');
+                    return;
+                }
+
+                // Send to all (in parallel)
+                await Promise.all(recipients.map(user => 
+                    NotificationService.sendNotification({
+                        userId: user.id,
+                        title: 'New Message', // You might want to make this customizable too
+                        body: message
+                    })
+                ));
+
+                Alert.alert('Success', `Message sent to ${recipients.length} users.`);
+            }
             
-            await NotificationService.sendNotification({
-                userId: preselectedUser.id,
-                title: 'New Message',
-                body: message
-            });
-            
-            Alert.alert('Success', `Message sent to ${preselectedUser.name}`);
             setMessage('');
+            setTargetGroups({ managers: false, drivers: false, everyone: false });
             onClose();
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to send message');
@@ -73,9 +108,53 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
 
                     <View style={styles.targetInfo}>
                         <Text style={[styles.label, { color: colors.text.secondary }]}>To:</Text>
-                        <Text style={[styles.targetName, { color: colors.primary.DEFAULT }]}>
-                            {preselectedUser ? preselectedUser.name : 'Select User...'}
-                        </Text>
+                        {preselectedUser ? (
+                            <Text style={[styles.targetName, { color: colors.primary.DEFAULT }]}>
+                                {preselectedUser.name}
+                            </Text>
+                        ) : (
+                            <View style={styles.checkboxContainer}>
+                                <TouchableOpacity 
+                                    style={styles.checkboxOption} 
+                                    onPress={() => {
+                                        const newVal = !targetGroups.everyone;
+                                        setTargetGroups({
+                                            everyone: newVal,
+                                            managers: newVal,
+                                            drivers: newVal
+                                        });
+                                    }}
+                                >
+                                    {targetGroups.everyone ? 
+                                        <CheckSquare size={20} color={colors.primary.DEFAULT} /> : 
+                                        <Square size={20} color={colors.text.tertiary} />
+                                    }
+                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary, fontFamily: typography.fonts.bold }]}>Everyone</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity 
+                                    style={styles.checkboxOption} 
+                                    onPress={() => setTargetGroups(prev => ({ ...prev, managers: !prev.managers, everyone: false }))}
+                                >
+                                    {targetGroups.managers ? 
+                                        <CheckSquare size={20} color={colors.primary.DEFAULT} /> : 
+                                        <Square size={20} color={colors.text.tertiary} />
+                                    }
+                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary }]}>All Managers</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity 
+                                    style={styles.checkboxOption} 
+                                    onPress={() => setTargetGroups(prev => ({ ...prev, drivers: !prev.drivers, everyone: false }))}
+                                >
+                                    {targetGroups.drivers ? 
+                                        <CheckSquare size={20} color={colors.primary.DEFAULT} /> : 
+                                        <Square size={20} color={colors.text.tertiary} />
+                                    }
+                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary }]}>All Drivers</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
 
                     <TextInput 
@@ -147,5 +226,18 @@ const styles = StyleSheet.create({
         textAlignVertical: 'top',
         fontSize: 16,
         fontFamily: typography.fonts.regular,
+    },
+    checkboxContainer: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    checkboxOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    checkboxLabel: {
+        fontSize: 16,
+        fontFamily: typography.fonts.medium,
     }
 });

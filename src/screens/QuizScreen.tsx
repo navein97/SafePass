@@ -25,6 +25,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
   // Ensure batchNumber is a number
   const rawBatchNumber = route.params?.batchNumber ?? 1;
   const batchNumber = parseInt(String(rawBatchNumber), 10);
+  const mode = route.params?.mode || 'live'; // 'live' or 'practice'
+  const isPractice = mode === 'practice';
+
   
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
@@ -77,41 +80,62 @@ export const QuizScreen = ({ navigation, route }: any) => {
         return;
       }
 
-      // Check if user can access this batch
-      const canAccess = await BatchService.canAccessBatch(profile.id, batchNumber);
-      if (!canAccess) {
-        Alert.alert(
-          'Batch Locked',
-          `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-        return;
+      // Check Daily Limit for Live Mode
+      if (!isPractice) {
+        const dailyCount = await QuizStorageService.getDailyCount(profile.id);
+        if (dailyCount >= 3) {
+          Alert.alert(
+            t('quiz.dailyLimitTitle') || 'Daily Limit Reached',
+            t('quiz.dailyLimitMessage') || 'You have reached your limit of 3 questions for today. Come back tomorrow or try Practice Mode!',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
+      }
+
+      // Check access - Bypassed for Practice Mode
+      if (!isPractice) {
+        const canAccess = await BatchService.canAccessBatch(profile.id, batchNumber);
+        if (!canAccess) {
+          Alert.alert(
+            'Batch Locked',
+            `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`,
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
       }
 
       setLoadingStatus(`Loading Batch ${batchNumber} questions...`);
 
       // Load batch questions
-      const loadedQuestions = await BatchService.getBatchQuestions(batchNumber);
-      console.log(`Loaded ${loadedQuestions.length} questions for Batch ${batchNumber}`);
-      
-      if (loadedQuestions.length === 0) {
+      try {
+        const loadedQuestions = await BatchService.getBatchQuestions(batchNumber);
+        console.log(`[QuizScreen] Loaded ${loadedQuestions.length} questions for Batch ${batchNumber}`);
+        
+        if (!loadedQuestions || loadedQuestions.length === 0) {
+          throw new Error('Questions array is empty');
+        }
+
+        setQuestions(loadedQuestions);
+        
+        // Wait for next tick to ensure questions state is accessible if needed
+        // then check for saved progress
+        const saved = await QuizStorageService.loadProgress(profile.id, batchNumber);
+        if (saved && saved.currentIndex > 0) {
+          setSavedProgress(saved);
+          setShowResumePrompt(true);
+        } else {
+          setStartTime(Date.now());
+        }
+      } catch (qError) {
+        console.error('Error fetching questions:', qError);
         Alert.alert(
-          'No Questions',
-          `No questions found for Batch ${batchNumber}`
+          'Loading Error',
+          `Could not load questions for Batch ${batchNumber}. Please try again.`
         );
         navigation.goBack();
         return;
-      }
-
-      setQuestions(loadedQuestions);
-      
-      // Check for saved progress
-      const saved = await QuizStorageService.loadProgress(profile.id, batchNumber);
-      if (saved && saved.currentIndex > 0) {
-        setSavedProgress(saved);
-        setShowResumePrompt(true);
-      } else {
-        setStartTime(Date.now());
       }
 
     } catch (error) {
@@ -137,7 +161,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
   // Start fresh (discard saved progress)
   const startFresh = async () => {
-    if (userId) {
+    if (userId && !isPractice) {
       await QuizStorageService.clearProgress(userId, batchNumber);
     }
     setStartTime(Date.now());
@@ -147,7 +171,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
   // Save current progress to local storage
   const saveProgressLocally = async () => {
-    if (userId && questions.length > 0) {
+    if (userId && questions.length > 0 && !isPractice) {
       await QuizStorageService.saveProgress({
         batchNumber,
         currentIndex,
@@ -161,6 +185,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
   };
   
   const handleBack = () => {
+    // Practice mode goes back immediately without alert
+    if (isPractice) {
+      navigation.navigate('MainTabs', { screen: 'Mission' });
+      return;
+    }
+
     // Platform-agnostic confirmation with save option
     const title = t('common.exitQuiz') || 'Exit Quiz?';
     const message = t('common.saveExitMessage') || 
@@ -200,7 +230,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     }
   };
 
-  const handleOptionSelect = (index: number) => {
+  const handleOptionSelect = async (index: number) => {
     if (isAnswered) return;
 
     setSelectedOption(index);
@@ -222,12 +252,18 @@ export const QuizScreen = ({ navigation, route }: any) => {
         attempts: currentAttempts,
         isCorrect: true
       }]);
+      
+      // Increment Daily Count if Live Mode
+      if (!isPractice) {
+        await QuizStorageService.incrementDailyCount(userId);
+      }
+
       setShowFeedback(false);
       
-      // Auto-advance to next question after 1 second
-      setTimeout(() => {
-        handleNext();
-      }, 1000);
+      // No auto-advance
+      // setTimeout(() => {
+      //   handleNext();
+      // }, 1000);
     } else {
       // Show feedback
       setShowFeedback(true);
@@ -244,15 +280,24 @@ export const QuizScreen = ({ navigation, route }: any) => {
     setShowFeedback(false);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setSelectedOption(null);
     setIsAnswered(false);
     setShowFeedback(false);
     
-    if (currentIndex < questions.length - 1) {
+    const maxSessionQuestions = isPractice ? questions.length : 3;
+
+    if (currentIndex < maxSessionQuestions - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      handleFinish();
+      // Loop questions in Practice Mode, otherwise Finish
+      if (isPractice) {
+        setCurrentIndex(0);
+        // Scroll to top when looping
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      } else {
+        handleFinish();
+      }
     }
   };
 
@@ -262,6 +307,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
       setLoading(true);
       setLoadingStatus('Submitting your answers...');
       
+      if (isPractice) {
+        Alert.alert('Practice Complete', 'Great job practicing!');
+        navigation.navigate('MainTabs', { screen: 'Mission' });
+        return;
+      }
+
       const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000);
       console.log(`Submitting attempt for User: ${userId}, Batch: ${batchNumber}, Time: ${timeSpentSeconds}s`);
       
@@ -368,7 +419,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 question: savedQuestion, 
                 total: totalQuestions,
                 answered: answeredCount 
-              }) || `You have saved progress at Question ${savedQuestion} of ${totalQuestions}.\n\n${answeredCount} questions answered.`}
+              }) || `You have saved progress at Question ${savedQuestion}.\n\n${answeredCount} questions answered.`}
             </Text>
             
             <View style={styles.resumeButtons}>
@@ -405,22 +456,20 @@ export const QuizScreen = ({ navigation, route }: any) => {
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <ArrowLeft size={24} color={colors.text.primary} />
+              <ArrowLeft size={20} color={colors.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.batchTitle}>Batch {batchNumber}</Text>
-            <View style={{ width: 24 }} />
+            <Text style={styles.batchTitle}>
+              {isPractice ? 'Practice' : `Batch ${batchNumber}`}
+            </Text>
+            <View style={{ width: 20 }} />
           </View>
-          <Text style={styles.progressText}>
-            Question {currentIndex + 1} / {questions.length}
-          </Text>
           <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Attempted</Text>
-              <Text style={styles.statValue}>{attemptedCount}/{questions.length} ({completion.toFixed(0)}%)</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Accuracy</Text>
-              <Text style={styles.statValue}>{correctCount}/{attemptedCount} ({accuracy.toFixed(0)}%)</Text>
+             <Text style={styles.progressText}>
+                Question {currentIndex + 1}/{isPractice ? '∞' : '3'}
+             </Text>
+            <View style={[styles.statItem, {flexDirection: 'row', gap: 4}]}>
+              <Text style={styles.statLabel}>Accuracy:</Text>
+              <Text style={styles.statValue}>{accuracy.toFixed(0)}%</Text>
             </View>
           </View>
         </View>
@@ -483,9 +532,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   {showAsCorrect && (
                     <Check size={24} color="#00C853" strokeWidth={3} />
                   )}
-                  {userWasWrong && (
-                    <X size={24} color="#FF3D00" strokeWidth={3} />
-                  )}
+                  {/* Remove X mark for wrong answers */}
                 </TouchableOpacity>
               );
             })}
@@ -494,9 +541,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
           {/* Feedback: "Try Again" when wrong */}
           {showFeedback && (
             <View style={styles.feedbackCard}>
-              <AlertCircle size={20} color="#FF3D00" />
               <Text style={styles.feedbackText}>
-                Incorrect. Try again! (Attempt {(attemptCounts[currentIndex] || 0)})
+                Oops! Please try again.
               </Text>
             </View>
           )}
@@ -559,97 +605,92 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Header
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   headerTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
   },
   backButton: {
     padding: 8,
     marginLeft: -8,
   },
   batchTitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: 4,
   },
   progressText: {
-    textAlign: 'center',
-    color: colors.text.secondary,
-    fontFamily: typography.fonts.medium,
     fontSize: 14,
-    marginBottom: 12,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
   },
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
   },
   statItem: {
     alignItems: 'center',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: colors.text.secondary,
     fontFamily: typography.fonts.medium,
+    textTransform: 'uppercase',
   },
   statValue: {
-    fontSize: 15,
-    color: colors.text.primary,
+    fontSize: 12,
     fontFamily: typography.fonts.bold,
-    marginTop: 2,
-  },
-  
-  // Content
-  content: {
-    padding: 20,
-    paddingBottom: 40,
+    color: colors.text.primary,
   },
   questionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
     borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
+    padding: 16,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
   },
-  questionText: {
-    fontSize: 20,
-    fontFamily: typography.fonts.bold,
-    color: '#1A1A1A',
-    lineHeight: 28,
-  },
   questionImage: {
     width: '100%',
-    height: 180,
-    marginBottom: 16,
+    height: 150,
+    marginBottom: 12,
     borderRadius: 8,
   },
-  
-  // Options
+  questionText: {
+    fontSize: 17,
+    fontFamily: typography.fonts.bold,
+    color: '#1A1A1A',
+    lineHeight: 24,
+  },
   optionsContainer: {
-    gap: 12,
+    gap: 10,
   },
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
+    padding: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,

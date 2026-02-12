@@ -1,4 +1,4 @@
-export type Region = 'MY' | 'PT' | 'TH' | 'SG';
+export type Region = 'MY' | 'TH' | 'SG';
 
 export interface Driver {
     id: string;

@@ -4,12 +4,10 @@ import { getLocales } from 'expo-localization';
 
 import en from './en.json';
 import ms from './ms.json';
-import pt from './pt.json';
 
 const resources = {
     en: { translation: en },
     ms: { translation: ms },
-    pt: { translation: pt },
 } as const;
 
 // Detect device language or default to English

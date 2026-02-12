@@ -17,7 +17,7 @@ import { BatchService } from '../services/batchService';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { typography } from '../theme/typography';
-import { Lock, CheckCircle, PlayCircle, AlertCircle } from 'lucide-react-native';
+import { Lock, CheckCircle, PlayCircle, AlertCircle, Target } from 'lucide-react-native';
 
 interface BatchStatus {
   batchNumber: number;
@@ -36,6 +36,7 @@ export function MissionScreen() {
 
   const [loading, setLoading] = useState(true);
   const [batchStatuses, setBatchStatuses] = useState<BatchStatus[]>([]);
+  const [selectedMode, setSelectedMode] = useState<'live' | 'practice' | null>(null);
   
   // Ref to track if it's the very first load to avoid spinner on subsequent visits
   const isFirstLoadRef = useRef(true);
@@ -134,9 +135,9 @@ export function MissionScreen() {
   );
 
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
-    if (canAccess) {
+    if (canAccess && selectedMode) {
       // @ts-ignore
-      navigation.navigate('Quiz', { batchNumber });
+      navigation.navigate('Quiz', { batchNumber, mode: selectedMode });
     }
   };
 
@@ -162,91 +163,130 @@ export function MissionScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
-          {batchStatuses.map((batch) => (
-            <TouchableOpacity
-              key={batch.batchNumber}
-              style={[
-                styles.batchCard,
-                !batch.canAccess && styles.batchCardLocked,
-                batch.passed && styles.batchCardPassed,
-              ]}
-              onPress={() => handleBatchPress(batch.batchNumber, batch.canAccess)}
-              disabled={!batch.canAccess}
-              activeOpacity={0.7}
-            >
-              <View style={styles.batchHeader}>
-                <View style={styles.batchTitleRow}>
-                  {!batch.canAccess ? (
-                    <Lock size={32} color="#999" />
-                  ) : batch.passed ? (
-                    <CheckCircle size={32} color="#00C853" />
-                  ) : batch.attemptCount > 0 ? (
-                    <AlertCircle size={32} color="#FF9800" />
-                  ) : (
-                    <PlayCircle size={32} color={colors.primary.DEFAULT} />
-                  )}
-                  <View style={styles.batchTitleContainer}>
-                    <Text style={styles.batchTitle}>Batch {batch.batchNumber}</Text>
-                    <Text style={styles.batchSubtitle}>30 Questions • Unlimited Attempts</Text>
-                  </View>
+          {!selectedMode ? (
+            <View style={styles.selectionContainer}>
+              <TouchableOpacity 
+                style={[styles.modeCard, { borderColor: colors.status.success }]} 
+                onPress={() => setSelectedMode('live')}
+              >
+                <View style={[styles.modeIconContainer, { backgroundColor: colors.status.success + '20' }]}>
+                  <PlayCircle size={32} color={colors.status.success} />
                 </View>
-              </View>
-
-              <View style={styles.batchStats}>
-                {batch.attemptCount > 0 ? (
-                  <>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statLabel}>Average Score:</Text>
-                      <Text
-                        style={[
-                          styles.statValue,
-                          batch.passed && styles.statValuePassed,
-                          !batch.passed && batch.attemptCount > 0 && styles.statValueFailed,
-                        ]}
-                      >
-                        {batch.averageScore.toFixed(1)}%
-                      </Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statLabel}>Attempts:</Text>
-                      <Text style={styles.statValue}>{batch.attemptCount}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statLabel}>Status:</Text>
-                      <Text
-                        style={[
-                          styles.statValue,
-                          batch.passed && styles.statValuePassed,
-                          !batch.passed && styles.statValueFailed,
-                        ]}
-                      >
-                        {batch.passed
-                          ? '✓ Passed'
-                          : `Need ${(60 - batch.averageScore).toFixed(1)}% more to pass`}
-                      </Text>
-                    </View>
-                  </>
-                ) : batch.canAccess ? (
-                  <Text style={styles.notStartedText}>Tap to start →</Text>
-                ) : (
-                  <Text style={styles.lockedText}>
-                    🔒 Complete Batch {batch.batchNumber - 1} with ≥60% average to unlock
+                <View style={styles.modeTextContainer}>
+                  <Text style={styles.modeTitle}>Start Quiz (Live)</Text>
+                  <Text style={styles.modeDescription}>
+                    Records results and counts toward the Safety Score and Daily Goal (3 questions).
                   </Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+                </View>
+              </TouchableOpacity>
 
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>How it works:</Text>
-            <Text style={styles.infoText}>
-              • Each batch has 30 questions{'\n'}
-              • Unlimited attempts per question{'\n'}
-              • 1st try: 1 mark | 2nd: 0.5 | 3rd: 0.25 | 4th+: 0{'\n'}
-              • Pass with ≥60% average to unlock next batch{'\n'}
-              • Re-attempts average with previous scores
-            </Text>
-          </View>
+              <TouchableOpacity 
+                style={[styles.modeCard, { borderColor: colors.primary.DEFAULT }]} 
+                onPress={() => setSelectedMode('practice')}
+              >
+                <View style={[styles.modeIconContainer, { backgroundColor: colors.primary.DEFAULT + '20' }]}>
+                  <Target size={32} color={colors.primary.DEFAULT} />
+                </View>
+                <View style={styles.modeTextContainer}>
+                  <Text style={styles.modeTitle}>Practice Mode</Text>
+                  <Text style={styles.modeDescription}>
+                    Unlimited questions, no results recorded, and no impact on the Safety Score.
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.backToMode} onPress={() => setSelectedMode(null)}>
+                <Text style={styles.backToModeText}>← Change Mode ({selectedMode === 'live' ? 'Live' : 'Practice'})</Text>
+              </TouchableOpacity>
+              
+              {batchStatuses.map((batch) => (
+                <TouchableOpacity
+                  key={batch.batchNumber}
+                  style={[
+                    styles.batchCard,
+                    !(batch.canAccess || selectedMode === 'practice') && styles.batchCardLocked,
+                    batch.passed && styles.batchCardPassed,
+                  ]}
+                  onPress={() => handleBatchPress(batch.batchNumber, batch.canAccess || selectedMode === 'practice')}
+                  disabled={!(batch.canAccess || selectedMode === 'practice')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.batchHeader}>
+                    <View style={styles.batchTitleRow}>
+                      {!(batch.canAccess || selectedMode === 'practice') ? (
+                        <Lock size={32} color="#999" />
+                      ) : batch.passed ? (
+                        <CheckCircle size={32} color="#00C853" />
+                      ) : batch.attemptCount > 0 ? (
+                        <AlertCircle size={32} color="#FF9800" />
+                      ) : (
+                        <PlayCircle size={32} color={colors.primary.DEFAULT} />
+                      )}
+                      <View style={styles.batchTitleContainer}>
+                        <Text style={styles.batchTitle}>Batch {batch.batchNumber}</Text>
+                        <Text style={styles.batchSubtitle}>Training Course</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.batchStats}>
+                    {batch.attemptCount > 0 ? (
+                      <>
+                        <View style={styles.statRow}>
+                          <Text style={styles.statLabel}>Average Score:</Text>
+                          <Text
+                            style={[
+                              styles.statValue,
+                              batch.passed && styles.statValuePassed,
+                              !batch.passed && batch.attemptCount > 0 && styles.statValueFailed,
+                            ]}
+                          >
+                            {batch.averageScore.toFixed(1)}%
+                          </Text>
+                        </View>
+                        <View style={styles.statRow}>
+                          <Text style={styles.statLabel}>Attempts:</Text>
+                          <Text style={styles.statValue}>{batch.attemptCount}</Text>
+                        </View>
+                        <View style={styles.statRow}>
+                          <Text style={styles.statLabel}>Status:</Text>
+                          <Text
+                            style={[
+                              styles.statValue,
+                              batch.passed && styles.statValuePassed,
+                              !batch.passed && styles.statValueFailed,
+                            ]}
+                          >
+                            {batch.passed
+                              ? '✓ Passed'
+                              : `Need ${(60 - batch.averageScore).toFixed(1)}% more to pass`}
+                          </Text>
+                        </View>
+                      </>
+                    ) : (batch.canAccess || selectedMode === 'practice') ? (
+                      <Text style={styles.notStartedText}>Tap to start →</Text>
+                    ) : (
+                      <Text style={styles.lockedText}>
+                        🔒 Complete Batch {batch.batchNumber - 1} with ≥60% average to unlock
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>How it works:</Text>
+                <Text style={styles.infoText}>
+                  • Start Quiz (Live): Records results and counts toward the Safety Score and Daily Goal (3 questions).{'\n'}
+                  • Practice Mode: Unlimited questions, no results recorded, and no impact on the Safety Score.{'\n'}
+                  • 1st try: 1 mark | 2nd+: 0 marks{'\n'}
+                  • Pass with ≥60% average to unlock next batch
+                </Text>
+              </View>
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </GradientBackground>
@@ -388,5 +428,54 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.regular,
     color: colors.text.secondary,
     lineHeight: 22,
+  },
+  selectionContainer: {
+    gap: 16,
+    paddingBottom: 20,
+  },
+  modeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modeIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  modeTextContainer: {
+    flex: 1,
+  },
+  modeTitle: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    marginBottom: 4,
+  },
+  modeDescription: {
+    fontSize: 13,
+    fontFamily: typography.fonts.regular,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  backToMode: {
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  backToModeText: {
+    fontSize: 14,
+    fontFamily: typography.fonts.bold,
+    color: colors.primary.DEFAULT,
   },
 });

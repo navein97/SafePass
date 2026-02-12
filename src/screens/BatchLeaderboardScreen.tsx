@@ -284,24 +284,23 @@ export function BatchLeaderboardScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* DOP Scores */}
-            <Text style={styles.dopTitle}>{t('profile.dopsTitle', 'Driver Operational Performance')}</Text>
-            <View style={styles.dopRow}>
+            {/* DOP Scores - Reverted to text as requested */}
+            <View style={styles.dopGrid}>
               <View style={styles.dopItem}>
                 <Text style={styles.dopLabel}>{t('leaderboard.operation', 'Operation')}</Text>
-                <Text style={[styles.dopValue, entry.componentScores.operation >= 60 && styles.dopValuePassed]}>
+                <Text style={[styles.dopValue, { color: entry.componentScores.operation >= 60 ? '#00C853' : '#FF3D00' }]}>
                   {entry.componentScores.operation}%
                 </Text>
               </View>
               <View style={styles.dopItem}>
                 <Text style={styles.dopLabel}>{t('leaderboard.discipline', 'Discipline')}</Text>
-                <Text style={[styles.dopValue, entry.componentScores.discipline >= 60 && styles.dopValuePassed]}>
+                <Text style={[styles.dopValue, { color: entry.componentScores.discipline >= 60 ? '#00C853' : '#FF3D00' }]}>
                   {entry.componentScores.discipline}%
                 </Text>
               </View>
               <View style={styles.dopItem}>
-                <Text style={styles.dopLabel}>{t('leaderboard.professionalism', 'Prof.')}</Text>
-                <Text style={[styles.dopValue, entry.componentScores.professionalism >= 60 && styles.dopValuePassed]}>
+                <Text style={styles.dopLabel}>{t('leaderboard.professionalism', 'Professionalism')}</Text>
+                <Text style={[styles.dopValue, { color: entry.componentScores.professionalism >= 60 ? '#00C853' : '#FF3D00' }]}>
                   {entry.componentScores.professionalism}%
                 </Text>
               </View>
@@ -668,23 +667,39 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
   },
-  dopItem: {
+  dopChartContainer: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+  },
+  barRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
+    gap: 10,
+  },
+  barLabel: {
+    width: 90,
+    fontSize: 12,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+  },
+  barTrack: {
     flex: 1,
+    height: 8,
+    backgroundColor: colors.background.subtle || 'rgba(0,0,0,0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  dopLabel: {
-    fontSize: 11,
-    fontFamily: typography.fonts.regular,
-    color: colors.text.tertiary || colors.text.secondary,
-    marginBottom: 4,
+  barFill: {
+    height: '100%',
+    borderRadius: 4,
   },
-  dopValue: {
-    fontSize: 16,
+  barValue: {
+    width: 40,
+    fontSize: 12,
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
-  },
-  dopValuePassed: {
-    color: '#00C853',
+    textAlign: 'right',
   },
   emptyText: {
     fontSize: 14,
@@ -770,5 +785,28 @@ const createStyles = (colors: any) => StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  dopGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+  },
+  dopItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  dopLabel: {
+    fontSize: 10,
+    color: colors.text.tertiary,
+    fontFamily: typography.fonts.medium,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  dopValue: {
+    fontSize: 14,
+    fontFamily: typography.fonts.bold,
   },
 });

@@ -11,6 +11,7 @@ import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
+import { CompanySettingsService } from '../services/companySettingsService';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -20,6 +21,19 @@ export const LoginScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({ employeeId: '', password: '', general: '' });
+  
+  const [companyName, setCompanyName] = useState('CNG Model Driver 360');
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    loadCompanyInfo();
+  }, []);
+
+  const loadCompanyInfo = async () => {
+    const info = await CompanySettingsService.getCompanyInfo();
+    if (info.name) setCompanyName(info.name);
+    if (info.logo_url) setCompanyLogo(info.logo_url);
+  };
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -80,11 +94,11 @@ export const LoginScreen = ({ navigation }: any) => {
           >
             <View style={styles.header}>
               <Image 
-                source={require('../../assets/logo.png')} 
+                source={companyLogo ? { uri: companyLogo } : require('../../assets/logo.png')} 
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <Text style={styles.subtitle}>{t('auth.welcomeDriver360', 'Welcome to CNG Driver 360')}</Text>
+              <Text style={styles.subtitle}>{t('auth.welcomeTo')} {companyName}</Text>
             </View>
 
             <GlassCard style={styles.formCard}>

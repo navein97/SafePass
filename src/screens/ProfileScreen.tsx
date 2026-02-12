@@ -15,7 +15,6 @@ import { GlassButton } from '../components/ui/GlassButton';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Toast } from '../components/Toast';
 import Svg, { Circle } from 'react-native-svg';
-import { PerformanceRing } from '../components/PerformanceRing';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { CompanySettingsModal } from '../components/CompanySettingsModal';
 import { PerformanceChart } from '../components/PerformanceChart';
@@ -368,7 +367,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                 <Text style={styles.id}>{profile?.employee_id || 'EMP-001'}</Text>
                 <View style={styles.regionBadge}>
                   <Text style={styles.regionText}>
-                    {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : `🇵🇹 ${t('common.portugal')}`}
+                    {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : profile?.region}
                   </Text>
                 </View>
               </View>
@@ -472,32 +471,72 @@ export const ProfileScreen = ({ navigation }: any) => {
                     <Text style={styles.manageUsersText}>{t('profile.manageUsers')}</Text>
                  </TouchableOpacity>
 
-               {/* DOPS Dashboard - Visible to all managers */}
-               <View style={styles.dopsContainer}>
-                  <Text style={styles.sectionTitle}>{t('profile.dopsTitle')}</Text>
-                  <Text style={styles.sectionSubtitle}>{t('profile.dopsSubtitle')}</Text>
-                  
-                  <View style={styles.ringsContainer}>
-                      <PerformanceRing 
-                        score={profile?.operationalEffectiveness || 0} 
-                        label={t('profile.opEffectiveness')} 
-                        color={colors.status.success}
-                        size={SCREEN_WIDTH * 0.26}
-                      />
-                      <PerformanceRing 
-                        score={profile?.operationalDiscipline || 0} 
-                        label={t('profile.opDiscipline')} 
-                        color={colors.status.warning}
-                        size={SCREEN_WIDTH * 0.26}
-                      />
-                      <PerformanceRing 
-                        score={profile?.professionalConduct || 0} 
-                        label={t('profile.profConduct')} 
-                        color={colors.status.danger} // Red/Grey as per PDF for low score
-                        size={SCREEN_WIDTH * 0.26}
-                      />
-                  </View>
-               </View>
+                {/* Performance Dashboard - Visible to all managers */}
+                <View style={styles.dopsContainer}>
+                   <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>{t('profile.performanceDashboard')}</Text>
+                   
+                   {/* Legend */}
+                   <View style={styles.legendContainer}>
+                      <View style={styles.legendItem}>
+                         <View style={[styles.legendColor, { backgroundColor: '#2E7D32' }]} />
+                         <Text style={styles.legendLabel}>{t('profile.profConduct')}</Text>
+                      </View>
+                      <View style={styles.legendItem}>
+                         <View style={[styles.legendColor, { backgroundColor: '#EF6C00' }]} />
+                         <Text style={styles.legendLabel}>{t('profile.opDiscipline')}</Text>
+                      </View>
+                      <View style={styles.legendItem}>
+                         <View style={[styles.legendColor, { backgroundColor: '#1565C0' }]} />
+                         <Text style={styles.legendLabel}>{t('profile.opEffectiveness')}</Text>
+                      </View>
+                   </View>
+
+                   <View style={styles.chartArea}>
+                      {/* Grid Lines */}
+                      {[20, 40, 60, 80, 100].map((tick) => (
+                        <View key={tick} style={[styles.gridLine, { left: `${tick}%` }]} />
+                      ))}
+
+                      {/* Conduct Bar */}
+                      <View style={styles.dashboardBarRow}>
+                        <View style={styles.dashboardBarTrack}>
+                          <View 
+                            style={[
+                              styles.dashboardBarFill, 
+                              { width: `${profile?.professionalConduct || 0}%`, backgroundColor: '#2E7D32' }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.dashboardBarValue}>{profile?.professionalConduct || 0}%</Text>
+                      </View>
+
+                      {/* Discipline Bar */}
+                      <View style={styles.dashboardBarRow}>
+                        <View style={styles.dashboardBarTrack}>
+                          <View 
+                            style={[
+                              styles.dashboardBarFill, 
+                              { width: `${profile?.operationalDiscipline || 0}%`, backgroundColor: '#EF6C00' }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.dashboardBarValue}>{profile?.operationalDiscipline || 0}%</Text>
+                      </View>
+
+                      {/* Effectiveness Bar */}
+                      <View style={styles.dashboardBarRow}>
+                        <View style={styles.dashboardBarTrack}>
+                          <View 
+                            style={[
+                              styles.dashboardBarFill, 
+                              { width: `${profile?.operationalEffectiveness || 0}%`, backgroundColor: '#1565C0' }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.dashboardBarValue}>{profile?.operationalEffectiveness || 0}%</Text>
+                      </View>
+                   </View>
+                </View>
 
                {/* Team Quiz Settings - HIDDEN per user request */}
                {/* <TouchableOpacity 
@@ -628,25 +667,70 @@ export const ProfileScreen = ({ navigation }: any) => {
                 />
              </GlassCard>
 
-             {/* Driver Performance Section */}
+             {/* Driver Performance Dashboard */}
              <GlassCard style={styles.inputCard}>
-                 <Text style={styles.sectionTitle}>{t('profile.dopsTitle')}</Text>
-                 <View style={styles.ringsContainer}>
-                      <PerformanceRing 
-                        score={profile?.operationalEffectiveness || 0} 
-                        label={t('profile.opEffectiveness')} 
-                        size={SCREEN_WIDTH * 0.26}
-                      />
-                      <PerformanceRing 
-                        score={profile?.operationalDiscipline || 0} 
-                        label={t('profile.opDiscipline')} 
-                        size={SCREEN_WIDTH * 0.26}
-                      />
-                      <PerformanceRing 
-                        score={profile?.professionalConduct || 0} 
-                        label={t('profile.profConduct')} 
-                        size={SCREEN_WIDTH * 0.26}
-                      />
+                  <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>{t('profile.performanceDashboard')}</Text>
+                  
+                  {/* Legend */}
+                  <View style={styles.legendContainer}>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendColor, { backgroundColor: '#2E7D32' }]} />
+                        <Text style={styles.legendLabel}>{t('profile.profConduct')}</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendColor, { backgroundColor: '#EF6C00' }]} />
+                        <Text style={styles.legendLabel}>{t('profile.opDiscipline')}</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendColor, { backgroundColor: '#1565C0' }]} />
+                        <Text style={styles.legendLabel}>{t('profile.opEffectiveness')}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.chartArea}>
+                    {/* Grid Lines */}
+                    {[20, 40, 60, 80, 100].map((tick) => (
+                      <View key={tick} style={[styles.gridLine, { left: `${tick}%` }]} />
+                    ))}
+
+                    {/* Conduct Bar */}
+                    <View style={styles.dashboardBarRow}>
+                      <View style={styles.dashboardBarTrack}>
+                        <View 
+                          style={[
+                            styles.dashboardBarFill, 
+                            { width: `${profile?.professionalConduct || 0}%`, backgroundColor: '#2E7D32' }
+                          ]} 
+                        />
+                      </View>
+                      <Text style={styles.dashboardBarValue}>{profile?.professionalConduct || 0}%</Text>
+                    </View>
+
+                    {/* Discipline Bar */}
+                    <View style={styles.dashboardBarRow}>
+                      <View style={styles.dashboardBarTrack}>
+                        <View 
+                          style={[
+                            styles.dashboardBarFill, 
+                            { width: `${profile?.operationalDiscipline || 0}%`, backgroundColor: '#EF6C00' }
+                          ]} 
+                        />
+                      </View>
+                      <Text style={styles.dashboardBarValue}>{profile?.operationalDiscipline || 0}%</Text>
+                    </View>
+
+                    {/* Effectiveness Bar */}
+                    <View style={styles.dashboardBarRow}>
+                      <View style={styles.dashboardBarTrack}>
+                        <View 
+                          style={[
+                            styles.dashboardBarFill, 
+                            { width: `${profile?.operationalEffectiveness || 0}%`, backgroundColor: '#1565C0' }
+                          ]} 
+                        />
+                      </View>
+                      <Text style={styles.dashboardBarValue}>{profile?.operationalEffectiveness || 0}%</Text>
+                    </View>
                   </View>
              </GlassCard>
 
@@ -1003,5 +1087,102 @@ const createStyles = (colors: any) => StyleSheet.create({
   slider: {
     width: '100%',
     height: 40,
+  },
+  dopChartContainer: {
+    marginTop: 8,
+    width: '100%',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 12,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendColor: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+  },
+  legendLabel: {
+    fontSize: 10,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+  },
+  chartArea: {
+    position: 'relative',
+    width: '100%',
+    paddingTop: 10,
+    paddingBottom: 5,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  gridLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: colors.border,
+    opacity: 0.5,
+  },
+  dashboardBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    height: 24,
+  },
+  dashboardBarTrack: {
+    flex: 1,
+    height: '100%',
+    backgroundColor: 'transparent',
+  },
+  dashboardBarFill: {
+    height: '100%',
+  },
+  dashboardBarValue: {
+    position: 'absolute',
+    right: -40,
+    fontSize: 11,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.secondary,
+    width: 35,
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 12,
+  },
+  barLabel: {
+    width: 100,
+    fontSize: 12,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+  },
+  barTrack: {
+    flex: 1,
+    height: 10,
+    backgroundColor: colors.background.subtle || 'rgba(0,0,0,0.1)',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  barValue: {
+    width: 35,
+    fontSize: 12,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    textAlign: 'right',
   },
 });

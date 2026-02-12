@@ -35,7 +35,12 @@ export const UserManagementScreen = ({ navigation }: any) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
+
     const [selectedUserForNotification, setSelectedUserForNotification] = useState<UserProfile | null>(null);
+
+    // Pagination
+    const [page, setPage] = useState(1);
+    const USERS_PER_PAGE = 10;
 
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
     const [selectedUserForPassword, setSelectedUserForPassword] = useState<UserProfile | null>(null);
@@ -90,6 +95,13 @@ export const UserManagementScreen = ({ navigation }: any) => {
         );
     }, [users, searchQuery]);
 
+    const paginatedUsers = useMemo(() => {
+        const startIndex = (page - 1) * USERS_PER_PAGE;
+        return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+    }, [filteredUsers, page]);
+
+    const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+
     const handleDeletePress = (user: UserProfile) => {
         setSelectedUserForDelete(user);
         setShowDeleteConfirm(true);
@@ -127,21 +139,21 @@ export const UserManagementScreen = ({ navigation }: any) => {
     };
 
     const renderUserItem = ({ item }: { item: UserProfile }) => (
-        <GlassCard style={styles.userCard}>
+        <GlassCard style={styles.userCard} noPadding>
             <View style={styles.userInfo}>
                 <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>{item.full_name?.charAt(0).toUpperCase()}</Text>
                 </View>
                 <View style={{flex: 1}}>
                     <Text style={styles.userName}>{item.full_name}</Text>
-                    <Text style={styles.userSubtext}>{item.employee_id} • {item.role}</Text>
+                    <Text style={styles.userSubtext} numberOfLines={1}>{item.employee_id} • {item.role}</Text>
                     {/* Display User Results */}
-                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 1 }}>
                         <Text style={styles.resultText}>
-                            📊 Score: {item.safety_index ? `${Math.round(item.safety_index)}%` : 'N/A'}
+                            📊 {item.safety_index ? `${Math.round(item.safety_index)}%` : 'N/A'}
                         </Text>
                         <Text style={styles.resultText}>
-                            📚 Batches: {item.total_batches_completed || 0}/4
+                            📚 {item.total_batches_completed || 0}/4
                         </Text>
                     </View>
                 </View>
@@ -152,18 +164,18 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     setSelectedUserForNotification(item);
                     setShowNotificationModal(true);
                 }} style={styles.actionButton}>
-                    <Text>🔔</Text>
+                    <Text style={{fontSize: 14}}>🔔</Text>
                 </TouchableOpacity>
                 {/* Hide change password for Master (Level 1) users */}
                 {item.manager_level !== 1 && (
                     <TouchableOpacity onPress={() => handleChangePasswordPress(item)} style={styles.actionButton}>
-                        <Key size={20} color={colors.text.secondary} />
+                        <Key size={14} color={colors.text.secondary} />
                     </TouchableOpacity>
                 )}
                 {/* Hide delete for Master (Level 1) users */}
                 {item.manager_level !== 1 && (
                     <TouchableOpacity onPress={() => handleDeletePress(item)} style={styles.actionButton}>
-                        <Trash2 size={20} color={colors.status.danger} />
+                        <Trash2 size={14} color={colors.status.danger} />
                     </TouchableOpacity>
                 )}
             </View>
@@ -178,7 +190,15 @@ export const UserManagementScreen = ({ navigation }: any) => {
                         <ChevronLeft color={colors.text.primary} size={24} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{t('profile.manageUsers', 'User Management')}</Text>
-                    <View style={{ width: 40 }} /> 
+                    <TouchableOpacity 
+                        onPress={() => {
+                            setSelectedUserForNotification(null);
+                            setShowNotificationModal(true);
+                        }} 
+                        style={styles.broadcastButton}
+                    >
+                        <Text style={{fontSize: 20}}>📢</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {/* ... search container ... */}
@@ -205,9 +225,10 @@ export const UserManagementScreen = ({ navigation }: any) => {
                         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
                     </View>
                 ) : (
-                    <FlatList 
-                        data={filteredUsers}
-                        keyExtractor={item => item.id}
+                    <View style={{ flex: 1 }}>
+                        <FlatList 
+                            data={paginatedUsers}
+                            keyExtractor={item => item.id}
                         renderItem={renderUserItem}
                         contentContainerStyle={styles.listContent}
                         ListEmptyComponent={
@@ -216,6 +237,27 @@ export const UserManagementScreen = ({ navigation }: any) => {
                             </View>
                         }
                     />
+                    {/* Pagination Controls */}
+                    <View style={styles.paginationContainer}>
+                        <TouchableOpacity 
+                            disabled={page === 1} 
+                            onPress={() => setPage(p => Math.max(1, p - 1))}
+                            style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}
+                        >
+                            <ChevronLeft size={20} color={page === 1 ? colors.text.tertiary : colors.text.primary} />
+                        </TouchableOpacity>
+                        <Text style={[styles.pageText, { color: colors.text.primary }]}>
+                            Page {page} of {totalPages || 1}
+                        </Text>
+                        <TouchableOpacity 
+                            disabled={page === totalPages || totalPages <= 1} 
+                            onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+                            style={[styles.pageButton, (page === totalPages || totalPages <= 1) && styles.pageButtonDisabled]}
+                        >
+                            <ChevronLeft size={20} color={page === totalPages || totalPages <= 1 ? colors.text.tertiary : colors.text.primary} style={{ transform: [{ rotate: '180deg' }] }} />
+                        </TouchableOpacity>
+                    </View>
+                    </View>
                 )}
 
                 <View style={styles.fabContainer}>
@@ -315,6 +357,15 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontFamily: typography.fonts.medium,
         fontSize: 16,
     },
+    broadcastButton: {
+        padding: 8,
+        backgroundColor: colors.primary.light + '20',
+        borderRadius: 12,
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     listContent: {
         padding: 20,
         paddingBottom: 100,
@@ -323,8 +374,10 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 12,
-        padding: 16,
+        marginBottom: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
     },
     userInfo: {
         flexDirection: 'row',
@@ -332,21 +385,21 @@ const createStyles = (colors: any) => StyleSheet.create({
         flex: 1,
     },
     avatarPlaceholder: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: colors.primary.light + '40',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: colors.primary.light + '20',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: 10,
     },
     avatarText: {
-        fontSize: 18,
+        fontSize: 14,
         fontFamily: typography.fonts.bold,
         color: colors.primary.DEFAULT,
     },
     userName: {
-        fontSize: 16,
+        fontSize: 15,
         fontFamily: typography.fonts.bold,
         color: colors.text.primary,
     },
@@ -359,13 +412,14 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontSize: 11,
         color: colors.text.tertiary,
         fontFamily: typography.fonts.medium,
+        marginTop: 2,
     },
     actions: {
         flexDirection: 'row',
         gap: 8,
     },
     actionButton: {
-        padding: 8,
+        padding: 6,
         backgroundColor: colors.background.subtle,
         borderRadius: 8,
     },
@@ -377,6 +431,27 @@ const createStyles = (colors: any) => StyleSheet.create({
     emptyText: {
         color: colors.text.secondary,
         fontSize: 16,
+    },
+    paginationContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 10,
+        gap: 16,
+        marginBottom: 80, // Space for FAB
+    },
+    pageButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: colors.background.subtle,
+    },
+    pageButtonDisabled: {
+        opacity: 0.5,
+    },
+    pageText: {
+        fontSize: 14,
+        fontFamily: typography.fonts.bold,
+        color: colors.primary.DEFAULT,
     },
     fabContainer: {
         position: 'absolute',

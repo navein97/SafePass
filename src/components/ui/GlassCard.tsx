@@ -6,13 +6,17 @@ import { useTheme } from '../../context/ThemeContext';
 interface GlassCardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
   intensity?: number;
+  noPadding?: boolean;
 }
 
 export const GlassCard: React.FC<GlassCardProps> = ({ 
   children, 
   style, 
-  intensity = 20 
+  contentStyle,
+  intensity = 20,
+  noPadding = false
 }) => {
   const { colors, theme } = useTheme();
 
@@ -30,7 +34,11 @@ export const GlassCard: React.FC<GlassCardProps> = ({
         tint={theme === 'dark' ? 'dark' : 'light'} 
         style={StyleSheet.absoluteFill} 
       />
-      <View style={styles.content}>
+      <View style={[
+        styles.content,
+        noPadding && { padding: 0 },
+        contentStyle
+      ]}>
         {children}
       </View>
     </View>

@@ -7,6 +7,7 @@ import { typography } from '../theme/typography';
 import { Shield, AlertCircle, CheckCircle, User, Users } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
+import { QuizStorageService } from '../services/quizStorageService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -20,6 +21,8 @@ export const HomeScreen = ({ navigation }: any) => {
   const [profile, setProfile] = useState<any>(null);
   const [safetyIndex, setSafetyIndex] = useState(0);
   const [isCompliant, setIsCompliant] = useState(false);
+  const [dailyCount, setDailyCount] = useState(0);
+  const [streak, setStreak] = useState(0);
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -40,6 +43,13 @@ export const HomeScreen = ({ navigation }: any) => {
         // Check if completed this week
         const completed = await QuizService.hasCompletedThisWeek(userProfile.id);
         setIsCompliant(completed);
+
+        // Get Daily Stats
+        const count = await QuizStorageService.getDailyCount(userProfile.id);
+        setDailyCount(count);
+
+        const currentStreak = await QuizStorageService.getStreak(userProfile.id);
+        setStreak(currentStreak);
 
         // Run Decay Check (Side effect, don't await blocking UI)
         QuizService.checkShieldDecay(userProfile.id).then(() => {
@@ -116,22 +126,45 @@ export const HomeScreen = ({ navigation }: any) => {
           ) : (
             /* Staff Dashboard View */
             <>
-              {/* Safety Index Card */}
+              {/* Daily Progress & Streak Card */}
               <GlassCard style={styles.card}>
-                <Text style={styles.cardTitle}>{t('home.safetyIndex')}</Text>
+                <Text style={styles.cardTitle}>{t('home.dailyGoal', 'Daily Goal')}</Text>
+                
+                {/* Progress Bar for 3 Questions */}
                 <View style={styles.scoreContainer}>
-                  <Shield size={48} color={colors.primary.DEFAULT} />
-                  <Text style={styles.score}>{safetyIndex}</Text>
+                   <View style={{flex: 1}}>
+                      <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8}}>
+                        <Text style={[styles.statusText, {fontSize: 18, marginVertical: 0}]}>
+                            {dailyCount}/3 {t('home.questions', 'Questions')}
+                        </Text>
+                        <Text style={[styles.statusText, {fontSize: 18, marginVertical: 0, color: colors.primary.DEFAULT}]}>
+                            {Math.min(100, Math.round((dailyCount/3)*100))}%
+                        </Text>
+                      </View>
+                      <View style={styles.progressBarBg}>
+                        <LinearGradient
+                            colors={colors.gradients.primary as any}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[styles.progressBarFill, { width: `${Math.min(100, (dailyCount/3)*100)}%` }]}
+                        />
+                      </View>
+                   </View>
                 </View>
-                <View style={styles.progressBarBg}>
-                  <LinearGradient
-                    colors={colors.gradients.primary as any}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.progressBarFill, { width: `${safetyIndex}%` }]}
-                  />
+
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8}}>
+                    <Text style={{fontSize: 24}}>🔥</Text>
+                    <View>
+                        <Text style={[styles.scoreSubtext, {marginBottom: 0}]}>{t('home.currentStreak', 'Current Streak')}</Text>
+                        <Text style={[styles.statusText, {fontSize: 20, marginVertical: 0}]}>{streak} {t('home.days', 'Days')}</Text>
+                    </View>
                 </View>
-                <Text style={styles.scoreSubtext}>{t('home.rollingAverage')}</Text>
+                
+                <Text style={[styles.scoreSubtext, { marginTop: 16, fontStyle: 'italic' }]}>
+                    {dailyCount >= 3 
+                        ? t('home.greatJobComplete', "Great job! You've reached your daily goal.") 
+                        : t('home.keepGoing', "Keep learning to stay safe!")}
+                </Text>
               </GlassCard>
 
               {/* Weekly Status Card */}
@@ -154,12 +187,27 @@ export const HomeScreen = ({ navigation }: any) => {
                   {isCompliant ? t('home.greatJob') : t('home.quizDue')}
                 </Text>
                 
-                <GlassButton
-                  title={isCompliant ? t('home.practiceQuiz') : t('home.startQuiz')}
-                  onPress={() => navigation.navigate('Quiz')}
-                  variant={isCompliant ? 'primary' : 'danger'}
-                  style={styles.actionButton}
-                />
+                <View style={{ marginTop: 16 }}>
+                    <TouchableOpacity 
+                        style={[styles.modeButton, { backgroundColor: colors.status.danger + '20', borderColor: colors.status.danger }]}
+                        onPress={() => navigation.navigate('Quiz', { mode: 'live' })}
+                    >
+                        <Text style={[styles.modeButtonTitle, { color: colors.status.danger }]}>Start Quiz (Live)</Text>
+                        <Text style={styles.modeButtonDesc}>
+                          Records results and counts toward the Safety Score and Daily Goal (3 questions).
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={[styles.modeButton, { backgroundColor: colors.primary.DEFAULT + '20', borderColor: colors.primary.DEFAULT, marginTop: 12 }]}
+                        onPress={() => navigation.navigate('Quiz', { mode: 'practice' })}
+                    >
+                        <Text style={[styles.modeButtonTitle, { color: colors.primary.DEFAULT }]}>Practice Mode</Text>
+                        <Text style={styles.modeButtonDesc}>
+                           Unlimited questions, no results recorded, and no impact on the Safety Score.
+                        </Text>
+                    </TouchableOpacity>
+                </View>
               </GlassCard>
             </>
           )}
@@ -285,6 +333,22 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   actionButton: {
     marginTop: 8,
+  },
+  modeButton: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  modeButtonTitle: {
+    fontSize: 16,
+    fontFamily: typography.fonts.bold,
+    marginBottom: 4,
+  },
+  modeButtonDesc: {
+    fontSize: 12,
+    fontFamily: typography.fonts.regular,
+    color: colors.text.secondary,
+    lineHeight: 16,
   },
 });
 
