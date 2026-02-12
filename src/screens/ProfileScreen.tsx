@@ -460,83 +460,18 @@ export const ProfileScreen = ({ navigation }: any) => {
                {/* Level 1 Specific: Company Settings */}
                {profile?.managerLevel === 1 && (
                   <TouchableOpacity style={styles.companySettingsButton} onPress={() => setShowCompanySettings(true)}>
-                     <Building size={24} color={colors.text.inverse} />
+                     <Building size={24} color={colors.primary.DEFAULT} />
                      <Text style={styles.companySettingsText}>{t('profile.companySettings')}</Text>
                   </TouchableOpacity>
                )}
 
                  {/* Manage Users Button - For all Managers */}
                  <TouchableOpacity style={styles.manageUsersButton} onPress={() => navigation.navigate('UserManagement')}>
-                    <UserPlus size={24} color={colors.primary.DEFAULT} />
+                    <UserPlus size={24} color={colors.text.inverse} />
                     <Text style={styles.manageUsersText}>{t('profile.manageUsers')}</Text>
                  </TouchableOpacity>
 
-                {/* Performance Dashboard - Visible to all managers */}
-                <View style={styles.dopsContainer}>
-                   <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>{t('profile.performanceDashboard')}</Text>
-                   
-                   {/* Legend */}
-                   <View style={styles.legendContainer}>
-                      <View style={styles.legendItem}>
-                         <View style={[styles.legendColor, { backgroundColor: '#2E7D32' }]} />
-                         <Text style={styles.legendLabel}>{t('profile.profConduct')}</Text>
-                      </View>
-                      <View style={styles.legendItem}>
-                         <View style={[styles.legendColor, { backgroundColor: '#EF6C00' }]} />
-                         <Text style={styles.legendLabel}>{t('profile.opDiscipline')}</Text>
-                      </View>
-                      <View style={styles.legendItem}>
-                         <View style={[styles.legendColor, { backgroundColor: '#1565C0' }]} />
-                         <Text style={styles.legendLabel}>{t('profile.opEffectiveness')}</Text>
-                      </View>
-                   </View>
 
-                   <View style={styles.chartArea}>
-                      {/* Grid Lines */}
-                      {[20, 40, 60, 80, 100].map((tick) => (
-                        <View key={tick} style={[styles.gridLine, { left: `${tick}%` }]} />
-                      ))}
-
-                      {/* Conduct Bar */}
-                      <View style={styles.dashboardBarRow}>
-                        <View style={styles.dashboardBarTrack}>
-                          <View 
-                            style={[
-                              styles.dashboardBarFill, 
-                              { width: `${profile?.professionalConduct || 0}%`, backgroundColor: '#2E7D32' }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.dashboardBarValue}>{profile?.professionalConduct || 0}%</Text>
-                      </View>
-
-                      {/* Discipline Bar */}
-                      <View style={styles.dashboardBarRow}>
-                        <View style={styles.dashboardBarTrack}>
-                          <View 
-                            style={[
-                              styles.dashboardBarFill, 
-                              { width: `${profile?.operationalDiscipline || 0}%`, backgroundColor: '#EF6C00' }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.dashboardBarValue}>{profile?.operationalDiscipline || 0}%</Text>
-                      </View>
-
-                      {/* Effectiveness Bar */}
-                      <View style={styles.dashboardBarRow}>
-                        <View style={styles.dashboardBarTrack}>
-                          <View 
-                            style={[
-                              styles.dashboardBarFill, 
-                              { width: `${profile?.operationalEffectiveness || 0}%`, backgroundColor: '#1565C0' }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.dashboardBarValue}>{profile?.operationalEffectiveness || 0}%</Text>
-                      </View>
-                   </View>
-                </View>
 
                {/* Team Quiz Settings - HIDDEN per user request */}
                {/* <TouchableOpacity 
@@ -1043,16 +978,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     marginBottom: 20,
-    backgroundColor: colors.background.subtle,
+    backgroundColor: colors.text.primary, // Black background
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.primary.DEFAULT,
-    borderStyle: 'dashed',
   },
   manageUsersText: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: colors.primary.DEFAULT,
+    color: colors.text.inverse, // White text
     marginLeft: 8,
   },
   companySettingsButton: {
@@ -1061,13 +993,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     marginBottom: 12,
-    backgroundColor: colors.text.primary, // Inverse bg
+    backgroundColor: colors.background.subtle,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.primary.DEFAULT,
+    borderStyle: 'dashed',
   },
   companySettingsText: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: colors.text.inverse,
+    color: colors.primary.DEFAULT,
     marginLeft: 8,
   },
   sliderContainer: {

@@ -203,7 +203,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
 
                 {/* ... search container ... */}
                 <View style={styles.searchContainer}>
-                    <GlassCard style={styles.searchBar}>
+                    <GlassCard contentStyle={styles.searchBar}>
                         <Search size={20} color={colors.text.tertiary} />
                         <TextInput 
                             style={styles.searchInput}
@@ -378,6 +378,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 12,
+        flexWrap: 'wrap', // Added to go down if no space
     },
     userInfo: {
         flexDirection: 'row',

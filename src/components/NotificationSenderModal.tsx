@@ -205,14 +205,12 @@ const styles = StyleSheet.create({
         fontFamily: typography.fonts.bold,
     },
     targetInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
         marginBottom: 16,
     },
     label: {
         fontSize: 16,
         fontFamily: typography.fonts.medium,
-        marginRight: 8,
+        marginBottom: 8,
     },
     targetName: {
         fontSize: 16,
@@ -229,6 +227,7 @@ const styles = StyleSheet.create({
     },
     checkboxContainer: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 16,
     },
     checkboxOption: {
