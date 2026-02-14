@@ -54,6 +54,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
   }, []);
 
   const loadQuiz = async () => {
+    let shouldUpdateLoading = true;
     try {
       setLoading(true);
       setLoadingStatus(t('common.fetchingProfile'));
@@ -80,13 +81,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
         return;
       }
 
-      // Check Daily Limit for Live Mode
+      // Check Daily Limit for Live Mode - Now on a per-batch basis
       if (!isPractice) {
-        const dailyCount = await QuizStorageService.getDailyCount(profile.id);
+        const dailyCount = await QuizStorageService.getDailyCount(profile.id, batchNumber);
         if (dailyCount >= 3) {
+          // If limit reached, we will navigate back. 
+          // Keep loading=true to prevent "Unable to Load Questions" flicker
+          shouldUpdateLoading = false;
           Alert.alert(
             t('quiz.dailyLimitTitle') || 'Daily Limit Reached',
-            t('quiz.dailyLimitMessage') || 'You have reached your limit of 3 questions for today. Come back tomorrow or try Practice Mode!',
+            t('quiz.dailyLimitMessage') || 'You have reached your limit of 3 questions for this batch today. Come back tomorrow or try Practice Mode!',
             [{ text: 'OK', onPress: () => navigation.goBack() }]
           );
           return;
@@ -97,6 +101,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       if (!isPractice) {
         const canAccess = await BatchService.canAccessBatch(profile.id, batchNumber);
         if (!canAccess) {
+          shouldUpdateLoading = false;
           Alert.alert(
             'Batch Locked',
             `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`,
@@ -143,7 +148,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
       Alert.alert(t('common.error'), 'Failed to load quiz');
       navigation.goBack();
     } finally {
-      setLoading(false);
+      if (shouldUpdateLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -253,9 +260,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
         isCorrect: true
       }]);
       
-      // Increment Daily Count if Live Mode
+      // Increment Daily Count if Live Mode - Now on a per-batch basis
       if (!isPractice) {
-        await QuizStorageService.incrementDailyCount(userId);
+        await QuizStorageService.incrementDailyCount(userId, batchNumber);
       }
 
       setShowFeedback(false);

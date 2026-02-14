@@ -147,7 +147,11 @@
     "missionFailed": "MISI GAGAL",
     "outOfLives": "Anda kehabisan nyawa.",
     "outOfTime": "Masa tamat.",
-    "score": "Markah"
+    "score": "Markah",
+    "liveModeTitle": "Mula Kuiz (Live)",
+    "liveModeDescription": "Merekod keputusan dan dikira dalam Skor Keselamatan dan Matlamat Harian (3 soalan setiap kelompok).",
+    "practiceModeTitle": "Mod Latihan",
+    "practiceModeDescription": "Soalan tanpa had, tiada keputusan direkodkan, dan tiada kesan kepada Skor Keselamatan."
   },
   "manager": {
     "dashboardTitle": "Papan Pemuka Pengurusan",
@@ -186,7 +190,9 @@
     "savedProgressTitle": "Sambung Kuiz?",
     "savedProgressMessage": "Anda mempunyai kemajuan tersimpan pada Soalan {{question}}.\n\n{{answered}} soalan telah dijawab.",
     "resumeButton": "Sambung dari S{{question}}",
-    "startFreshButton": "Mula Semula"
+    "startFreshButton": "Mula Semula",
+    "dailyLimitTitle": "Had Harian Dicapai",
+    "dailyLimitMessage": "Anda telah mencapai had 3 soalan untuk kelompok ini hari ini. Sila datang lagi esok atau cuba Mod Latihan!"
   },
   "profile": {
     "title": "Profil",

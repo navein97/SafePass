@@ -147,7 +147,11 @@
     "missionFailed": "MISSION FAILED",
     "outOfLives": "You ran out of lives.",
     "outOfTime": "Time ran out.",
-    "score": "Score"
+    "score": "Score",
+    "liveModeTitle": "Start Quiz (Live)",
+    "liveModeDescription": "Records results and counts toward the Safety Score and Daily Goal (3 questions per batch).",
+    "practiceModeTitle": "Practice Mode",
+    "practiceModeDescription": "Unlimited questions, no results recorded, and no impact on the Safety Score."
   },
   "manager": {
     "dashboardTitle": "Management Dashboard",
@@ -186,7 +190,9 @@
     "savedProgressTitle": "Resume Quiz?",
     "savedProgressMessage": "You have saved progress at Question {{question}}.\n\n{{answered}} questions answered.",
     "resumeButton": "Resume from Q{{question}}",
-    "startFreshButton": "Start Fresh"
+    "startFreshButton": "Start Fresh",
+    "dailyLimitTitle": "Daily Limit Reached",
+    "dailyLimitMessage": "You have reached your limit of 3 questions for this batch today. Come back tomorrow or try Practice Mode!"
   },
   "profile": {
     "title": "Profile",

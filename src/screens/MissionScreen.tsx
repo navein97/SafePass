@@ -173,9 +173,9 @@ export function MissionScreen() {
                   <PlayCircle size={32} color={colors.status.success} />
                 </View>
                 <View style={styles.modeTextContainer}>
-                  <Text style={styles.modeTitle}>Start Quiz (Live)</Text>
+                  <Text style={styles.modeTitle}>{t('mission.liveModeTitle')}</Text>
                   <Text style={styles.modeDescription}>
-                    Records results and counts toward the Safety Score and Daily Goal (3 questions).
+                    {t('mission.liveModeDescription')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -188,9 +188,9 @@ export function MissionScreen() {
                   <Target size={32} color={colors.primary.DEFAULT} />
                 </View>
                 <View style={styles.modeTextContainer}>
-                  <Text style={styles.modeTitle}>Practice Mode</Text>
+                  <Text style={styles.modeTitle}>{t('mission.practiceModeTitle')}</Text>
                   <Text style={styles.modeDescription}>
-                    Unlimited questions, no results recorded, and no impact on the Safety Score.
+                    {t('mission.practiceModeDescription')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -277,10 +277,10 @@ export function MissionScreen() {
               ))}
 
               <View style={styles.infoCard}>
-                <Text style={styles.infoTitle}>How it works:</Text>
+                <Text style={styles.infoTitle}>{t('mission.howItWorks', 'How it works:')}</Text>
                 <Text style={styles.infoText}>
-                  • Start Quiz (Live): Records results and counts toward the Safety Score and Daily Goal (3 questions).{'\n'}
-                  • Practice Mode: Unlimited questions, no results recorded, and no impact on the Safety Score.{'\n'}
+                  • {t('mission.liveModeTitle')}: {t('mission.liveModeDescription')}{'\n'}
+                  • {t('mission.practiceModeTitle')}: {t('mission.practiceModeDescription')}{'\n'}
                   • 1st try: 1 mark | 2nd+: 0 marks{'\n'}
                   • Pass with ≥60% average to unlock next batch
                 </Text>
