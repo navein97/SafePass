@@ -85,7 +85,14 @@ export const BatchService = {
             } as Question;
         });
 
+        // Shuffle the questions array so that even Live Mode gets random questions each time
+        for (let i = questions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [questions[i], questions[j]] = [questions[j], questions[i]];
+        }
+
         // CRITICAL: Return exactly 30 questions
+        // For Live Mode, the QuizScreen will only show the first 3
         return questions.slice(0, 30);
     },
 

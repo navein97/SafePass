@@ -5,7 +5,6 @@ import * as Crypto from 'expo-crypto';
 import { ScoringService } from './scoringService';
 
 import questionsMY from '../data/questionsMY.json';
-import questionsPT from '../data/questionsPT.json';
 
 export const QuizService = {
     /**
@@ -19,8 +18,6 @@ export const QuizService = {
             let data: any[] = [];
             if (region === 'MY') {
                 data = questionsMY;
-            } else if (region === 'PT') {
-                data = questionsPT; // Assuming this file exists and follows structure
             }
 
             // Fallback to empty if no data

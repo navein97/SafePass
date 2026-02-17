@@ -204,7 +204,7 @@ export const HomeScreen = ({ navigation }: any) => {
                     >
                         <Text style={[styles.modeButtonTitle, { color: colors.primary.DEFAULT }]}>Practice Mode</Text>
                         <Text style={styles.modeButtonDesc}>
-                           Unlimited questions, no results recorded, and no impact on the Safety Score.
+                           30 questions, no results recorded, and no impact on the Safety Score.
                         </Text>
                     </TouchableOpacity>
                 </View>

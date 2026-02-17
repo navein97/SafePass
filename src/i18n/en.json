@@ -31,7 +31,8 @@
     "exitQuizMessage": "Do you want to exit the quiz? Pressing OK will go back without saving.",
     "exitWithoutSaving": "Exit Without Saving",
     "saveExitMessage": "Would you like to save your progress and continue later?",
-    "saveAndExitButton": "Save & Exit"
+    "saveAndExitButton": "Save & Exit",
+    "saveExitWebConfirm": "Click OK to Save & Exit, Cancel to continue quiz."
   },
   "auth": {
     "login": "Login",
@@ -151,7 +152,7 @@
     "liveModeTitle": "Start Quiz (Live)",
     "liveModeDescription": "Records results and counts toward the Safety Score and Daily Goal (3 questions per batch).",
     "practiceModeTitle": "Practice Mode",
-    "practiceModeDescription": "Unlimited questions, no results recorded, and no impact on the Safety Score."
+    "practiceModeDescription": "30 questions, no results recorded, and no impact on the Safety Score."
   },
   "manager": {
     "dashboardTitle": "Management Dashboard",
@@ -192,7 +193,28 @@
     "resumeButton": "Resume from Q{{question}}",
     "startFreshButton": "Start Fresh",
     "dailyLimitTitle": "Daily Limit Reached",
-    "dailyLimitMessage": "You have reached your limit of 3 questions for this batch today. Come back tomorrow or try Practice Mode!"
+    "dailyLimitMessage": "You have reached your limit of 3 questions for this batch today. Come back tomorrow or try Practice Mode!",
+    "batchLocked": "Batch Locked",
+    "batchLockedMessage": "You must complete Batch {{prevBatch}} with at least 60% average score to unlock this batch.",
+    "loadingQuestions": "Loading {{mode}} questions...",
+    "loadingError": "Loading Error",
+    "couldNotLoadQuestions": "Could not load questions for {{mode}}. Please try again.",
+    "failedToLoadQuiz": "Failed to load quiz",
+    "excellentPractice": "🎉 Excellent Practice!",
+    "goodPractice": "👍 Good Practice!",
+    "keepPracticing": "💪 Keep Practicing!",
+    "practiceResult": "You answered {{correct}}/{{total}} questions correctly.\nAccuracy: {{accuracy}}%",
+    "practiceMoreQuestion": "Would you like to practice more?",
+    "practiceAgain": "Practice Again",
+    "practiceWebConfirm": "Click OK to Practice Again, Cancel to Exit.",
+    "batchCompleted": "Batch Completed!",
+    "batchAttemptRecorded": "Batch Attempt Recorded",
+    "batchNextUnlocked": "Batch {{nextBatch}} is now unlocked!",
+    "allBatchesCompleted": "Congratulations! You have completed all batches!",
+    "neededToPass": "You need {{needed}}% more to pass this batch.",
+    "averageScore": "Average Score",
+    "batchTitle": "Batch {{number}}",
+    "oopsTryAgain": "Oops! Please try again."
   },
   "profile": {
     "title": "Profile",

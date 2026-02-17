@@ -31,7 +31,8 @@
     "exitQuizMessage": "Adakah anda mahu keluar dari kuiz? Menekan OK akan kembali tanpa menyimpan.",
     "exitWithoutSaving": "Keluar Tanpa Simpan",
     "saveExitMessage": "Adakah anda mahu menyimpan kemajuan dan meneruskan nanti?",
-    "saveAndExitButton": "Simpan & Keluar"
+    "saveAndExitButton": "Simpan & Keluar",
+    "saveExitWebConfirm": "Klik OK untuk Simpan & Keluar, Batal untuk sambung kuiz."
   },
   "auth": {
     "login": "Log Masuk",
@@ -192,7 +193,28 @@
     "resumeButton": "Sambung dari S{{question}}",
     "startFreshButton": "Mula Semula",
     "dailyLimitTitle": "Had Harian Dicapai",
-    "dailyLimitMessage": "Anda telah mencapai had 3 soalan untuk kelompok ini hari ini. Sila datang lagi esok atau cuba Mod Latihan!"
+    "dailyLimitMessage": "Anda telah mencapai had 3 soalan untuk kelompok ini hari ini. Sila datang lagi esok atau cuba Mod Latihan!",
+    "batchLocked": "Kelompok Terkunci",
+    "batchLockedMessage": "Anda perlu melengkapkan Kelompok {{prevBatch}} dengan purata markah sekurang-kurangnya 60% untuk membuka kelompok ini.",
+    "loadingQuestions": "Memuatkan soalan {{mode}}...",
+    "loadingError": "Ralat Memuatkan",
+    "couldNotLoadQuestions": "Tidak dapat memuatkan soalan untuk {{mode}}. Sila cuba lagi.",
+    "failedToLoadQuiz": "Gagal memuatkan kuiz",
+    "excellentPractice": "🎉 Latihan Cemerlang!",
+    "goodPractice": "👍 Latihan Baik!",
+    "keepPracticing": "💪 Terus Berlatih!",
+    "practiceResult": "Anda menjawab {{correct}}/{{total}} soalan dengan betul.\nKetepatan: {{accuracy}}%",
+    "practiceMoreQuestion": "Adakah anda mahu berlatih lagi?",
+    "practiceAgain": "Latihan Lagi",
+    "practiceWebConfirm": "Klik OK untuk Latihan Lagi, Batal untuk Keluar.",
+    "batchCompleted": "Kelompok Selesai!",
+    "batchAttemptRecorded": "Percubaan Kelompok Direkodkan",
+    "batchNextUnlocked": "Kelompok {{nextBatch}} kini dibuka!",
+    "allBatchesCompleted": "Tahniah! Anda telah menyelesaikan semua kelompok!",
+    "neededToPass": "Anda memerlukan {{needed}}% lagi untuk lulus kelompok ini.",
+    "averageScore": "Purata Keseluruhan",
+    "batchTitle": "Kelompok {{number}}",
+    "oopsTryAgain": "Oops! Sila cuba lagi."
   },
   "profile": {
     "title": "Profil",

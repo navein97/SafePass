@@ -11,6 +11,7 @@ export interface SignUpData {
     age?: number;
     vehicle_type?: string;
     phone_number?: string;
+    companyId?: string;
     [key: string]: any;
 }
 
@@ -46,7 +47,8 @@ export const AuthService = {
                         vehicle_type: data.vehicle_type,
                         phone_number: data.phone_number?.trim(),
                         role: data.role || 'driver',
-                        manager_level: data.manager_level
+                        manager_level: data.manager_level,
+                        company_id: data.companyId
                     },
                 },
             });

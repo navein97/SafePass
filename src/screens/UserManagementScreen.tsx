@@ -14,6 +14,7 @@ import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { DeleteUserModal } from '../components/DeleteUserModal';
 import { AuthService } from '../services/authService';
+import { CompanySettingsService, CompanyStats } from '../services/companySettingsService';
 
 interface UserProfile {
     id: string;
@@ -49,6 +50,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
     const [showFinalDeleteConfirm, setShowFinalDeleteConfirm] = useState(false);
     const [selectedUserForDelete, setSelectedUserForDelete] = useState<UserProfile | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [companyStats, setCompanyStats] = useState<CompanyStats | null>(null);
 
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -68,6 +70,12 @@ export const UserManagementScreen = ({ navigation }: any) => {
             const { users: allUsers, error: usersError } = await AuthService.getAllUsers();
             if (usersError) throw new Error(usersError);
             setUsers(allUsers || []);
+
+            // Load company stats if user has company_id
+            if (currentProfile?.company_id) {
+                const stats = await CompanySettingsService.getCompanyStats(currentProfile.company_id);
+                if (stats) setCompanyStats(stats);
+            }
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to load data');
         } finally {
@@ -200,6 +208,52 @@ export const UserManagementScreen = ({ navigation }: any) => {
                         <Text style={{fontSize: 20}}>📢</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* Quota Stats Indicator */}
+                {companyStats && (
+                    <View style={styles.quotaContainer}>
+                        <GlassCard contentStyle={styles.quotaCard}>
+                            <View style={styles.quotaItem}>
+                                <Text style={styles.quotaLabel}>👤 Drivers</Text>
+                                <View style={styles.quotaBar}>
+                                    <View style={[
+                                        styles.quotaFill,
+                                        {
+                                            width: `${Math.min(100, (companyStats.drivers / companyStats.quota_drivers) * 100)}%`,
+                                            backgroundColor: companyStats.drivers >= companyStats.quota_drivers 
+                                                ? colors.status.danger 
+                                                : companyStats.drivers >= companyStats.quota_drivers * 0.8 
+                                                    ? colors.status.warning 
+                                                    : colors.status.success
+                                        }
+                                    ]} />
+                                </View>
+                                <Text style={styles.quotaText}>
+                                    {companyStats.drivers} / {companyStats.quota_drivers}
+                                </Text>
+                            </View>
+                            <View style={styles.quotaItem}>
+                                <Text style={styles.quotaLabel}>👔 Managers</Text>
+                                <View style={styles.quotaBar}>
+                                    <View style={[
+                                        styles.quotaFill,
+                                        {
+                                            width: `${Math.min(100, (companyStats.managers / companyStats.quota_managers) * 100)}%`,
+                                            backgroundColor: companyStats.managers >= companyStats.quota_managers 
+                                                ? colors.status.danger 
+                                                : companyStats.managers >= companyStats.quota_managers * 0.8 
+                                                    ? colors.status.warning 
+                                                    : colors.status.success
+                                        }
+                                    ]} />
+                                </View>
+                                <Text style={styles.quotaText}>
+                                    {companyStats.managers} / {companyStats.quota_managers}
+                                </Text>
+                            </View>
+                        </GlassCard>
+                    </View>
+                )}
 
                 {/* ... search container ... */}
                 <View style={styles.searchContainer}>
@@ -462,5 +516,41 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     fab: {
         width: '100%',
+    },
+    quotaContainer: {
+        paddingHorizontal: 20,
+        marginBottom: 10,
+    },
+    quotaCard: {
+        flexDirection: 'row',
+        gap: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+    },
+    quotaItem: {
+        flex: 1,
+    },
+    quotaLabel: {
+        fontSize: 12,
+        fontFamily: typography.fonts.bold,
+        color: colors.text.primary,
+        marginBottom: 6,
+    },
+    quotaBar: {
+        height: 8,
+        backgroundColor: colors.background.subtle,
+        borderRadius: 4,
+        overflow: 'hidden',
+        marginBottom: 4,
+    },
+    quotaFill: {
+        height: '100%',
+        borderRadius: 4,
+    },
+    quotaText: {
+        fontSize: 11,
+        fontFamily: typography.fonts.medium,
+        color: colors.text.secondary,
+        textAlign: 'center',
     }
 });

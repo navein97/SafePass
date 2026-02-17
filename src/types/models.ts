@@ -1,4 +1,12 @@
-export type Region = 'MY' | 'TH' | 'SG';
+export type Region = 'MY' | 'TH' | 'SG' | 'PT';
+
+export interface Company {
+    id: string;
+    name: string;
+    quota_managers: number;
+    quota_drivers: number;
+    subscription_tier?: 'basic' | 'pro' | 'enterprise';
+}
 
 export interface Driver {
     id: string;
@@ -17,12 +25,14 @@ export interface Driver {
     shieldHealth?: number;
     totalScore?: number;
     age?: number;
+    companyId?: string;
     vehicleType?: 'Container Haulage' | 'Curtain Side' | 'Open Cargo' | 'Small Truck' | 'Tanker' | string;
     // Master User Fields
     managerLevel?: 1 | 2;
     department?: string;
     division?: string;
     area?: string;
+
 }
 
 export interface Question {

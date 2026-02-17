@@ -103,20 +103,30 @@ export const QuizScreen = ({ navigation, route }: any) => {
         if (!canAccess) {
           shouldUpdateLoading = false;
           Alert.alert(
-            'Batch Locked',
-            `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`,
+            t('quiz.batchLocked') || 'Batch Locked',
+            t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`,
             [{ text: 'OK', onPress: () => navigation.goBack() }]
           );
           return;
         }
       }
 
-      setLoadingStatus(`Loading Batch ${batchNumber} questions...`);
+      setLoadingStatus(t('quiz.loadingQuestions', { mode: isPractice ? (t('mission.practiceModeTitle') || 'Practice') : 'Batch ' + batchNumber }));
 
       // Load batch questions
       try {
-        const loadedQuestions = await BatchService.getBatchQuestions(batchNumber);
-        console.log(`[QuizScreen] Loaded ${loadedQuestions.length} questions for Batch ${batchNumber}`);
+        let loadedQuestions;
+        
+        if (isPractice) {
+          // Use PracticeService for Practice Mode (Smart + Randomized)
+          const { PracticeService } = await import('../services/practiceService');
+          loadedQuestions = await PracticeService.getPracticeSession(profile.id, profile.region, 30);
+          console.log(`[QuizScreen Practice] Loaded ${loadedQuestions.length} practice questions`);
+        } else {
+          // Use BatchService for Live Mode (Deterministic batches)
+          loadedQuestions = await BatchService.getBatchQuestions(batchNumber);
+          console.log(`[QuizScreen] Loaded ${loadedQuestions.length} questions for Batch ${batchNumber}`);
+        }
         
         if (!loadedQuestions || loadedQuestions.length === 0) {
           throw new Error('Questions array is empty');
@@ -125,19 +135,23 @@ export const QuizScreen = ({ navigation, route }: any) => {
         setQuestions(loadedQuestions);
         
         // Wait for next tick to ensure questions state is accessible if needed
-        // then check for saved progress
-        const saved = await QuizStorageService.loadProgress(profile.id, batchNumber);
-        if (saved && saved.currentIndex > 0) {
-          setSavedProgress(saved);
-          setShowResumePrompt(true);
+        // then check for saved progress (only for live mode)
+        if (!isPractice) {
+          const saved = await QuizStorageService.loadProgress(profile.id, batchNumber);
+          if (saved && saved.currentIndex > 0) {
+            setSavedProgress(saved);
+            setShowResumePrompt(true);
+          } else {
+            setStartTime(Date.now());
+          }
         } else {
           setStartTime(Date.now());
         }
       } catch (qError) {
         console.error('Error fetching questions:', qError);
         Alert.alert(
-          'Loading Error',
-          `Could not load questions for Batch ${batchNumber}. Please try again.`
+          t('quiz.loadingError') || 'Loading Error',
+          t('quiz.couldNotLoadQuestions', { mode: isPractice ? (t('mission.practiceModeTitle') || 'Practice') : 'Batch ' + batchNumber }) || `Could not load questions${isPractice ? ' for Practice.' : ' for Batch ' + batchNumber + '.'} Please try again.`
         );
         navigation.goBack();
         return;
@@ -145,7 +159,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
     } catch (error) {
       console.error('Error loading quiz:', error);
-      Alert.alert(t('common.error'), 'Failed to load quiz');
+      Alert.alert(t('common.error'), t('quiz.failedToLoadQuiz') || 'Failed to load quiz');
       navigation.goBack();
     } finally {
       if (shouldUpdateLoading) {
@@ -205,7 +219,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
     if (Platform.OS === 'web') {
       // Web: Use confirm for simple yes/no, save progress if confirmed
-      const saveAndExit = window.confirm(`${title}\n\n${message}\n\nClick OK to Save & Exit, Cancel to continue quiz.`);
+      const saveAndExit = window.confirm(`${String(title)}\n\n${String(message)}\n\n${t('common.saveExitWebConfirm')}`);
       if (saveAndExit) {
         saveProgressLocally().then(() => {
           navigation.navigate('MainTabs', { screen: 'Mission' });
@@ -292,19 +306,13 @@ export const QuizScreen = ({ navigation, route }: any) => {
     setIsAnswered(false);
     setShowFeedback(false);
     
-    const maxSessionQuestions = isPractice ? questions.length : 3;
+    const maxSessionQuestions = isPractice ? 30 : 3;
 
     if (currentIndex < maxSessionQuestions - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // Loop questions in Practice Mode, otherwise Finish
-      if (isPractice) {
-        setCurrentIndex(0);
-        // Scroll to top when looping
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-      } else {
-        handleFinish();
-      }
+      // Finish session (both Practice and Live)
+      handleFinish();
     }
   };
 
@@ -312,11 +320,33 @@ export const QuizScreen = ({ navigation, route }: any) => {
     try {
       console.log('Starting handleFinish...');
       setLoading(true);
-      setLoadingStatus('Submitting your answers...');
+      setLoadingStatus(t('quiz.submitting'));
       
       if (isPractice) {
-        Alert.alert('Practice Complete', 'Great job practicing!');
-        navigation.navigate('MainTabs', { screen: 'Mission' });
+        // Calculate practice session results
+        const correctCount = answers.filter(a => a.isCorrect).length;
+        const totalAnswered = answers.length;
+        const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+        
+        const title = accuracy >= 80 ? t('quiz.excellentPractice') : accuracy >= 60 ? t('quiz.goodPractice') : t('quiz.keepPracticing');
+        const message = `${t('quiz.practiceResult', { correct: correctCount, total: totalAnswered, accuracy: accuracy })}\n\n${t('quiz.practiceMoreQuestion')}`;
+        
+        if (Platform.OS === 'web') {
+          const practiceAgain = window.confirm(`${String(title)}\n\n${String(message)}\n\n${t('quiz.practiceWebConfirm')}`);
+          if (practiceAgain) {
+            navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 });
+          } else {
+            navigation.navigate('MainTabs', { screen: 'Mission' });
+          }
+        } else {
+          Alert.alert(String(title), String(message), [
+            { text: t('common.backToHome') || 'Back to Menu', onPress: () => navigation.navigate('MainTabs', { screen: 'Mission' }) },
+            { text: t('quiz.practiceAgain') || 'Practice Again', onPress: () => {
+              // Reload the practice screen
+              navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 });
+            }}
+          ]);
+        }
         return;
       }
 
@@ -340,11 +370,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
         const avgScore = await BatchService.getBatchAverageScore(userId, batchNumber);
         const passed = avgScore >= 60;
         
-        const title = passed ? 'Batch Completed!' : 'Batch Attempt Recorded';
-        const message = `Score: ${result.progress.score.toFixed(2)}%\nAverage: ${avgScore.toFixed(2)}%\n\n${
+        const title = passed ? t('quiz.batchCompleted') : t('quiz.batchAttemptRecorded');
+        const message = `${t('common.score')}: ${result.progress.score.toFixed(2)}%\n${t('quiz.averageScore') || 'Average'}: ${avgScore.toFixed(2)}%\n\n${
           passed 
-            ? batchNumber < 4 ? `Batch ${batchNumber + 1} is now unlocked!` : 'Congratulations! You have completed all batches!'
-            : `You need ${(60 - avgScore).toFixed(2)}% more to pass this batch.`
+            ? batchNumber < 4 ? t('quiz.batchNextUnlocked', { nextBatch: batchNumber + 1 }) : t('quiz.allBatchesCompleted')
+            : t('quiz.neededToPass', { needed: (60 - avgScore).toFixed(2) })
         }`;
 
         // Platform-specific alert handling
@@ -466,13 +496,13 @@ export const QuizScreen = ({ navigation, route }: any) => {
               <ArrowLeft size={20} color={colors.text.primary} />
             </TouchableOpacity>
             <Text style={styles.batchTitle}>
-              {isPractice ? 'Practice' : `Batch ${batchNumber}`}
+                {isPractice ? (t('mission.practiceModeTitle') || 'Practice') : t('quiz.batchTitle', { number: batchNumber })}
             </Text>
             <View style={{ width: 20 }} />
           </View>
           <View style={styles.statsRow}>
              <Text style={styles.progressText}>
-                Question {currentIndex + 1}/{isPractice ? '∞' : '3'}
+                {t('quiz.question')} {currentIndex + 1}/{isPractice ? '30' : '3'}
              </Text>
             <View style={[styles.statItem, {flexDirection: 'row', gap: 4}]}>
               <Text style={styles.statLabel}>Accuracy:</Text>
@@ -549,7 +579,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
           {showFeedback && (
             <View style={styles.feedbackCard}>
               <Text style={styles.feedbackText}>
-                Oops! Please try again.
+                {t('quiz.oopsTryAgain')}
               </Text>
             </View>
           )}
@@ -557,7 +587,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
           {/* Explanation Section - Only show when answer is CORRECT */}
           {isAnswered && !showFeedback && currentQuestion.explanation && (
             <View style={styles.coachingCard}>
-              <Text style={styles.coachingLabel}>Explanation:</Text>
+              <Text style={styles.coachingLabel}>{t('quiz.explanation')}:</Text>
               <Text style={styles.coachingText}>{currentQuestion.explanation}</Text>
             </View>
           )}
@@ -568,12 +598,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
         <View style={styles.footer}>
           {showFeedback ? (
             <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
+              <Text style={styles.retryButtonText}>{t('common.tryAgain')}</Text>
             </TouchableOpacity>
           ) : isAnswered && (
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
               <Text style={styles.nextButtonText}>
-                {currentIndex === questions.length - 1 ? 'Finish' : 'Next'}
+                {currentIndex === questions.length - 1 ? t('quiz.finish') : t('common.next')}
               </Text>
             </TouchableOpacity>
           )}
