@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Question, Region, QuizAttempt } from '../types/models';
-import { getWeek, getYear } from 'date-fns';
+import { getWeek, getYear, startOfWeek, addDays, format, isSameDay } from 'date-fns';
 import * as Crypto from 'expo-crypto';
 import { ScoringService } from './scoringService';
 
@@ -602,40 +602,47 @@ export const QuizService = {
     },
 
     /**
-     * Get daily progress scores for trend chart
+     * Get daily progress scores for trend chart (Fixed Weekly View: Mon-Sun)
      */
     async getDailyTrends(userId: string): Promise<{ value: number, label: string }[]> {
         try {
+            const now = new Date();
+            // Start of current week (Monday)
+            const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+
             const { data, error } = await supabase
                 .from('user_batch_progress')
                 .select('score, completed_at')
                 .eq('user_id', userId)
-                .order('completed_at', { ascending: false })
-                .limit(20);
+                .gte('completed_at', weekStart.toISOString())
+                .order('completed_at', { ascending: true });
 
             if (error) throw error;
 
-            // Group by date to show progress over days
-            const dailyMap = new Map<string, number>();
+            // Initialize 7 days of the week
+            const weeklyData = [];
+            const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-            (data || []).forEach(log => {
-                const date = new Date(log.completed_at);
-                const dateKey = `${date.getDate()}/${date.getMonth() + 1}`; // e.g. "18/2"
+            for (let i = 0; i < 7; i++) {
+                const dayDate = addDays(weekStart, i);
+                const dayLabel = dayLabels[i];
 
-                // If multiple attempts in a day, take the best one
-                const currentBest = dailyMap.get(dateKey) || 0;
-                if (log.score > currentBest) {
-                    dailyMap.set(dateKey, log.score);
-                }
-            });
+                // Find best score for this specific day
+                const dayAttempts = (data || []).filter(log =>
+                    isSameDay(new Date(log.completed_at), dayDate)
+                );
 
-            // Convert map to sorted array of points
-            return Array.from(dailyMap.entries())
-                .reverse() // reverse because we fetched descending date
-                .map(([label, value]) => ({
-                    value,
-                    label
-                }));
+                const bestScore = dayAttempts.length > 0
+                    ? Math.max(...dayAttempts.map(a => a.score))
+                    : 0;
+
+                weeklyData.push({
+                    value: bestScore,
+                    label: dayLabel
+                });
+            }
+
+            return weeklyData;
         } catch (error) {
             console.error('Error getting daily trends:', error);
             return [];
