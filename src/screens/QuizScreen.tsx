@@ -94,18 +94,20 @@ export const QuizScreen = ({ navigation, route }: any) => {
         return;
       }
 
-      // Check Daily Limit for Live Mode - Now on a per-batch basis
+      // Check Daily Limit for Live Mode - 3-question limit per batch today
       if (!isPractice) {
         const dailyCount = await QuizStorageService.getDailyCount(profile.id, batchNumber);
         if (dailyCount >= 3) {
-          // If limit reached, we will navigate back. 
-          // Keep loading=true to prevent "Unable to Load Questions" flicker
-          shouldUpdateLoading = false;
-          Alert.alert(
-            t('quiz.dailyLimitTitle') || 'Daily Limit Reached',
-            t('quiz.dailyLimitMessage') || 'You have reached your limit of 3 questions for this batch today. Come back tomorrow or try Practice Mode!',
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
-          );
+          setLoading(false);
+          const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
+          const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your limit of 3 questions for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
+          
+          if (Platform.OS === 'web') {
+            window.alert(`${title}\n\n${message}`);
+            navigation.goBack();
+          } else {
+            Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
+          }
           return;
         }
       }
@@ -114,12 +116,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
       if (!isPractice) {
         const canAccess = await BatchService.canAccessBatch(profile.id, batchNumber);
         if (!canAccess) {
-          shouldUpdateLoading = false;
-          Alert.alert(
-            t('quiz.batchLocked') || 'Batch Locked',
-            t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`,
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
-          );
+          setLoading(false);
+          const title = t('quiz.batchLocked') || 'Batch Locked';
+          const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`;
+          
+          if (Platform.OS === 'web') {
+            window.alert(`${title}\n\n${message}`);
+            navigation.goBack();
+          } else {
+            Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
+          }
           return;
         }
       }
@@ -171,6 +177,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
       Alert.alert(t('common.error'), t('quiz.failedToLoadQuiz') || 'Failed to load quiz');
       navigation.goBack();
     } finally {
+      // In normal flow, we stop loading here. 
+      // If we returned early for limit/locked check, setLoading(false) was called explicitly.
       if (shouldUpdateLoading) {
         setLoading(false);
       }
@@ -294,8 +302,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
     setSelectedOption(index);
     setIsAnswered(true);
 
-    const rawQuestion = questions[currentIndex];
-    const isCorrect = index === rawQuestion.correctOptionIndex;
+    const currentBatchQuestion = questions[currentIndex];
+    const isCorrect = index === currentBatchQuestion.correctOptionIndex;
     const currentAttempts = (attemptCounts[currentIndex] || 0) + 1;
 
     setAttemptCounts(prev => ({
@@ -303,24 +311,23 @@ export const QuizScreen = ({ navigation, route }: any) => {
       [currentIndex]: currentAttempts
     }));
 
+    // Increment Daily Count if Live Mode - Every answer (Correct or Incorrect) counts towards the quota
+    if (!isPractice) {
+      await QuizStorageService.incrementDailyCount(userId, batchNumber);
+    }
+
     if (isCorrect) {
       // Record correct answer
       setAnswers(prev => [...prev, {
-        questionId: rawQuestion.id,
+        questionId: currentBatchQuestion.id,
         attempts: currentAttempts,
         isCorrect: true
       }]);
-      
-      // Increment Daily Count if Live Mode - Now on a per-batch basis
-      if (!isPractice) {
-        await QuizStorageService.incrementDailyCount(userId, batchNumber);
-      }
-
       setShowFeedback(false);
     } else {
       // Record failed attempt and Show feedback
       setAnswers(prev => [...prev, {
-        questionId: rawQuestion.id,
+        questionId: currentBatchQuestion.id,
         attempts: currentAttempts,
         isCorrect: false
       }]);

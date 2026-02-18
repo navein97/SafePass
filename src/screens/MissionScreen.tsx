@@ -9,11 +9,13 @@ import {
   ActivityIndicator,
   StatusBar,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { AuthService } from '../services/authService';
 import { BatchService } from '../services/batchService';
+import { QuizStorageService } from '../services/quizStorageService';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { typography } from '../theme/typography';
@@ -25,6 +27,7 @@ interface BatchStatus {
   averageScore: number;
   attemptCount: number;
   passed: boolean;
+  dailyCount: number;
 }
 
 export function MissionScreen() {
@@ -91,6 +94,7 @@ export function MissionScreen() {
             const accessResults = await Promise.all(batchNumbers.map(i => BatchService.canAccessBatch(profile.id, i)));
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(profile.id, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(profile.id, i)));
+            const dailyCounts = await Promise.all(batchNumbers.map(i => QuizStorageService.getDailyCount(profile.id, i)));
             
             return batchNumbers.map((batchNum, index) => ({
               batchNumber: batchNum,
@@ -98,15 +102,21 @@ export function MissionScreen() {
               averageScore: scoreResults[index],
               attemptCount: attemptResults[index].length,
               passed: scoreResults[index] >= 60,
+              dailyCount: dailyCounts[index],
             }));
           };
+
+          const quotaPromise = QuizStorageService.getDailyCount(profile.id);
 
           // Race the fetch against a 10-second timeout
           const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Request timed out')), 10000)
           );
 
-          const resultStatuses = await Promise.race([fetchPromise(), timeoutPromise]) as BatchStatus[];
+          const [resultStatuses] = await Promise.race([
+            Promise.all([fetchPromise()]), 
+            timeoutPromise
+          ]) as [BatchStatus[]];
 
           if (isActive) {
             setBatchStatuses(resultStatuses);
@@ -135,6 +145,34 @@ export function MissionScreen() {
   );
 
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
+    const batch = batchStatuses.find(b => b.batchNumber === batchNumber);
+    
+    // In Live Mode, if the goal is done (passed or 3 questions hit), block and show alert
+    if (selectedMode === 'live' && batch && (batch.dailyCount >= 3 || batch.passed)) {
+      const title = t('quiz.batchCompleted') || 'Goal Done';
+      const message = t('quiz.goalDoneMessage') || `Batch Goal Completed! Try Practice Mode for more study.`;
+      
+      if (Platform.OS === 'web') {
+        window.alert(`${title}\n\n${message}`);
+      } else {
+        Alert.alert(title, message);
+      }
+      return;
+    }
+
+    // Check general access (locked batch)
+    if (!canAccess && selectedMode === 'live') {
+      const title = t('common.error') || 'Locked';
+      const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `Complete Batch ${batchNumber - 1} first!`;
+      
+      if (Platform.OS === 'web') {
+        window.alert(`${title}\n\n${message}`);
+      } else {
+        Alert.alert(title, message);
+      }
+      return;
+    }
+
     if (canAccess && selectedMode) {
       // @ts-ignore
       navigation.navigate('Quiz', { batchNumber, mode: selectedMode });
@@ -197,9 +235,11 @@ export function MissionScreen() {
             </View>
           ) : (
             <>
-              <TouchableOpacity style={styles.backToMode} onPress={() => setSelectedMode(null)}>
-                <Text style={styles.backToModeText}>← Change Mode ({selectedMode === 'live' ? 'Live' : 'Practice'})</Text>
-              </TouchableOpacity>
+              <View style={styles.modeHeader}>
+                <TouchableOpacity style={styles.backToMode} onPress={() => setSelectedMode(null)}>
+                  <Text style={styles.backToModeText}>← Change Mode ({selectedMode === 'live' ? 'Live' : 'Practice'})</Text>
+                </TouchableOpacity>
+              </View>
               
               {batchStatuses.map((batch) => (
                 <TouchableOpacity
@@ -258,13 +298,15 @@ export function MissionScreen() {
                             <Text
                               style={[
                                 styles.statValue,
-                                batch.passed && styles.statValuePassed,
-                                !batch.passed && styles.statValueFailed,
+                                (batch.passed || (selectedMode === 'live' && batch.dailyCount >= 3)) && styles.statValuePassed,
+                                !batch.passed && !(selectedMode === 'live' && batch.dailyCount >= 3) && styles.statValueFailed,
                               ]}
                             >
-                              {batch.passed
-                                ? '✓ Passed'
-                                : `Need ${(60 - batch.averageScore).toFixed(1)}% more to pass`}
+                              {selectedMode === 'live' && (batch.dailyCount >= 3 || batch.passed)
+                                ? '✓ Goal Done' 
+                                : batch.passed
+                                  ? '✓ Passed'
+                                  : `Need ${(60 - batch.averageScore).toFixed(1)}% more to pass`}
                             </Text>
                           </View>
                         )}
@@ -481,5 +523,29 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 14,
     fontFamily: typography.fonts.bold,
     color: colors.primary.DEFAULT,
+  },
+  modeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quotaAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  quotaAlertText: {
+    fontSize: 12,
+    fontFamily: typography.fonts.bold,
+    color: '#FF6B6B',
+    marginLeft: 6,
   },
 });

@@ -576,6 +576,73 @@ export const QuizService = {
     },
 
     /**
+     * Get weekly compliance scores for trend chart
+     */
+    async getWeeklyTrends(userId: string): Promise<{ score: number, weekNumber: number }[]> {
+        try {
+            const { data, error } = await supabase
+                .from('compliance_logs')
+                .select('score, week_number')
+                .eq('user_id', userId)
+                .order('year', { ascending: false })
+                .order('week_number', { ascending: false })
+                .limit(10);
+
+            if (error) throw error;
+
+            // Reverse to show chronologically (Oldest to Newest) in the chart
+            return (data || []).reverse().map(log => ({
+                score: log.score || 0,
+                weekNumber: log.week_number
+            }));
+        } catch (error) {
+            console.error('Error getting weekly trends:', error);
+            return [];
+        }
+    },
+
+    /**
+     * Get daily progress scores for trend chart
+     */
+    async getDailyTrends(userId: string): Promise<{ value: number, label: string }[]> {
+        try {
+            const { data, error } = await supabase
+                .from('user_batch_progress')
+                .select('score, completed_at')
+                .eq('user_id', userId)
+                .order('completed_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+
+            // Group by date to show progress over days
+            const dailyMap = new Map<string, number>();
+
+            (data || []).forEach(log => {
+                const date = new Date(log.completed_at);
+                const dateKey = `${date.getDate()}/${date.getMonth() + 1}`; // e.g. "18/2"
+
+                // If multiple attempts in a day, take the best one
+                const currentBest = dailyMap.get(dateKey) || 0;
+                if (log.score > currentBest) {
+                    dailyMap.set(dateKey, log.score);
+                }
+            });
+
+            // Convert map to sorted array of points
+            return Array.from(dailyMap.entries())
+                .reverse() // reverse because we fetched descending date
+                .map(([label, value]) => ({
+                    value,
+                    label
+                }));
+        } catch (error) {
+            console.error('Error getting daily trends:', error);
+            return [];
+        }
+    },
+
+    /**
      * Check if user has completed quiz this week
      */
     async hasCompletedThisWeek(userId: string): Promise<boolean> {

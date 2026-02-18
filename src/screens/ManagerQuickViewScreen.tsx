@@ -149,7 +149,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
           <GlassCard style={styles.banner}>
             <Trophy size={48} color="#FFD700" />
             <Text style={styles.bannerTitle}>{t('manager.safetyChampions')}</Text>
-            <Text style={styles.bannerSubtitle}>{t('manager.week')} {getWeek(new Date())}</Text>
+            <Text style={styles.bannerSubtitle}>{t('manager.week')}</Text>
           </GlassCard>
 
           {leaderboard.length === 0 ? (

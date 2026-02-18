@@ -161,7 +161,7 @@
     "viewTeamStats": "Lihat statistik Pasukan",
     "weeklyLeaderboard": "Papan Pendahulu Mingguan",
     "safetyChampions": "Juara Keselamatan",
-    "week": "Minggu",
+    "week": "Minggu Ini",
     "noQuizzesCompleted": "Tiada kuiz diselesaikan minggu ini.",
     "beFirst": "Jadilah yang pertama menyelesaikan kuiz!",
     "noticeRLS": "Sila jalankan skrip kemas kini RLS untuk melihat semua pengguna."
@@ -207,7 +207,8 @@
     "practiceMoreQuestion": "Adakah anda mahu berlatih lagi?",
     "practiceAgain": "Latihan Lagi",
     "practiceWebConfirm": "Klik OK untuk Latihan Lagi, Batal untuk Keluar.",
-    "batchCompleted": "Kelompok Selesai!",
+    "batchCompleted": "Matlamat Selesai",
+    "goalDoneMessage": "Matlamat Kelompok Selesai! Cuba Mod Latihan untuk lebih pembelajaran.",
     "batchAttemptRecorded": "Percubaan Kelompok Direkodkan",
     "batchNextUnlocked": "Kelompok {{nextBatch}} kini dibuka!",
     "allBatchesCompleted": "Tahniah! Anda telah menyelesaikan semua kelompok!",

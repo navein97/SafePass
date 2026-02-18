@@ -161,7 +161,7 @@
     "viewTeamStats": "View Team stats",
     "weeklyLeaderboard": "Weekly Leaderboard",
     "safetyChampions": "Safety Champions",
-    "week": "Week",
+    "week": "This Week",
     "noQuizzesCompleted": "No quizzes completed this week yet.",
     "beFirst": "Be the first to complete the quiz!",
     "noticeRLS": "Please run the RLS update script to see all users."
@@ -207,7 +207,8 @@
     "practiceMoreQuestion": "Would you like to practice more?",
     "practiceAgain": "Practice Again",
     "practiceWebConfirm": "Click OK to Practice Again, Cancel to Exit.",
-    "batchCompleted": "Batch Completed!",
+    "batchCompleted": "Goal Done",
+    "goalDoneMessage": "Batch Goal Completed! Try Practice Mode for more study.",
     "batchAttemptRecorded": "Batch Attempt Recorded",
     "batchNextUnlocked": "Batch {{nextBatch}} is now unlocked!",
     "allBatchesCompleted": "Congratulations! You have completed all batches!",

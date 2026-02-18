@@ -9,6 +9,7 @@ import { typography } from '../theme/typography';
 import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
+import { BatchService } from '../services/batchService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -62,7 +63,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   const { colors, theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [quizHistory, setQuizHistory] = useState<QuizAttempt[]>([]);
+  const [quizHistory, setQuizHistory] = useState<any[]>([]);
   
   // Staff State
   const [age, setAge] = useState('');
@@ -142,10 +143,10 @@ export const ProfileScreen = ({ navigation }: any) => {
         streak: userProfile.streak || 0,
         shieldHealth: userProfile.shield_health || 100,
         managerLevel: userProfile.manager_level,
-        operationalEffectiveness: userProfile.operational_effectiveness || 0.75,
-        operationalDiscipline: userProfile.operational_discipline || 0.25,
-        professionalConduct: userProfile.professional_conduct || 0.12,
-        totalScore: userProfile.totalScore || 0,
+        operationalEffectiveness: userProfile.component_scores?.operation || 0,
+        operationalDiscipline: userProfile.component_scores?.discipline || 0,
+        professionalConduct: userProfile.component_scores?.professionalism || 0,
+        totalScore: userProfile.total_score || 0,
         current_batch: userProfile.current_batch || 1,
         total_batches_completed: userProfile.total_batches_completed || 0,
         designation: userProfile.designation || '',
@@ -154,6 +155,13 @@ export const ProfileScreen = ({ navigation }: any) => {
         contactNumber: userProfile.phone_number || '', // Mapped from phone_number
       });
 
+      // SYNC CHECK: If user has 0 safety_index but history might exist, force a sync
+      if (!isManager && (userProfile.safety_index === 0 || !userProfile.component_scores) && userProfile.id) {
+          console.log('[ProfileScreen] Scores are zero, attempting to sync from history...');
+          await BatchService.syncProfileStats(userProfile.id);
+          // Don't recursive call loadProfile, just update the local state if needed
+      }
+
       // Load Form State
       setFullName(userProfile.full_name || '');
       setDesignation(userProfile.designation || '');
@@ -161,10 +169,10 @@ export const ProfileScreen = ({ navigation }: any) => {
       setAddress(userProfile.address || '');
       setContactNumber(userProfile.phone_number || '');
 
-      // Load History
+      // Load Daily Trends for Chart
       if (userProfile.id) {
-          const history = await QuizService.getQuizAttempts(userProfile.id);
-          setQuizHistory(history);
+          const trends = await QuizService.getDailyTrends(userProfile.id);
+          setQuizHistory(trends);
       }
 
       // Load local settings/data
@@ -609,62 +617,73 @@ export const ProfileScreen = ({ navigation }: any) => {
                   {/* Legend */}
                   <View style={styles.legendContainer}>
                     <View style={styles.legendItem}>
+                        <View style={[styles.legendColor, { backgroundColor: '#FFD600' }]} />
+                        <Text style={styles.legendLabel}>{t('leaderboard.professionalism')}</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendColor, { backgroundColor: '#BF360C' }]} />
+                        <Text style={styles.legendLabel}>{t('leaderboard.discipline')}</Text>
+                    </View>
+                    <View style={styles.legendItem}>
                         <View style={[styles.legendColor, { backgroundColor: '#2E7D32' }]} />
-                        <Text style={styles.legendLabel}>{t('profile.profConduct')}</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendColor, { backgroundColor: '#EF6C00' }]} />
-                        <Text style={styles.legendLabel}>{t('profile.opDiscipline')}</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendColor, { backgroundColor: '#1565C0' }]} />
-                        <Text style={styles.legendLabel}>{t('profile.opEffectiveness')}</Text>
+                        <Text style={styles.legendLabel}>{t('leaderboard.operation')}</Text>
                     </View>
                   </View>
 
                   <View style={styles.chartArea}>
-                    {/* Grid Lines */}
-                    {[20, 40, 60, 80, 100].map((tick) => (
+                    {[0, 20, 40, 60, 80, 100].map(tick => (
                       <View key={tick} style={[styles.gridLine, { left: `${tick}%` }]} />
                     ))}
 
-                    {/* Conduct Bar */}
-                    <View style={styles.dashboardBarRow}>
-                      <View style={styles.dashboardBarTrack}>
-                        <View 
-                          style={[
-                            styles.dashboardBarFill, 
-                            { width: `${profile?.professionalConduct || 0}%`, backgroundColor: '#2E7D32' }
-                          ]} 
-                        />
+                    <View style={styles.barRow}>
+                      <View style={styles.dashboardLabelContainer}>
+                        <Text style={styles.dashboardLabel}>{t('leaderboard.professionalism')}</Text>
                       </View>
-                      <Text style={styles.dashboardBarValue}>{profile?.professionalConduct || 0}%</Text>
+                      <View style={styles.dashboardBarContainer}>
+                        <View style={styles.barTrack}>
+                          <View 
+                            style={[
+                              styles.barFill, 
+                              { width: `${profile?.professionalConduct || 0}%`, backgroundColor: '#FFD600' }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.barValue}>{profile?.professionalConduct || 0}%</Text>
+                      </View>
                     </View>
 
-                    {/* Discipline Bar */}
-                    <View style={styles.dashboardBarRow}>
-                      <View style={styles.dashboardBarTrack}>
-                        <View 
-                          style={[
-                            styles.dashboardBarFill, 
-                            { width: `${profile?.operationalDiscipline || 0}%`, backgroundColor: '#EF6C00' }
-                          ]} 
-                        />
+                    <View style={styles.barRow}>
+                      <View style={styles.dashboardLabelContainer}>
+                        <Text style={styles.dashboardLabel}>{t('leaderboard.discipline')}</Text>
                       </View>
-                      <Text style={styles.dashboardBarValue}>{profile?.operationalDiscipline || 0}%</Text>
+                      <View style={styles.dashboardBarContainer}>
+                        <View style={styles.barTrack}>
+                          <View 
+                            style={[
+                              styles.barFill, 
+                              { width: `${profile?.operationalDiscipline || 0}%`, backgroundColor: '#BF360C' }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.barValue}>{profile?.operationalDiscipline || 0}%</Text>
+                      </View>
                     </View>
 
-                    {/* Effectiveness Bar */}
-                    <View style={styles.dashboardBarRow}>
-                      <View style={styles.dashboardBarTrack}>
-                        <View 
-                          style={[
-                            styles.dashboardBarFill, 
-                            { width: `${profile?.operationalEffectiveness || 0}%`, backgroundColor: '#1565C0' }
-                          ]} 
-                        />
+                    <View style={styles.barRow}>
+                      <View style={styles.dashboardLabelContainer}>
+                        <Text style={styles.dashboardLabel}>{t('leaderboard.operation')}</Text>
                       </View>
-                      <Text style={styles.dashboardBarValue}>{profile?.operationalEffectiveness || 0}%</Text>
+                      <View style={styles.dashboardBarContainer}>
+                        <View style={styles.barTrack}>
+                          <View 
+                            style={[
+                              styles.barFill, 
+                              { width: `${profile?.operationalEffectiveness || 0}%`, backgroundColor: '#2E7D32' }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.barValue}>{profile?.operationalEffectiveness || 0}%</Text>
+                      </View>
                     </View>
                   </View>
              </GlassCard>
@@ -677,11 +696,8 @@ export const ProfileScreen = ({ navigation }: any) => {
                 <PerformanceChart 
                     data={
                         quizHistory.length > 0
-                        ? quizHistory.slice(0, 5).reverse().map(a => ({
-                            value: a.score,
-                            label: `W${a.weekNumber}`
-                          }))
-                        : [{ value: 0, label: 'Start' }]
+                        ? quizHistory.slice(-7)
+                        : [{ value: profile?.totalScore || 0, label: 'Today' }]
                     } 
                 />
              </GlassCard>
@@ -1083,12 +1099,31 @@ const createStyles = (colors: any) => StyleSheet.create({
     height: '100%',
   },
   dashboardBarValue: {
-    position: 'absolute',
-    right: -40,
     fontSize: 11,
     fontFamily: typography.fonts.bold,
     color: colors.text.secondary,
     width: 35,
+    textAlign: 'right',
+  },
+  chartBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  dashboardLabelContainer: {
+    width: 100,
+  },
+  dashboardLabel: {
+    fontSize: 12,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+  },
+  dashboardBarContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   barRow: {
     flexDirection: 'row',

@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Question } from '../types/models';
+import { getWeek, getYear } from 'date-fns';
+import * as Crypto from 'expo-crypto';
 
 // Import batch question data
 import batch1Questions from '../data/batches/batch1.json';
@@ -242,17 +244,87 @@ export const BatchService = {
             const componentScores = this.calculateComponentScores(questions, answers);
             console.log(`[BatchService] Scores calculated for User ${userId}: ${score}%, Accuracy: ${accuracy}%, Completion: ${completion}%`);
 
-            // Check if score is higher than previous best
+            // --- ADDED FOR MANAGER VISIBILITY ---
+            // Update compliance_logs and profile stats so managers see progress on Team page
+            // This happens BEFORE the batch PB check to ensure weekly activity is recorded
+            try {
+                const now = new Date();
+                const weekNumber = getWeek(now);
+                const year = getYear(now);
+
+                // Check for existing compliance log to see if this is a new weekly best
+                const { data: existingLog } = await supabase
+                    .from('compliance_logs')
+                    .select('score')
+                    .eq('user_id', userId)
+                    .eq('week_number', weekNumber)
+                    .eq('year', year)
+                    .maybeSingle();
+
+                if (!existingLog || score > (existingLog.score || 0)) {
+                    // Generate HMAC signature for compliance log (consistency with QuizService)
+                    const dataToSign = JSON.stringify({ userId, weekNumber, year, score });
+                    const signature = await Crypto.digestStringAsync(
+                        Crypto.CryptoDigestAlgorithm.SHA256,
+                        dataToSign + 'safe-pass-secret-key-v1'
+                    );
+
+                    // Save or update compliance log (Leaderboard source)
+                    console.log(`[BatchService] Updating compliance log for Week ${weekNumber}, Score: ${score}%`);
+                    await supabase
+                        .from('compliance_logs')
+                        .upsert({
+                            user_id: userId,
+                            week_number: weekNumber,
+                            year,
+                            status: 'COMPLIANT',
+                            score: score,
+                            signature,
+                            completed_at: now.toISOString(),
+                        }, {
+                            onConflict: 'user_id,week_number,year'
+                        });
+                } else {
+                    console.log(`[BatchService] Weekly best (${existingLog.score}%) is higher than current (${score}%). Log not updated but user is active.`);
+                }
+
+                // Update safety_index in profile (rolling average consistency)
+                const { data: recentAttempts } = await supabase
+                    .from('user_batch_progress')
+                    .select('score')
+                    .eq('user_id', userId)
+                    .order('completed_at', { ascending: false })
+                    .limit(5);
+
+                const pastScores = recentAttempts?.map(a => a.score) || [];
+                const allScores = [score, ...pastScores];
+                const avgSafetyIndex = Math.round(allScores.reduce((sum, s) => sum + s, 0) / allScores.length);
+
+                await supabase
+                    .from('profiles')
+                    .update({
+                        safety_index: avgSafetyIndex,
+                        component_scores: componentScores,
+                        total_score: avgSafetyIndex
+                    })
+                    .eq('id', userId);
+
+            } catch (complianceUpdateError) {
+                console.warn('[BatchService] Post-submission updates failed:', complianceUpdateError);
+            }
+            // -------------------------------------
+
+            // Check if score is higher than previous best for this SPECIFIC BATCH
             console.log(`[BatchService] Fetching existing attempts for User: ${userId}, Batch: ${batchNumber}`);
             const existingAttempts = await this.getBatchAttempts(userId, batchNumber);
             console.log(`[BatchService] Found ${existingAttempts.length} existing attempts`);
 
             if (existingAttempts.length > 0) {
                 const maxScore = existingAttempts.reduce((max, attempt) => Math.max(max, attempt.score), 0);
-                console.log(`[BatchService] Current Max Score: ${maxScore}%`);
+                console.log(`[BatchService] Current Batch Max Score: ${maxScore}%`);
 
                 if (score <= maxScore) {
-                    console.log(`[BatchService] New score ${score}% is NOT higher than max score ${maxScore}%. Ending submission early with success: true.`);
+                    console.log(`[BatchService] New score ${score}% is NOT higher than batch max score ${maxScore}%. Ending batch submission early.`);
                     return { success: true, progress: null };
                 }
             }
@@ -495,4 +567,95 @@ export const BatchService = {
             return [];
         }
     },
+
+    /**
+     * Force synchronization of profile metrics (safety_index, component_scores)
+     * by aggregating all past batch attempts.
+     */
+    async syncProfileStats(userId: string): Promise<void> {
+        try {
+            console.log(`[BatchService] Syncing profile stats for user: ${userId}`);
+
+            // 1. Get ALL batch attempts for this user
+            const { data: attempts, error } = await supabase
+                .from('user_batch_progress')
+                .select('*')
+                .eq('user_id', userId)
+                .order('completed_at', { ascending: false });
+
+            if (error || !attempts || attempts.length === 0) {
+                console.log('[BatchService] No attempts found to sync.');
+                return;
+            }
+
+            // 2. Calculate Safety Index (rolling average of last 5 unique batch attempts)
+            // Strategy: Get the BEST score from each batch, then average them
+            const batchBestScores = new Map<number, number>();
+            attempts.forEach(a => {
+                const currentBest = batchBestScores.get(a.batch_number) || 0;
+                if (a.score > currentBest) {
+                    batchBestScores.set(a.batch_number, a.score);
+                }
+            });
+
+            const scores = Array.from(batchBestScores.values());
+            const avgSafetyIndex = Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
+
+            // 3. Aggregate Component Scores (Average from latest attempts of each batch)
+            let opTotal = 0, discTotal = 0, profTotal = 0, count = 0;
+
+            const processedBatches = new Set<number>();
+            attempts.forEach(a => {
+                if (!processedBatches.has(a.batch_number) && a.component_scores) {
+                    opTotal += a.component_scores.operation || 0;
+                    discTotal += a.component_scores.discipline || 0;
+                    profTotal += a.component_scores.professionalism || 0;
+                    count++;
+                    processedBatches.add(a.batch_number);
+                }
+            });
+
+            const componentScores = {
+                operation: count > 0 ? Math.round(opTotal / count) : 0,
+                discipline: count > 0 ? Math.round(discTotal / count) : 0,
+                professionalism: count > 0 ? Math.round(profTotal / count) : 0,
+            };
+
+            // 4. Update Profile
+            console.log(`[BatchService] Synced: Safety Index ${avgSafetyIndex}, Components:`, componentScores);
+            await supabase
+                .from('profiles')
+                .update({
+                    safety_index: avgSafetyIndex,
+                    component_scores: componentScores,
+                    total_score: avgSafetyIndex,
+                    total_batches_completed: batchBestScores.size
+                })
+                .eq('id', userId);
+
+            // 5. Ensure trending exists (Create initial log for chart if missing)
+            const now = new Date();
+            const year = now.getFullYear();
+            // Simple week calculation
+            const firstDayOfYear = new Date(year, 0, 1);
+            const pastDaysOfYear = (now.getTime() - firstDayOfYear.getTime()) / 86400000;
+            const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+
+            await supabase
+                .from('compliance_logs')
+                .upsert({
+                    user_id: userId,
+                    week_number: weekNumber,
+                    year: year,
+                    score: avgSafetyIndex,
+                    component_scores: componentScores,
+                    updated_at: now.toISOString()
+                }, {
+                    onConflict: 'user_id,week_number,year'
+                });
+
+        } catch (error) {
+            console.error('[BatchService] Error syncing profile stats:', error);
+        }
+    }
 };

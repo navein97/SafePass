@@ -14,7 +14,8 @@ interface PerformanceChartProps {
   width?: number;
 }
 
-import { useTranslation } from 'react-i18next'; // Add import
+import { typography } from '../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 export const PerformanceChart = ({ data, height = 200, width }: PerformanceChartProps) => {
   const { t } = useTranslation(); // Hook
@@ -24,29 +25,39 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
   if (!data || data.length === 0) {
       return (
           <View style={[styles.container, { height, width: screenWidth, justifyContent: 'center', alignItems: 'center' }]}>
-              <Text style={{ color: colors.text.secondary }}>No data available yet</Text>
+              <Text style={{ color: colors.text.secondary }}>{t('common.noData') || 'No data available yet'}</Text>
           </View>
       );
   }
 
-  // Chart Config
-  const padding = 20;
-  const chartHeight = height - padding * 2;
-  const chartWidth = screenWidth - padding * 2;
+  // If only one point, add a 'zero' start point to make a line
+  const chartData = data.length === 1 
+    ? [{ value: 0, label: '0%' }, ...data]
+    : data;
+
+  // Chart Config - Increased horizontal padding to prevent cutoff
+  const hPadding = 45; 
+  const vPadding = 30;
+  const chartHeight = height - vPadding * 2;
+  const chartWidth = screenWidth - hPadding * 2;
   const maxValue = 100;
   
   // Helper to map coordinates
-  const getX = (index: number) => padding + (index * (chartWidth / (data.length - 1 || 1)));
-  const getY = (value: number) => height - padding - ((value / maxValue) * chartHeight);
+  const getX = (index: number) => {
+    return hPadding + (index * (chartWidth / (chartData.length - 1)));
+  };
+  const getY = (value: number) => height - vPadding - ((value / maxValue) * chartHeight);
 
   // Generate Path
-  let d = `M ${getX(0)} ${getY(data[0].value)}`;
-  data.slice(1).forEach((point, i) => {
-      d += ` L ${getX(i + 1)} ${getY(point.value)}`;
-  });
+  let d = `M ${getX(0)} ${getY(chartData[0].value)}`;
+  if (chartData.length > 1) {
+    chartData.slice(1).forEach((point, i) => {
+        d += ` L ${getX(i + 1)} ${getY(point.value)}`;
+    });
+  }
 
   // Generate Area Path (close the loop for gradient fill)
-  const dArea = `${d} L ${getX(data.length - 1)} ${height - padding} L ${getX(0)} ${height - padding} Z`;
+  const dArea = `${d} L ${getX(chartData.length - 1)} ${height - vPadding} L ${getX(0)} ${height - vPadding} Z`;
 
   return (
     <View style={[styles.container, { width: screenWidth }]}>
@@ -63,9 +74,9 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
         {[0, 25, 50, 75, 100].map((val) => (
             <Line 
                 key={val}
-                x1={padding}
+                x1={hPadding}
                 y1={getY(val)}
-                x2={screenWidth - padding}
+                x2={screenWidth - hPadding}
                 y2={getY(val)}
                 stroke={colors.border}
                 strokeWidth="1"
@@ -77,24 +88,45 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
         <Path d={dArea} fill="url(#gradient)" />
 
         {/* Line */}
-        <Path d={d} stroke={colors.primary.DEFAULT} strokeWidth="3" fill="none" />
+        <Path 
+          d={d} 
+          stroke={colors.primary.DEFAULT} 
+          strokeWidth="3" 
+          fill="none" 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+        />
 
-        {/* Data Points */}
-        {data.map((point, index) => (
+        {/* Data Points - Only end points and current for beauty */}
+        {chartData.map((point, index) => (
             <React.Fragment key={index}>
                 <Circle 
                     cx={getX(index)} 
                     cy={getY(point.value)} 
                     r="4" 
-                    fill={colors.background.card} 
+                    fill="#FFF" 
                     stroke={colors.primary.DEFAULT} 
                     strokeWidth="2" 
                 />
-                {/* Labels */}
+                
+                {/* Score Label above point */}
+                <SvgText
+                    x={getX(index)}
+                    y={getY(point.value) - 10}
+                    fontSize="10"
+                    fontFamily={typography.fonts.bold}
+                    fill={colors.text.primary}
+                    textAnchor="middle"
+                >
+                    {point.value}%
+                </SvgText>
+
+                {/* X-Axis Labels */}
                 <SvgText
                     x={getX(index)}
                     y={height - 2}
                     fontSize="10"
+                    fontFamily={typography.fonts.medium}
                     fill={colors.text.secondary}
                     textAnchor="middle"
                 >
@@ -109,14 +141,15 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 16,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   title: {
     fontSize: 14,
+    fontFamily: typography.fonts.bold,
     fontWeight: 'bold',
     marginBottom: 8,
     alignSelf: 'flex-start',
-    marginLeft: 10,
+    marginLeft: 15,
   }
 });
