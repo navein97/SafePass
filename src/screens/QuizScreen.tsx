@@ -335,7 +335,27 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const handleRetry = () => {
     if (isPractice) {
       // Requeue the question to the end of the session (Practice Mode only)
-      const currentQ = questions[currentIndex];
+      const currentQ = { ...questions[currentIndex] };
+      
+      // Reshuffle options so they appear in different positions next time!
+      const originalOptions = [...currentQ.options];
+      const correctOptionText = originalOptions[currentQ.correctOptionIndex];
+      const indices = originalOptions.map((_, i) => i);
+      
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      
+      currentQ.options = indices.map(i => originalOptions[i]);
+      currentQ.correctOptionIndex = currentQ.options.indexOf(correctOptionText);
+      
+      // Sync Malay options if they exist
+      if (currentQ.options_ms) {
+        const originalOptionsMs = [...currentQ.options_ms];
+        currentQ.options_ms = indices.map(i => originalOptionsMs[i]);
+      }
+
       const newQuestions = [...questions];
       // Insert after the current planned session questions
       newQuestions.splice(sessionLimit, 0, currentQ);
