@@ -45,6 +45,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [savedProgress, setSavedProgress] = useState<SavedQuizProgress | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [sessionLimit, setSessionLimit] = useState(isPractice ? 30 : 3);
+  const [hasAnnouncedReview, setHasAnnouncedReview] = useState(false);
   
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -53,19 +55,30 @@ export const QuizScreen = ({ navigation, route }: any) => {
     loadQuiz();
   }, []);
 
+  // Handle review phase announcement for Practice Mode - MODAL VERSION
+  const showReviewAnnouncement = isPractice && currentIndex === 30 && !hasAnnouncedReview;
+
   const loadQuiz = async () => {
     let shouldUpdateLoading = true;
     try {
       setLoading(true);
       setLoadingStatus(t('common.fetchingProfile'));
       
-      const { profile, error } = await AuthService.getUserProfile();
+      // Add timeout to prevent infinite hang
+      const profilePromise = AuthService.getUserProfile();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+      );
+      
+      const result = await Promise.race([profilePromise, timeoutPromise]) as any;
+      const profile = result.profile;
+      const error = result.error;
       
       if (error || !profile) {
         console.error('Profile load error:', error);
         Alert.alert(
           t('common.error'), 
-          t('auth.sessionError'),
+          t('auth.sessionError') || 'Your session may have expired. Please log in again.',
           [
             { text: t('common.retry'), onPress: () => loadQuiz() },
             { text: t('auth.login'), onPress: () => navigation.replace('Login') }
@@ -135,15 +148,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
         setQuestions(loadedQuestions);
         
         // Wait for next tick to ensure questions state is accessible if needed
-        // then check for saved progress (only for live mode)
-        if (!isPractice) {
-          const saved = await QuizStorageService.loadProgress(profile.id, batchNumber);
-          if (saved && saved.currentIndex > 0) {
-            setSavedProgress(saved);
-            setShowResumePrompt(true);
-          } else {
-            setStartTime(Date.now());
-          }
+        // then check for saved progress
+        const saved = await QuizStorageService.loadProgress(profile.id, batchNumber, mode);
+        if (saved && saved.currentIndex > 0) {
+          setSavedProgress(saved);
+          setShowResumePrompt(true);
         } else {
           setStartTime(Date.now());
         }
@@ -171,7 +180,30 @@ export const QuizScreen = ({ navigation, route }: any) => {
   // Restore saved progress
   const restoreProgress = () => {
     if (savedProgress) {
-      setCurrentIndex(savedProgress.currentIndex);
+      // If we have saved questions (for practice mode), use them
+      if (savedProgress.questions && savedProgress.questions.length > 0) {
+        setQuestions(savedProgress.questions);
+      }
+      
+      // Use saved session limit if available
+      if (savedProgress.sessionLimit !== undefined) {
+        setSessionLimit(savedProgress.sessionLimit);
+      } else {
+        // Fallback: recalculate if not saved
+        const extras = savedProgress.answers.filter(a => !a.isCorrect).length;
+        setSessionLimit((isPractice ? 30 : 3) + (isPractice ? extras : 0));
+      }
+
+      // Restore review announcement state
+      if (savedProgress.hasAnnouncedReview !== undefined) {
+        setHasAnnouncedReview(savedProgress.hasAnnouncedReview);
+      }
+
+      // Safety check: ensure saved index is within question set
+      const questionSet = savedProgress.questions || questions;
+      const validIndex = Math.min(savedProgress.currentIndex, questionSet.length - 1);
+      
+      setCurrentIndex(validIndex);
       setAnswers(savedProgress.answers);
       setAttemptCounts(savedProgress.attemptCounts);
       setStartTime(savedProgress.startTime);
@@ -182,8 +214,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
   // Start fresh (discard saved progress)
   const startFresh = async () => {
-    if (userId && !isPractice) {
-      await QuizStorageService.clearProgress(userId, batchNumber);
+    if (userId) {
+      await QuizStorageService.clearProgress(userId, batchNumber, mode);
     }
     setStartTime(Date.now());
     setShowResumePrompt(false);
@@ -192,7 +224,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
   // Save current progress to local storage
   const saveProgressLocally = async () => {
-    if (userId && questions.length > 0 && !isPractice) {
+    if (userId && questions.length > 0) {
       await QuizStorageService.saveProgress({
         batchNumber,
         currentIndex,
@@ -201,17 +233,22 @@ export const QuizScreen = ({ navigation, route }: any) => {
         startTime,
         savedAt: Date.now(),
         userId,
+        mode,
+        questions, // Crucial for Practice Mode to save the randomized session
+        sessionLimit,
+        hasAnnouncedReview,
       });
     }
   };
+
+  // Auto-save progress whenever important state changes
+  useEffect(() => {
+    if (!loading && userId && questions.length > 0 && (answers.length > 0 || currentIndex > 0)) {
+      saveProgressLocally();
+    }
+  }, [currentIndex, answers.length, hasAnnouncedReview]);
   
   const handleBack = () => {
-    // Practice mode goes back immediately without alert
-    if (isPractice) {
-      navigation.navigate('MainTabs', { screen: 'Mission' });
-      return;
-    }
-
     // Platform-agnostic confirmation with save option
     const title = t('common.exitQuiz') || 'Exit Quiz?';
     const message = t('common.saveExitMessage') || 
@@ -242,7 +279,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
             text: t('common.exitWithoutSaving') || 'Exit Without Saving', 
             style: 'destructive',
             onPress: async () => {
-              await QuizStorageService.clearProgress(userId, batchNumber);
+              await QuizStorageService.clearProgress(userId, batchNumber, mode);
               navigation.navigate('MainTabs', { screen: 'Mission' });
             }
           }
@@ -280,13 +317,13 @@ export const QuizScreen = ({ navigation, route }: any) => {
       }
 
       setShowFeedback(false);
-      
-      // No auto-advance
-      // setTimeout(() => {
-      //   handleNext();
-      // }, 1000);
     } else {
-      // Show feedback
+      // Record failed attempt and Show feedback
+      setAnswers(prev => [...prev, {
+        questionId: rawQuestion.id,
+        attempts: currentAttempts,
+        isCorrect: false
+      }]);
       setShowFeedback(true);
     }
     
@@ -296,9 +333,19 @@ export const QuizScreen = ({ navigation, route }: any) => {
   };
 
   const handleRetry = () => {
-    setSelectedOption(null);
-    setIsAnswered(false);
-    setShowFeedback(false);
+    if (isPractice) {
+      // Requeue the question to the end of the session (Practice Mode only)
+      const currentQ = questions[currentIndex];
+      const newQuestions = [...questions];
+      // Insert after the current planned session questions
+      newQuestions.splice(sessionLimit, 0, currentQ);
+      
+      setQuestions(newQuestions);
+      setSessionLimit(prev => prev + 1);
+    }
+    
+    // Move to next question immediately
+    handleNext();
   };
 
   const handleNext = async () => {
@@ -306,9 +353,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     setIsAnswered(false);
     setShowFeedback(false);
     
-    const maxSessionQuestions = isPractice ? 30 : 3;
-
-    if (currentIndex < maxSessionQuestions - 1) {
+    if (currentIndex < sessionLimit - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
       // Finish session (both Practice and Live)
@@ -323,6 +368,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
       setLoadingStatus(t('quiz.submitting'));
       
       if (isPractice) {
+        // Clear saved progress on completion
+        await QuizStorageService.clearProgress(userId, batchNumber, mode);
+        
         // Calculate practice session results
         const correctCount = answers.filter(a => a.isCorrect).length;
         const totalAnswered = answers.length;
@@ -363,15 +411,17 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
       console.log('Submission result:', result);
 
-      if (result.success && result.progress) {
+      if (result.success) {
         // Clear saved progress since quiz is complete
         await QuizStorageService.clearProgress(userId, batchNumber);
         
+        // result.progress might be null if current score didn't beat high score
+        const score = result.progress ? result.progress.score : BatchService.calculateScoreWithAttempts(answers);
         const avgScore = await BatchService.getBatchAverageScore(userId, batchNumber);
         const passed = avgScore >= 60;
         
         const title = passed ? t('quiz.batchCompleted') : t('quiz.batchAttemptRecorded');
-        const message = `${t('common.score')}: ${result.progress.score.toFixed(2)}%\n${t('quiz.averageScore') || 'Average'}: ${avgScore.toFixed(2)}%\n\n${
+        const message = `${t('common.score')}: ${score.toFixed(2)}%\n${t('quiz.averageScore') || 'Average'}: ${avgScore.toFixed(2)}%\n\n${
           passed 
             ? batchNumber < 4 ? t('quiz.batchNextUnlocked', { nextBatch: batchNumber + 1 }) : t('quiz.allBatchesCompleted')
             : t('quiz.neededToPass', { needed: (60 - avgScore).toFixed(2) })
@@ -484,6 +534,35 @@ export const QuizScreen = ({ navigation, route }: any) => {
     );
   }
 
+  // Review Mode Announcement Card
+  if (showReviewAnnouncement) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.resumeContainer}>
+           <StatusBar barStyle="light-content" />
+           <View style={styles.resumeCard}>
+            <View style={styles.reviewIconContainer}>
+               <Check size={48} color={colors.primary.DEFAULT} />
+            </View>
+            <Text style={styles.resumeTitle}>{t('quiz.reviewPhaseTitle') || 'Review Mode'}</Text>
+            <Text style={styles.resumeMessage}>
+              {t('quiz.reviewPhaseMessage') || "You've reached question 30! Now, we'll review the questions you missed to help you master them."}
+            </Text>
+            
+            <TouchableOpacity 
+              style={[styles.resumeButton, styles.resumeButtonPrimary]} 
+              onPress={() => setHasAnnouncedReview(true)}
+            >
+              <Text style={styles.resumeButtonTextPrimary}>
+                {t('common.continue') || 'Continue'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
@@ -502,12 +581,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
           </View>
           <View style={styles.statsRow}>
              <Text style={styles.progressText}>
-                {t('quiz.question')} {currentIndex + 1}/{isPractice ? '30' : '3'}
+                {isPractice && currentIndex >= 30 
+                  ? (t('quiz.reviewPhaseTitle') || 'Review Mode')
+                  : `${t('quiz.question')} ${currentIndex + 1}/${isPractice ? '30' : '3'}`}
              </Text>
-            <View style={[styles.statItem, {flexDirection: 'row', gap: 4}]}>
-              <Text style={styles.statLabel}>Accuracy:</Text>
-              <Text style={styles.statValue}>{accuracy.toFixed(0)}%</Text>
-            </View>
+            {!isPractice && (
+              <View style={[styles.statItem, {flexDirection: 'row', gap: 4}]}>
+                <Text style={styles.statLabel}>Accuracy:</Text>
+                <Text style={styles.statValue}>{accuracy.toFixed(0)}%</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -598,12 +681,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
         <View style={styles.footer}>
           {showFeedback ? (
             <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-              <Text style={styles.retryButtonText}>{t('common.tryAgain')}</Text>
+              <Text style={styles.retryButtonText}>{t('common.continue') || 'Continue'}</Text>
             </TouchableOpacity>
           ) : isAnswered && (
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
               <Text style={styles.nextButtonText}>
-                {currentIndex === questions.length - 1 ? t('quiz.finish') : t('common.next')}
+                {currentIndex === sessionLimit - 1 ? t('quiz.finish') : t('common.next')}
               </Text>
             </TouchableOpacity>
           )}
@@ -867,6 +950,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 8,
+  },
+  reviewIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 20,
   },
   resumeTitle: {
     fontSize: 24,

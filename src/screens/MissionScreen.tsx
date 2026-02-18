@@ -234,36 +234,40 @@ export function MissionScreen() {
                   <View style={styles.batchStats}>
                     {batch.attemptCount > 0 ? (
                       <>
-                        <View style={styles.statRow}>
-                          <Text style={styles.statLabel}>Average Score:</Text>
-                          <Text
-                            style={[
-                              styles.statValue,
-                              batch.passed && styles.statValuePassed,
-                              !batch.passed && batch.attemptCount > 0 && styles.statValueFailed,
-                            ]}
-                          >
-                            {batch.averageScore.toFixed(1)}%
-                          </Text>
-                        </View>
+                        {selectedMode !== 'practice' && (
+                          <View style={styles.statRow}>
+                            <Text style={styles.statLabel}>Average Score:</Text>
+                            <Text
+                              style={[
+                                styles.statValue,
+                                batch.passed && styles.statValuePassed,
+                                !batch.passed && batch.attemptCount > 0 && styles.statValueFailed,
+                              ]}
+                            >
+                              {batch.averageScore.toFixed(1)}%
+                            </Text>
+                          </View>
+                        )}
                         <View style={styles.statRow}>
                           <Text style={styles.statLabel}>Attempts:</Text>
                           <Text style={styles.statValue}>{batch.attemptCount}</Text>
                         </View>
-                        <View style={styles.statRow}>
-                          <Text style={styles.statLabel}>Status:</Text>
-                          <Text
-                            style={[
-                              styles.statValue,
-                              batch.passed && styles.statValuePassed,
-                              !batch.passed && styles.statValueFailed,
-                            ]}
-                          >
-                            {batch.passed
-                              ? '✓ Passed'
-                              : `Need ${(60 - batch.averageScore).toFixed(1)}% more to pass`}
-                          </Text>
-                        </View>
+                        {selectedMode !== 'practice' && (
+                          <View style={styles.statRow}>
+                            <Text style={styles.statLabel}>Status:</Text>
+                            <Text
+                              style={[
+                                styles.statValue,
+                                batch.passed && styles.statValuePassed,
+                                !batch.passed && styles.statValueFailed,
+                              ]}
+                            >
+                              {batch.passed
+                                ? '✓ Passed'
+                                : `Need ${(60 - batch.averageScore).toFixed(1)}% more to pass`}
+                            </Text>
+                          </View>
+                        )}
                       </>
                     ) : (batch.canAccess || selectedMode === 'practice') ? (
                       <Text style={styles.notStartedText}>Tap to start →</Text>

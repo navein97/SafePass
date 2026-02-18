@@ -240,23 +240,25 @@ export const BatchService = {
 
             // Calculate component scores
             const componentScores = this.calculateComponentScores(questions, answers);
-            console.log(`[BatchService] Scores calculated: ${score}%, Accuracy: ${accuracy}%`);
+            console.log(`[BatchService] Scores calculated for User ${userId}: ${score}%, Accuracy: ${accuracy}%, Completion: ${completion}%`);
 
             // Check if score is higher than previous best
-            console.log(`[BatchService] Fetching existing attempts...`);
+            console.log(`[BatchService] Fetching existing attempts for User: ${userId}, Batch: ${batchNumber}`);
             const existingAttempts = await this.getBatchAttempts(userId, batchNumber);
+            console.log(`[BatchService] Found ${existingAttempts.length} existing attempts`);
 
             if (existingAttempts.length > 0) {
                 const maxScore = existingAttempts.reduce((max, attempt) => Math.max(max, attempt.score), 0);
+                console.log(`[BatchService] Current Max Score: ${maxScore}%`);
 
                 if (score <= maxScore) {
-                    console.log(`[BatchService] Score ${score} is not higher than max score ${maxScore}. Not saving.`);
+                    console.log(`[BatchService] New score ${score}% is NOT higher than max score ${maxScore}%. Ending submission early with success: true.`);
                     return { success: true, progress: null };
                 }
             }
 
             const attemptNumber = existingAttempts.length + 1;
-            console.log(`[BatchService] This will be attempt #${attemptNumber}`);
+            console.log(`[BatchService] Saving attempt #${attemptNumber} with score ${score}%...`);
 
             // Insert batch progress
             console.log(`[BatchService] Inserting into user_batch_progress...`);

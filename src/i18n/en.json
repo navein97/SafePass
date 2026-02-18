@@ -214,7 +214,9 @@
     "neededToPass": "You need {{needed}}% more to pass this batch.",
     "averageScore": "Average Score",
     "batchTitle": "Batch {{number}}",
-    "oopsTryAgain": "Oops! Please try again."
+    "oopsTryAgain": "Oops! Please try again.",
+    "reviewPhaseTitle": "Review Mode",
+    "reviewPhaseMessage": "You've reached question 30! Now, we'll review the questions you missed to help you master them."
   },
   "profile": {
     "title": "Profile",

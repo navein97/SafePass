@@ -214,7 +214,9 @@
     "neededToPass": "Anda memerlukan {{needed}}% lagi untuk lulus kelompok ini.",
     "averageScore": "Purata Keseluruhan",
     "batchTitle": "Kelompok {{number}}",
-    "oopsTryAgain": "Oops! Sila cuba lagi."
+    "oopsTryAgain": "Oops! Sila cuba lagi.",
+    "reviewPhaseTitle": "Mod Semakan",
+    "reviewPhaseMessage": "Anda telah sampai ke soalan 30! Sekarang, kita akan menyemak soalan yang anda salah sebelum ini."
   },
   "profile": {
     "title": "Profil",

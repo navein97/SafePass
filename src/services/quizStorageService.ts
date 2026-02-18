@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { Question } from '../types/models';
+
 const QUIZ_PROGRESS_KEY = 'quiz_progress';
 const DAILY_LIMIT_KEY = 'daily_question_limit';
 
@@ -18,6 +20,10 @@ export interface SavedQuizProgress {
     startTime: number;
     savedAt: number;
     userId: string;
+    mode?: 'live' | 'practice';
+    questions?: Question[];
+    sessionLimit?: number;
+    hasAnnouncedReview?: boolean;
 }
 
 export const QuizStorageService = {
@@ -26,12 +32,13 @@ export const QuizStorageService = {
      */
     async saveProgress(progress: SavedQuizProgress): Promise<void> {
         try {
-            const key = `${QUIZ_PROGRESS_KEY}_${progress.userId}_${progress.batchNumber}`;
+            const mode = progress.mode || 'live';
+            const key = `${QUIZ_PROGRESS_KEY}_${progress.userId}_${progress.batchNumber}_${mode}`;
             await AsyncStorage.setItem(key, JSON.stringify({
                 ...progress,
                 savedAt: Date.now(),
             }));
-            console.log(`Quiz progress saved for batch ${progress.batchNumber}`);
+            console.log(`Quiz progress saved for batch ${progress.batchNumber} (${mode})`);
         } catch (error) {
             console.error('Error saving quiz progress:', error);
         }
@@ -40,9 +47,9 @@ export const QuizStorageService = {
     /**
      * Load saved quiz progress from local storage
      */
-    async loadProgress(userId: string, batchNumber: number): Promise<SavedQuizProgress | null> {
+    async loadProgress(userId: string, batchNumber: number, mode: 'live' | 'practice' = 'live'): Promise<SavedQuizProgress | null> {
         try {
-            const key = `${QUIZ_PROGRESS_KEY}_${userId}_${batchNumber}`;
+            const key = `${QUIZ_PROGRESS_KEY}_${userId}_${batchNumber}_${mode}`;
             const saved = await AsyncStorage.getItem(key);
 
             if (!saved) return null;
@@ -52,7 +59,7 @@ export const QuizStorageService = {
             // Check if progress is still valid (less than 24 hours old)
             const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
             if (Date.now() - progress.savedAt > MAX_AGE_MS) {
-                await this.clearProgress(userId, batchNumber);
+                await this.clearProgress(userId, batchNumber, mode);
                 return null;
             }
 
@@ -66,11 +73,11 @@ export const QuizStorageService = {
     /**
      * Clear saved quiz progress (after completion or manual clear)
      */
-    async clearProgress(userId: string, batchNumber: number): Promise<void> {
+    async clearProgress(userId: string, batchNumber: number, mode: 'live' | 'practice' = 'live'): Promise<void> {
         try {
-            const key = `${QUIZ_PROGRESS_KEY}_${userId}_${batchNumber}`;
+            const key = `${QUIZ_PROGRESS_KEY}_${userId}_${batchNumber}_${mode}`;
             await AsyncStorage.removeItem(key);
-            console.log(`Quiz progress cleared for batch ${batchNumber}`);
+            console.log(`Quiz progress cleared for batch ${batchNumber} (${mode})`);
         } catch (error) {
             console.error('Error clearing quiz progress:', error);
         }
@@ -79,8 +86,8 @@ export const QuizStorageService = {
     /**
      * Check if there's saved progress for a batch
      */
-    async hasProgress(userId: string, batchNumber: number): Promise<boolean> {
-        const progress = await this.loadProgress(userId, batchNumber);
+    async hasProgress(userId: string, batchNumber: number, mode: 'live' | 'practice' = 'live'): Promise<boolean> {
+        const progress = await this.loadProgress(userId, batchNumber, mode);
         return progress !== null;
     },
 
