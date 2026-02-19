@@ -203,7 +203,7 @@
     "excellentPractice": "🎉 Latihan Cemerlang!",
     "goodPractice": "👍 Latihan Baik!",
     "keepPracticing": "💪 Terus Berlatih!",
-    "practiceResult": "Anda menjawab {{correct}}/{{total}} soalan dengan betul.\nKetepatan: {{accuracy}}%",
+    "practiceResult": "Ketepatan: {{accuracy}}%",
     "practiceMoreQuestion": "Adakah anda mahu berlatih lagi?",
     "practiceAgain": "Latihan Lagi",
     "practiceWebConfirm": "Klik OK untuk Latihan Lagi, Batal untuk Keluar.",

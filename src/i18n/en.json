@@ -203,7 +203,7 @@
     "excellentPractice": "🎉 Excellent Practice!",
     "goodPractice": "👍 Good Practice!",
     "keepPracticing": "💪 Keep Practicing!",
-    "practiceResult": "You answered {{correct}}/{{total}} questions correctly.\nAccuracy: {{accuracy}}%",
+    "practiceResult": "Accuracy: {{accuracy}}%",
     "practiceMoreQuestion": "Would you like to practice more?",
     "practiceAgain": "Practice Again",
     "practiceWebConfirm": "Click OK to Practice Again, Cancel to Exit.",
