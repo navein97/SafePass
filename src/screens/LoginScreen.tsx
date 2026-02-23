@@ -14,13 +14,19 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { CompanySettingsService } from '../services/companySettingsService';
 
 export const LoginScreen = ({ navigation }: any) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({ employeeId: '', password: '', general: '' });
+  const [activeLang, setActiveLang] = useState(i18n.language);
+
+  const handleLangSwitch = (lang: string) => {
+    i18n.changeLanguage(lang);
+    setActiveLang(lang);
+  };
   
   const [companyName, setCompanyName] = useState('CNG Model Driver 360');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
@@ -171,6 +177,37 @@ export const LoginScreen = ({ navigation }: any) => {
                     {t('auth.contactManager', 'Only managers can create accounts')}
                   </Text>
                 </View>
+
+                {/* Language Selector */}
+                <View style={styles.langToggleRow}>
+                  <Text style={styles.langToggleLabel}>Language / Bahasa:</Text>
+                  <View style={styles.langToggleButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.langButton,
+                        activeLang === 'en' && styles.langButtonActive,
+                      ]}
+                      onPress={() => handleLangSwitch('en')}
+                    >
+                      <Text style={[
+                        styles.langButtonText,
+                        activeLang === 'en' && styles.langButtonTextActive,
+                      ]}>🇬🇧 EN</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.langButton,
+                        activeLang === 'ms' && styles.langButtonActive,
+                      ]}
+                      onPress={() => handleLangSwitch('ms')}
+                    >
+                      <Text style={[
+                        styles.langButtonText,
+                        activeLang === 'ms' && styles.langButtonTextActive,
+                      ]}>🇲🇾 BM</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             </GlassCard>
           </ScrollView>
@@ -248,6 +285,41 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.medium,
     textAlign: 'center',
+  },
+  langToggleRow: {
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 10,
+  },
+  langToggleLabel: {
+    fontSize: 13,
+    fontFamily: typography.fonts.regular,
+    color: colors.text.tertiary,
+  },
+  langToggleButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  langButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: 'transparent',
+  },
+  langButtonActive: {
+    borderColor: colors.primary.DEFAULT,
+    backgroundColor: colors.primary.DEFAULT + '20',
+  },
+  langButtonText: {
+    fontSize: 14,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+  },
+  langButtonTextActive: {
+    color: colors.primary.DEFAULT,
+    fontFamily: typography.fonts.bold,
   },
 });
 

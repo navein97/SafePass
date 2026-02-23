@@ -105,11 +105,19 @@ export const BatchService = {
         // Batch 1 is always accessible
         if (batchNumber === 1) return true;
 
-        // Check if previous batch has been passed (average score >= 60%)
-        const prevBatchNumber = batchNumber - 1;
-        const avgScore = await this.getBatchAverageScore(userId, prevBatchNumber);
+        // Permanent unlock: if the user has already started this batch, always allow access
+        // (prevents re-locking when previous batch average drops after new all-attempts logic)
+        const thisAttempts = await this.getBatchAttempts(userId, batchNumber);
+        if (thisAttempts.length > 0) return true;
 
-        return avgScore >= 60;
+        // First-time access: check if the user has EVER scored >= 60% in a single session
+        // on the previous batch (best score, not running average)
+        const prevBatchNumber = batchNumber - 1;
+        const prevAttempts = await this.getBatchAttempts(userId, prevBatchNumber);
+        if (prevAttempts.length === 0) return false;
+
+        const bestScore = Math.max(...prevAttempts.map(a => a.score));
+        return bestScore >= 60;
     },
 
     /**
@@ -314,20 +322,11 @@ export const BatchService = {
             }
             // -------------------------------------
 
-            // Check if score is higher than previous best for this SPECIFIC BATCH
+            // Every attempt is saved — average reflects genuine daily performance
+            // (Previously only saved if score beat previous best; removed for daily 3Q limit flow)
             console.log(`[BatchService] Fetching existing attempts for User: ${userId}, Batch: ${batchNumber}`);
             const existingAttempts = await this.getBatchAttempts(userId, batchNumber);
             console.log(`[BatchService] Found ${existingAttempts.length} existing attempts`);
-
-            if (existingAttempts.length > 0) {
-                const maxScore = existingAttempts.reduce((max, attempt) => Math.max(max, attempt.score), 0);
-                console.log(`[BatchService] Current Batch Max Score: ${maxScore}%`);
-
-                if (score <= maxScore) {
-                    console.log(`[BatchService] New score ${score}% is NOT higher than batch max score ${maxScore}%. Ending batch submission early.`);
-                    return { success: true, progress: null };
-                }
-            }
 
             const attemptNumber = existingAttempts.length + 1;
             console.log(`[BatchService] Saving attempt #${attemptNumber} with score ${score}%...`);

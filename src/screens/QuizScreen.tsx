@@ -47,6 +47,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [sessionLimit, setSessionLimit] = useState(isPractice ? 30 : 3);
   const [hasAnnouncedReview, setHasAnnouncedReview] = useState(false);
+  const [resultData, setResultData] = useState<{
+    title: string;
+    score: number;
+    avgScore: number;
+    passed: boolean;
+    isPractice: boolean;
+    accuracy?: number;
+    correct?: number;
+    total?: number;
+  } | null>(null);
   
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -94,23 +104,22 @@ export const QuizScreen = ({ navigation, route }: any) => {
         return;
       }
 
-      // Check Daily Limit for Live Mode - 3-question limit per batch today
-      if (!isPractice) {
-        const dailyCount = await QuizStorageService.getDailyCount(profile.id, batchNumber);
-        if (dailyCount >= 3) {
-          setLoading(false);
-          const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
-          const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your limit of 3 questions for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
-          
-          if (Platform.OS === 'web') {
-            window.alert(`${title}\n\n${message}`);
-            navigation.goBack();
-          } else {
-            Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
-          }
-          return;
-        }
-      }
+      // [TESTING] Daily limit disabled — re-enable for production
+      // if (!isPractice) {
+      //   const dailyCount = await QuizStorageService.getDailyCount(profile.id, batchNumber);
+      //   if (dailyCount >= 3) {
+      //     setLoading(false);
+      //     const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
+      //     const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your limit of 3 questions for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
+      //     if (Platform.OS === 'web') {
+      //       window.alert(`${title}\n\n${message}`);
+      //       navigation.goBack();
+      //     } else {
+      //       Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      //     }
+      //     return;
+      //   }
+      // }
 
       // Check access - Bypassed for Practice Mode
       if (!isPractice) {
@@ -404,24 +413,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
         const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
         
         const title = accuracy >= 80 ? t('quiz.excellentPractice') : accuracy >= 60 ? t('quiz.goodPractice') : t('quiz.keepPracticing');
-        const message = `${t('quiz.practiceResult', { correct: correctCount, total: totalAnswered, accuracy: accuracy })}\n\n${t('quiz.practiceMoreQuestion')}`;
-        
-        if (Platform.OS === 'web') {
-          const practiceAgain = window.confirm(`${String(title)}\n\n${String(message)}\n\n${t('quiz.practiceWebConfirm')}`);
-          if (practiceAgain) {
-            navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 });
-          } else {
-            navigation.navigate('MainTabs', { screen: 'Mission' });
-          }
-        } else {
-          Alert.alert(String(title), String(message), [
-            { text: t('common.backToHome') || 'Back to Menu', onPress: () => navigation.navigate('MainTabs', { screen: 'Mission' }) },
-            { text: t('quiz.practiceAgain') || 'Practice Again', onPress: () => {
-              // Reload the practice screen
-              navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 });
-            }}
-          ]);
-        }
+
+        // Always show full-screen celebration card (works on both web and native)
+        setResultData({ title, score: accuracy, avgScore: accuracy, passed: accuracy >= 60, isPractice: true, accuracy, correct: correctCount, total: totalAnswered });
         return;
       }
 
@@ -448,21 +442,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
         const passed = avgScore >= 60;
         
         const title = passed ? t('quiz.batchCompleted') : t('quiz.batchAttemptRecorded');
-        const message = `${t('common.score')}: ${score.toFixed(2)}%\n${t('quiz.averageScore') || 'Average'}: ${avgScore.toFixed(2)}%\n\n${
-          passed 
-            ? batchNumber < 4 ? t('quiz.batchNextUnlocked', { nextBatch: batchNumber + 1 }) : t('quiz.allBatchesCompleted')
-            : t('quiz.neededToPass', { needed: (60 - avgScore).toFixed(2) })
-        }`;
 
-        // Platform-specific alert handling
-        if (Platform.OS === 'web') {
-          window.alert(`${title}\n\n${message}`);
-          navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } });
-        } else {
-          Alert.alert(title, message, [
-            { text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } }) }
-          ]);
-        }
+        // Always show full-screen celebration card (works on both web and native)
+        setResultData({ title, score, avgScore, passed, isPractice: false });
       } else {
         console.error('Submission returned failure');
         Alert.alert('Error', 'Failed to submit batch attempt. Please try again.');
@@ -590,6 +572,77 @@ export const QuizScreen = ({ navigation, route }: any) => {
     );
   }
 
+  // Batch Result / Celebration Card
+  if (resultData) {
+    const isPracticeResult = resultData.isPractice;
+    const celebrationEmoji = resultData.passed || isPracticeResult
+      ? resultData.score >= 80 ? '🏆' : resultData.score >= 60 ? '🎉' : '💪'
+      : '📋';
+    const bgColor = resultData.passed || (isPracticeResult && resultData.score >= 60)
+      ? 'rgba(0, 200, 83, 0.12)'
+      : 'rgba(255, 107, 107, 0.10)';
+    const accentColor = resultData.passed || (isPracticeResult && resultData.score >= 60)
+      ? '#00C853'
+      : '#B45309'; // dark amber — readable on the light beige background
+
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.resumeContainer}>
+          <StatusBar barStyle="light-content" />
+          <View style={[styles.resumeCard, { backgroundColor: bgColor, borderWidth: 1.5, borderColor: accentColor + '60' }]}>
+            {/* Big emoji */}
+            <Text style={{ fontSize: 72, textAlign: 'center', marginBottom: 8 }}>{celebrationEmoji}</Text>
+
+            <Text style={[styles.resumeTitle, { color: accentColor }]}>{resultData.title}</Text>
+
+            {isPracticeResult ? (
+              <>
+                <Text style={styles.resultScoreText}>{resultData.correct}/{resultData.total} Correct</Text>
+                <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.score}%</Text>
+                <Text style={styles.resultSubLabel}>Accuracy</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.resultScoreText}>Score: {resultData.score.toFixed(1)}%</Text>
+                <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.avgScore.toFixed(1)}%</Text>
+                <Text style={styles.resultSubLabel}>Average Score</Text>
+                {resultData.passed ? (
+                  <Text style={[styles.resultMessage, { color: '#00C853' }]}>
+                    ✅ {batchNumber < 4 ? `Batch ${batchNumber + 1} Unlocked!` : 'All Batches Complete!'}
+                  </Text>
+                ) : (
+                  <Text style={[styles.resultMessage, { color: colors.text.secondary }]}>
+                    Need {(60 - resultData.avgScore).toFixed(1)}% more to pass
+                  </Text>
+                )}
+              </>
+            )}
+
+            {/* Buttons */}
+            <View style={{ gap: 12, width: '100%', marginTop: 24 }}>
+              {isPracticeResult && (
+                <TouchableOpacity
+                  style={[styles.resumeButton, styles.resumeButtonPrimary]}
+                  onPress={() => navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 })}
+                >
+                  <Text style={styles.resumeButtonTextPrimary}>Practice Again</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.resumeButton, isPracticeResult ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } })}
+              >
+                <Text style={isPracticeResult ? styles.resumeButtonTextSecondary : styles.resumeButtonTextPrimary}>
+                  Back to Menu
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
@@ -685,12 +738,22 @@ export const QuizScreen = ({ navigation, route }: any) => {
             })}
           </View>
 
-          {/* Feedback: "Try Again" when wrong */}
+          {/* Feedback: wrong answer card — header differs by mode, hint always shown */}
           {showFeedback && (
             <View style={styles.feedbackCard}>
               <Text style={styles.feedbackText}>
-                {t('quiz.oopsTryAgain')}
+                {isPractice ? t('quiz.oopsTryAgain') : '❌ Wrong answer.'}
               </Text>
+              {currentQuestion.explanation ? (
+                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,107,107,0.3)' }}>
+                  <Text style={{ fontSize: 12, fontFamily: typography.fonts.bold, color: '#FF6B6B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    💡 {isPractice ? 'Hint' : 'Explanation'}
+                  </Text>
+                  <Text style={{ fontSize: 14, fontFamily: typography.fonts.regular, color: '#555', lineHeight: 20 }}>
+                    {currentQuestion.explanation}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           )}
 
@@ -708,7 +771,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
         <View style={styles.footer}>
           {showFeedback ? (
             <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-              <Text style={styles.retryButtonText}>{t('common.continue') || 'Continue'}</Text>
+              <Text style={styles.retryButtonText}>
+                {isPractice ? (t('common.continue') || 'Continue') : 'Next Question →'}
+              </Text>
             </TouchableOpacity>
           ) : isAnswered && (
             <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
@@ -883,21 +948,18 @@ const createStyles = (colors: any) => StyleSheet.create({
   
   // Feedback
   feedbackCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     backgroundColor: 'rgba(255, 61, 0, 0.08)',
     borderWidth: 1.5,
     borderColor: '#FF3D00',
     borderRadius: 12,
     padding: 14,
     marginTop: 20,
-    gap: 10,
   },
   feedbackText: {
     fontSize: 15,
     fontFamily: typography.fonts.medium,
     color: '#FF3D00',
-    flex: 1,
   },
   
   // Coaching
@@ -1031,5 +1093,35 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 16,
     fontFamily: typography.fonts.medium,
     color: '#666',
+  },
+
+  // Result / Celebration Card styles
+  resultScoreText: {
+    fontSize: 16,
+    fontFamily: typography.fonts.medium,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  resultScoreValue: {
+    fontSize: 56,
+    fontFamily: typography.fonts.bold,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  resultSubLabel: {
+    fontSize: 13,
+    fontFamily: typography.fonts.regular,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  resultMessage: {
+    fontSize: 15,
+    fontFamily: typography.fonts.medium,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

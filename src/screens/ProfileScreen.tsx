@@ -378,6 +378,28 @@ export const ProfileScreen = ({ navigation }: any) => {
                     {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : profile?.region}
                   </Text>
                 </View>
+                {/* Role Badge - only shown for managers */}
+                {isManager && (
+                  <View style={[
+                    styles.regionBadge,
+                    { 
+                      marginTop: 6,
+                      backgroundColor: profile?.managerLevel === 1
+                        ? 'rgba(255, 180, 0, 0.2)'
+                        : 'rgba(100, 149, 237, 0.2)',
+                      borderColor: profile?.managerLevel === 1
+                        ? 'rgba(255, 180, 0, 0.5)'
+                        : 'rgba(100, 149, 237, 0.5)',
+                    }
+                  ]}>
+                    <Text style={[
+                      styles.regionText,
+                      { color: profile?.managerLevel === 1 ? '#FFB400' : '#6495ED' }
+                    ]}>
+                      {profile?.managerLevel === 1 ? '⭐ Master User' : '👔 Manager'}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           </GlassCard>
@@ -451,6 +473,45 @@ export const ProfileScreen = ({ navigation }: any) => {
                             value={contactNumber}
                             onChangeText={setContactNumber}
                         />
+
+                        {/* Age and Vehicle Type - shown for all users inside Profile Details */}
+                        {!isManager && (
+                          <>
+                            <Text style={styles.inputLabel}>{t('profile.age')}</Text>
+                            <TextInput 
+                               style={styles.textInput}
+                               placeholder={t('profile.agePlaceholder')}
+                               placeholderTextColor={colors.text.tertiary}
+                               keyboardType="numeric"
+                               value={age}
+                               onChangeText={handleAgeChange}
+                            />
+
+                            <Text style={styles.inputLabel}>{t('profile.vehicleType')}</Text>
+                            <View style={styles.vehicleOptions}>
+                               {[
+                                 { key: 'Container Haulage', label: t('profile.vehicles.containerHaulage') },
+                                 { key: 'Curtain Side', label: t('profile.vehicles.curtainSide') },
+                                 { key: 'Open Cargo', label: t('profile.vehicles.openCargo') },
+                                 { key: 'Small Truck', label: t('profile.vehicles.smallTruck') }
+                               ].map((v) => (
+                                 <TouchableOpacity
+                                   key={v.key}
+                                   style={[
+                                     styles.vehicleOption,
+                                     vehicleType === v.key && styles.vehicleOptionSelected
+                                   ]}
+                                   onPress={() => handleVehicleSelect(v.key)}
+                                 >
+                                    <Text style={[
+                                      styles.vehicleText,
+                                      vehicleType === v.key && styles.vehicleTextSelected
+                                    ]}>{v.label}</Text>
+                                 </TouchableOpacity>
+                               ))}
+                            </View>
+                          </>
+                        )}
                     </View>
                  )}
 
@@ -559,56 +620,6 @@ export const ProfileScreen = ({ navigation }: any) => {
             </GlassCard>
           ) : (
             <View>
-             {/* Staff Inputs */}
-             <GlassCard style={styles.inputCard}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                   <User size={24} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
-                   <Text style={styles.sectionTitle}>{t('profile.personalDetails')}</Text>
-                </View>
-
-                {/* Age Input */}
-                <Text style={styles.inputLabel}>{t('profile.age')}</Text>
-                <TextInput 
-                   style={styles.textInput}
-                   placeholder={t('profile.agePlaceholder')}
-                   placeholderTextColor={colors.text.tertiary}
-                   keyboardType="numeric"
-                   value={age}
-                   onChangeText={handleAgeChange}
-                />
-
-                {/* Vehicle Selection */}
-                <Text style={styles.inputLabel}>{t('profile.vehicleType')}</Text>
-                <View style={styles.vehicleOptions}>
-                   {[
-                      { key: 'Container Haulage', label: t('profile.vehicles.containerHaulage') },
-                      { key: 'Curtain Side', label: t('profile.vehicles.curtainSide') },
-                      { key: 'Open Cargo', label: t('profile.vehicles.openCargo') },
-                      { key: 'Small Truck', label: t('profile.vehicles.smallTruck') }
-                    ].map((v) => (
-                      <TouchableOpacity
-                        key={v.key}
-                        style={[
-                          styles.vehicleOption,
-                          vehicleType === v.key && styles.vehicleOptionSelected
-                        ]}
-                        onPress={() => handleVehicleSelect(v.key)}
-                      >
-                         <Text style={[
-                           styles.vehicleText,
-                           vehicleType === v.key && styles.vehicleTextSelected
-                         ]}>{v.label}</Text>
-                      </TouchableOpacity>
-                   ))}
-                </View>
-
-                {/* Save Button */}
-                <GlassButton
-                  title={t('common.save')}
-                  onPress={handleSavePersonalDetails}
-                  style={{ marginTop: 24 }}
-                />
-             </GlassCard>
 
              {/* Driver Performance Dashboard */}
              <GlassCard style={styles.inputCard}>
