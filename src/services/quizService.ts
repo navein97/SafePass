@@ -603,46 +603,55 @@ export const QuizService = {
 
     /**
      * Get daily progress scores for trend chart (Fixed Weekly View: Mon-Sun)
+     * Active days show the current all-time batch average (matches MissionScreen).
+     * Inactive days show 0.
      */
     async getDailyTrends(userId: string): Promise<{ value: number, label: string }[]> {
         try {
             const now = new Date();
-            // Start of current week (Monday)
             const weekStart = startOfWeek(now, { weekStartsOn: 1 });
 
-            const { data, error } = await supabase
+            // 1. All-time batch scores to compute current overall average
+            const { data: allData, error: allError } = await supabase
                 .from('user_batch_progress')
-                .select('score, completed_at')
+                .select('score, batch_number')
+                .eq('user_id', userId);
+
+            if (allError) throw allError;
+
+            // 2. This week's records — just need timestamps to find active days
+            const { data: weekData, error: weekError } = await supabase
+                .from('user_batch_progress')
+                .select('completed_at')
                 .eq('user_id', userId)
-                .gte('completed_at', weekStart.toISOString())
-                .order('completed_at', { ascending: true });
+                .gte('completed_at', weekStart.toISOString());
 
-            if (error) throw error;
+            if (weekError) throw weekError;
 
-            // Initialize 7 days of the week
-            const weeklyData = [];
+            // 3. Compute current overall avg: average per batch → average across batches
+            const batchMap = new Map<number, number[]>();
+            (allData || []).forEach((a: any) => {
+                if (!batchMap.has(a.batch_number)) batchMap.set(a.batch_number, []);
+                batchMap.get(a.batch_number)!.push(a.score);
+            });
+
+            const batchAvgs = Array.from(batchMap.values()).map(
+                scores => scores.reduce((s: number, v: number) => s + v, 0) / scores.length
+            );
+            const overallAvg = batchAvgs.length > 0
+                ? Math.round(batchAvgs.reduce((s: number, v: number) => s + v, 0) / batchAvgs.length)
+                : 0;
+
+            // 4. Build Mon–Sun chart: show overallAvg on active days, 0 on inactive
             const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
-            for (let i = 0; i < 7; i++) {
+            return dayLabels.map((label, i) => {
                 const dayDate = addDays(weekStart, i);
-                const dayLabel = dayLabels[i];
-
-                // Find best score for this specific day
-                const dayAttempts = (data || []).filter(log =>
+                const hadActivity = (weekData || []).some((log: any) =>
                     isSameDay(new Date(log.completed_at), dayDate)
                 );
+                return { value: hadActivity ? overallAvg : 0, label };
+            });
 
-                const bestScore = dayAttempts.length > 0
-                    ? Math.max(...dayAttempts.map(a => a.score))
-                    : 0;
-
-                weeklyData.push({
-                    value: bestScore,
-                    label: dayLabel
-                });
-            }
-
-            return weeklyData;
         } catch (error) {
             console.error('Error getting daily trends:', error);
             return [];

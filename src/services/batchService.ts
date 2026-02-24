@@ -296,27 +296,6 @@ export const BatchService = {
                     console.log(`[BatchService] Weekly best (${existingLog.score}%) is higher than current (${score}%). Log not updated but user is active.`);
                 }
 
-                // Update safety_index in profile (rolling average consistency)
-                const { data: recentAttempts } = await supabase
-                    .from('user_batch_progress')
-                    .select('score')
-                    .eq('user_id', userId)
-                    .order('completed_at', { ascending: false })
-                    .limit(5);
-
-                const pastScores = recentAttempts?.map(a => a.score) || [];
-                const allScores = [score, ...pastScores];
-                const avgSafetyIndex = Math.round(allScores.reduce((sum, s) => sum + s, 0) / allScores.length);
-
-                await supabase
-                    .from('profiles')
-                    .update({
-                        safety_index: avgSafetyIndex,
-                        component_scores: componentScores,
-                        total_score: avgSafetyIndex
-                    })
-                    .eq('id', userId);
-
             } catch (complianceUpdateError) {
                 console.warn('[BatchService] Post-submission updates failed:', complianceUpdateError);
             }
@@ -354,6 +333,63 @@ export const BatchService = {
                 throw error;
             }
             console.log(`[BatchService] Insert successful, ID: ${data.id}`);
+
+            // --- POST-INSERT: Update profile with averaged stats ---
+            // Now that the new attempt is saved, compute rolling safety_index
+            // and average component scores from DB (includes the just-inserted row)
+            try {
+                // Safety index: rolling average of last 5 attempts (includes new row)
+                const { data: recentAttempts } = await supabase
+                    .from('user_batch_progress')
+                    .select('score')
+                    .eq('user_id', userId)
+                    .order('completed_at', { ascending: false })
+                    .limit(5);
+
+                const recentScores = recentAttempts?.map((a: any) => a.score) || [score];
+                const avgSafetyIndex = Math.round(
+                    recentScores.reduce((sum: number, s: number) => sum + s, 0) / recentScores.length
+                );
+
+                // Average component scores: take latest attempt per batch, then average across batches
+                const { data: allAttempts } = await supabase
+                    .from('user_batch_progress')
+                    .select('batch_number, component_scores')
+                    .eq('user_id', userId)
+                    .order('completed_at', { ascending: false });
+
+                const processedBatches = new Set<number>();
+                let opTotal = 0, discTotal = 0, profTotal = 0, batchCount = 0;
+                (allAttempts || []).forEach((a: any) => {
+                    if (!processedBatches.has(a.batch_number) && a.component_scores) {
+                        opTotal += a.component_scores.operation || 0;
+                        discTotal += a.component_scores.discipline || 0;
+                        profTotal += a.component_scores.professionalism || 0;
+                        batchCount++;
+                        processedBatches.add(a.batch_number);
+                    }
+                });
+
+                const avgComponentScores = {
+                    operation: batchCount > 0 ? Math.round(opTotal / batchCount) : componentScores.operation,
+                    discipline: batchCount > 0 ? Math.round(discTotal / batchCount) : componentScores.discipline,
+                    professionalism: batchCount > 0 ? Math.round(profTotal / batchCount) : componentScores.professionalism,
+                };
+
+                await supabase
+                    .from('profiles')
+                    .update({
+                        safety_index: avgSafetyIndex,
+                        component_scores: avgComponentScores,
+                        total_score: avgSafetyIndex,
+                    })
+                    .eq('id', userId);
+
+                console.log(`[BatchService] Profile synced — Safety Index: ${avgSafetyIndex}, Components:`, avgComponentScores);
+            } catch (profileUpdateError) {
+                console.warn('[BatchService] Profile stats update failed (non-critical):', profileUpdateError);
+            }
+            // -------------------------------------------------------
 
             // Update user's current batch if passed (score >= 60%) and it's their current batch
             const avgScore = await this.getBatchAverageScore(userId, batchNumber);
@@ -656,5 +692,28 @@ export const BatchService = {
         } catch (error) {
             console.error('[BatchService] Error syncing profile stats:', error);
         }
-    }
+    },
+
+    /**
+     * Get total cumulative XP for a user.
+     * XP = sum of all batch attempt scores ever submitted.
+     * Each daily attempt adds to the total — the more you do and
+     * the more correct answers you get, the higher your XP.
+     */
+    async getTotalXP(userId: string): Promise<number> {
+        try {
+            const { data, error } = await supabase
+                .from('user_batch_progress')
+                .select('score')
+                .eq('user_id', userId);
+
+            if (error || !data || data.length === 0) return 0;
+
+            const total = data.reduce((sum: number, a: any) => sum + (a.score || 0), 0);
+            return Math.round(total);
+        } catch (error) {
+            console.error('[BatchService] Error getting total XP:', error);
+            return 0;
+        }
+    },
 };

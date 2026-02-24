@@ -772,7 +772,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
           {showFeedback ? (
             <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
               <Text style={styles.retryButtonText}>
-                {isPractice ? (t('common.continue') || 'Continue') : 'Next Question →'}
+                {isPractice
+                  ? (t('common.continue') || 'Continue')
+                  : currentIndex === sessionLimit - 1
+                    ? (t('quiz.finish') || 'Finish ✓')
+                    : 'Next Question →'}
               </Text>
             </TouchableOpacity>
           ) : isAnswered && (

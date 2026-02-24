@@ -64,8 +64,8 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [quizHistory, setQuizHistory] = useState<any[]>([]);
+  const [totalXP, setTotalXP] = useState(0);
   
-  // Staff State
   const [age, setAge] = useState('');
   const [vehicleType, setVehicleType] = useState('');
   
@@ -155,11 +155,21 @@ export const ProfileScreen = ({ navigation }: any) => {
         contactNumber: userProfile.phone_number || '', // Mapped from phone_number
       });
 
-      // SYNC CHECK: If user has 0 safety_index but history might exist, force a sync
-      if (!isManager && (userProfile.safety_index === 0 || !userProfile.component_scores) && userProfile.id) {
-          console.log('[ProfileScreen] Scores are zero, attempting to sync from history...');
+      // SYNC CHECK: Use userProfile.role directly (not the stale `isManager` state var)
+      if (userProfile.role !== 'manager' && (userProfile.safety_index === 0 || !userProfile.component_scores) && userProfile.id) {
+          console.log('[ProfileScreen] Scores are zero, syncing from batch history...');
           await BatchService.syncProfileStats(userProfile.id);
-          // Don't recursive call loadProfile, just update the local state if needed
+          // Re-fetch the profile to pick up the newly synced component_scores
+          const { profile: refreshedProfile } = await AuthService.getUserProfile();
+          if (refreshedProfile?.component_scores) {
+              setProfile(prev => prev ? {
+                  ...prev,
+                  operationalEffectiveness: refreshedProfile.component_scores?.operation || 0,
+                  operationalDiscipline: refreshedProfile.component_scores?.discipline || 0,
+                  professionalConduct: refreshedProfile.component_scores?.professionalism || 0,
+                  safety_index: refreshedProfile.safety_index || 0,
+              } : prev);
+          }
       }
 
       // Load Form State
@@ -170,9 +180,13 @@ export const ProfileScreen = ({ navigation }: any) => {
       setContactNumber(userProfile.phone_number || '');
 
       // Load Daily Trends for Chart
-      if (userProfile.id) {
-          const trends = await QuizService.getDailyTrends(userProfile.id);
+      if (userProfile.id && userProfile.role !== 'manager') {
+          const [trends, xp] = await Promise.all([
+              QuizService.getDailyTrends(userProfile.id),
+              BatchService.getTotalXP(userProfile.id),
+          ]);
           setQuizHistory(trends);
+          setTotalXP(xp);
       }
 
       // Load local settings/data
@@ -700,15 +714,15 @@ export const ProfileScreen = ({ navigation }: any) => {
              </GlassCard>
 
              {/* Milestone Tracker */}
-             <MilestoneTracker currentPoints={(streakWeeks * 100) + (profile?.totalScore || 0) + (profile?.safety_index ? profile.safety_index * 10 : 0)} />
+             <MilestoneTracker currentPoints={totalXP} />
 
              {/* Performance Chart */}
              <GlassCard style={{marginTop: 16}}>
                 <PerformanceChart 
                     data={
-                        quizHistory.length > 0
-                        ? quizHistory.slice(-7)
-                        : [{ value: profile?.totalScore || 0, label: 'Today' }]
+                        quizHistory.some(d => d.value > 0)
+                        ? quizHistory
+                        : [{ value: 0, label: '-' }]
                     } 
                 />
              </GlassCard>
