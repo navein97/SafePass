@@ -641,100 +641,102 @@ export const ProfileScreen = ({ navigation }: any) => {
             <View>
 
              {/* Driver Performance Dashboard */}
-             <GlassCard style={styles.inputCard}>
-                  <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>{t('profile.performanceDashboard')}</Text>
-                  
-                  {/* Legend */}
-                  <View style={styles.legendContainer}>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendColor, { backgroundColor: '#FFD600' }]} />
-                        <Text style={styles.legendLabel}>{t('leaderboard.professionalism')}</Text>
+             <GlassCard style={styles.dashboardCard}>
+                  {/* Dashboard Header */}
+                  <View style={styles.dashboardHeader}>
+                    <View style={styles.dashboardIconCircle}>
+                      <Text style={{ fontSize: 18 }}>📊</Text>
                     </View>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendColor, { backgroundColor: '#BF360C' }]} />
-                        <Text style={styles.legendLabel}>{t('leaderboard.discipline')}</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendColor, { backgroundColor: '#2E7D32' }]} />
-                        <Text style={styles.legendLabel}>{t('leaderboard.operation')}</Text>
-                    </View>
+                    <Text style={styles.dashboardTitle}>{t('profile.performanceDashboard')}</Text>
                   </View>
 
-                  <View style={styles.chartArea}>
-                    {[0, 20, 40, 60, 80, 100].map(tick => (
-                      <View key={tick} style={[styles.gridLine, { left: `${tick}%` }]} />
-                    ))}
-
-                    <View style={styles.barRow}>
-                      <View style={styles.dashboardLabelContainer}>
-                        <Text style={styles.dashboardLabel}>{t('leaderboard.professionalism')}</Text>
+                  {/* Score Bars */}
+                  <View style={styles.scoreSection}>
+                    {/* Professionalism */}
+                    <View style={styles.scoreRow}>
+                      <View style={styles.scoreLabelRow}>
+                        <View style={[styles.scoreDot, { backgroundColor: '#FFC107' }]} />
+                        <Text style={styles.scoreLabelText}>{t('profile.profConduct')}</Text>
+                        <Text style={[styles.scoreValueText, { color: '#FFC107' }]}>{profile?.professionalConduct || 0}%</Text>
                       </View>
-                      <View style={styles.dashboardBarContainer}>
-                        <View style={styles.barTrack}>
-                          <View 
-                            style={[
-                              styles.barFill, 
-                              { width: `${profile?.professionalConduct || 0}%`, backgroundColor: '#FFD600' }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.barValue}>{profile?.professionalConduct || 0}%</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.barRow}>
-                      <View style={styles.dashboardLabelContainer}>
-                        <Text style={styles.dashboardLabel}>{t('leaderboard.discipline')}</Text>
-                      </View>
-                      <View style={styles.dashboardBarContainer}>
-                        <View style={styles.barTrack}>
-                          <View 
-                            style={[
-                              styles.barFill, 
-                              { width: `${profile?.operationalDiscipline || 0}%`, backgroundColor: '#BF360C' }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.barValue}>{profile?.operationalDiscipline || 0}%</Text>
+                      <View style={styles.scoreBarTrack}>
+                        <LinearGradient
+                          colors={['#FFD54F', '#FFC107'] as any}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={[
+                            styles.scoreBarFill,
+                            { width: `${profile?.professionalConduct || 0}%` }
+                          ]}
+                        />
                       </View>
                     </View>
 
-                    <View style={styles.barRow}>
-                      <View style={styles.dashboardLabelContainer}>
-                        <Text style={styles.dashboardLabel}>{t('leaderboard.operation')}</Text>
+                    {/* Discipline */}
+                    <View style={styles.scoreRow}>
+                      <View style={styles.scoreLabelRow}>
+                        <View style={[styles.scoreDot, { backgroundColor: '#E64A19' }]} />
+                        <Text style={styles.scoreLabelText}>{t('profile.opDiscipline')}</Text>
+                        <Text style={[styles.scoreValueText, { color: '#E64A19' }]}>{profile?.operationalDiscipline || 0}%</Text>
                       </View>
-                      <View style={styles.dashboardBarContainer}>
-                        <View style={styles.barTrack}>
-                          <View 
-                            style={[
-                              styles.barFill, 
-                              { width: `${profile?.operationalEffectiveness || 0}%`, backgroundColor: '#2E7D32' }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.barValue}>{profile?.operationalEffectiveness || 0}%</Text>
+                      <View style={styles.scoreBarTrack}>
+                        <LinearGradient
+                          colors={['#FF8A65', '#E64A19'] as any}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={[
+                            styles.scoreBarFill,
+                            { width: `${profile?.operationalDiscipline || 0}%` }
+                          ]}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Operation */}
+                    <View style={styles.scoreRow}>
+                      <View style={styles.scoreLabelRow}>
+                        <View style={[styles.scoreDot, { backgroundColor: '#2E7D32' }]} />
+                        <Text style={styles.scoreLabelText}>{t('profile.opEffectiveness')}</Text>
+                        <Text style={[styles.scoreValueText, { color: '#2E7D32' }]}>{profile?.operationalEffectiveness || 0}%</Text>
+                      </View>
+                      <View style={styles.scoreBarTrack}>
+                        <LinearGradient
+                          colors={['#66BB6A', '#2E7D32'] as any}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={[
+                            styles.scoreBarFill,
+                            { width: `${profile?.operationalEffectiveness || 0}%` }
+                          ]}
+                        />
                       </View>
                     </View>
                   </View>
 
                   {/* MCQ Progress Summary */}
-                  <View style={{ 
-                    marginTop: 16, 
-                    paddingTop: 16, 
-                    borderTopWidth: 1, 
-                    borderTopColor: colors.border,
-                    alignItems: 'center'
-                  }}>
-                    <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      Total MCQs Completed
+                  <View style={styles.mcqProgressSection}>
+                    <Text style={styles.mcqProgressLabel}>
+                      TOTAL MCQs COMPLETED
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4, gap: 4 }}>
-                      <Text style={{ fontSize: 24, fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT }}>
+                    <View style={styles.mcqProgressRow}>
+                      <Text style={styles.mcqProgressValue}>
                         {totalQuestionsAnswered}
                       </Text>
-                      <Text style={{ fontSize: 16, fontFamily: typography.fonts.regular, color: colors.text.tertiary }}>
+                      <Text style={styles.mcqProgressTotal}>
                         / 120
                       </Text>
+                    </View>
+                    {/* Mini progress bar */}
+                    <View style={styles.mcqMiniTrack}>
+                      <LinearGradient
+                        colors={[colors.primary.DEFAULT, colors.gradients.gold[1] as string] as any}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[
+                          styles.mcqMiniFill,
+                          { width: `${Math.min((totalQuestionsAnswered / 120) * 100, 100)}%` }
+                        ]}
+                      />
                     </View>
                   </View>
 
@@ -1206,5 +1208,111 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
     textAlign: 'right',
+  },
+
+  // ── Performance Dashboard (Redesigned) ──
+  dashboardCard: {
+    marginBottom: 20,
+    padding: 24,
+  },
+  dashboardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 24,
+  },
+  dashboardIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary.light + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dashboardTitle: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+  },
+  scoreSection: {
+    gap: 18,
+  },
+  scoreRow: {
+    gap: 8,
+  },
+  scoreLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scoreDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  scoreLabelText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+  },
+  scoreValueText: {
+    fontSize: 14,
+    fontFamily: typography.fonts.bold,
+  },
+  scoreBarTrack: {
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.background.subtle || 'rgba(0,0,0,0.08)',
+    overflow: 'hidden',
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+
+  // ── MCQ Progress ──
+  mcqProgressSection: {
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    alignItems: 'center',
+  },
+  mcqProgressLabel: {
+    fontSize: 12,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  mcqProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginTop: 6,
+    gap: 4,
+  },
+  mcqProgressValue: {
+    fontSize: 28,
+    fontFamily: typography.fonts.bold,
+    color: colors.primary.DEFAULT,
+  },
+  mcqProgressTotal: {
+    fontSize: 16,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.tertiary,
+  },
+  mcqMiniTrack: {
+    width: '60%',
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.background.subtle || 'rgba(0,0,0,0.08)',
+    overflow: 'hidden',
+    marginTop: 10,
+  },
+  mcqMiniFill: {
+    height: '100%',
+    borderRadius: 3,
   },
 });
