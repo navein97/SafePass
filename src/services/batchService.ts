@@ -716,4 +716,30 @@ export const BatchService = {
             return 0;
         }
     },
+
+    /**
+     * Get the actual number of questions answered by a user across all batches
+     */
+    async getTotalAnsweredQuestions(userId: string): Promise<number> {
+        try {
+            const { data, error } = await supabase
+                .from('user_batch_progress')
+                .select('answers')
+                .eq('user_id', userId);
+
+            if (error || !data || data.length === 0) return 0;
+
+            let totalQuestions = 0;
+            data.forEach((row: any) => {
+                if (row.answers && Array.isArray(row.answers)) {
+                    totalQuestions += row.answers.length;
+                }
+            });
+
+            return totalQuestions;
+        } catch (error) {
+            console.error('[BatchService] Error getting total answered questions:', error);
+            return 0;
+        }
+    },
 };

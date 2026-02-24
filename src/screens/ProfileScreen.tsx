@@ -65,6 +65,8 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [quizHistory, setQuizHistory] = useState<any[]>([]);
   const [totalXP, setTotalXP] = useState(0);
+  const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
+
   
   const [age, setAge] = useState('');
   const [vehicleType, setVehicleType] = useState('');
@@ -181,13 +183,16 @@ export const ProfileScreen = ({ navigation }: any) => {
 
       // Load Daily Trends for Chart
       if (userProfile.id && userProfile.role !== 'manager') {
-          const [trends, xp] = await Promise.all([
+          const [trends, xp, answeredQs] = await Promise.all([
               QuizService.getDailyTrends(userProfile.id),
               BatchService.getTotalXP(userProfile.id),
+              BatchService.getTotalAnsweredQuestions(userProfile.id)
           ]);
           setQuizHistory(trends);
           setTotalXP(xp);
+          setTotalQuestionsAnswered(answeredQs);
       }
+
 
       // Load local settings/data
       if (userProfile.role === 'manager') {
@@ -711,6 +716,28 @@ export const ProfileScreen = ({ navigation }: any) => {
                       </View>
                     </View>
                   </View>
+
+                  {/* MCQ Progress Summary */}
+                  <View style={{ 
+                    marginTop: 16, 
+                    paddingTop: 16, 
+                    borderTopWidth: 1, 
+                    borderTopColor: colors.border,
+                    alignItems: 'center'
+                  }}>
+                    <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Total MCQs Completed
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4, gap: 4 }}>
+                      <Text style={{ fontSize: 24, fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT }}>
+                        {totalQuestionsAnswered}
+                      </Text>
+                      <Text style={{ fontSize: 16, fontFamily: typography.fonts.regular, color: colors.text.tertiary }}>
+                        / 120
+                      </Text>
+                    </View>
+                  </View>
+
              </GlassCard>
 
              {/* Milestone Tracker */}

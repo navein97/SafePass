@@ -57,6 +57,15 @@ export const QuizScreen = ({ navigation, route }: any) => {
     correct?: number;
     total?: number;
   } | null>(null);
+  const [nextTimer, setNextTimer] = useState(0);
+
+  useEffect(() => {
+    if (nextTimer > 0) {
+      const timer = setTimeout(() => setNextTimer(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [nextTimer]);
+
   
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -343,6 +352,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
       setShowFeedback(true);
     }
     
+    // Start 4s delay timer before user can continue
+    setNextTimer(4);
+    
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
@@ -388,6 +400,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
     setSelectedOption(null);
     setIsAnswered(false);
     setShowFeedback(false);
+    setNextTimer(0);
+
     
     if (currentIndex < sessionLimit - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -770,9 +784,14 @@ export const QuizScreen = ({ navigation, route }: any) => {
         {/* Action Buttons */}
         <View style={styles.footer}>
           {showFeedback ? (
-            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+            <TouchableOpacity 
+              style={[styles.retryButton, nextTimer > 0 && { opacity: 0.5 }]} 
+              onPress={handleRetry}
+              disabled={nextTimer > 0}
+            >
               <Text style={styles.retryButtonText}>
-                {isPractice
+                {nextTimer > 0 ? `${t('common.wait', 'Wait...')} (${nextTimer}s)` :
+                 isPractice
                   ? (t('common.continue') || 'Continue')
                   : currentIndex === sessionLimit - 1
                     ? (t('quiz.finish') || 'Finish ✓')
@@ -780,13 +799,19 @@ export const QuizScreen = ({ navigation, route }: any) => {
               </Text>
             </TouchableOpacity>
           ) : isAnswered && (
-            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+            <TouchableOpacity 
+              style={[styles.nextButton, nextTimer > 0 && { opacity: 0.5 }]} 
+              onPress={handleNext}
+              disabled={nextTimer > 0}
+            >
               <Text style={styles.nextButtonText}>
-                {currentIndex === sessionLimit - 1 ? t('quiz.finish') : t('common.next')}
+                {nextTimer > 0 ? `${t('common.wait', 'Wait...')} (${nextTimer}s)` :
+                 currentIndex === sessionLimit - 1 ? t('quiz.finish') : t('common.next')}
               </Text>
             </TouchableOpacity>
           )}
         </View>
+
       </SafeAreaView>
     </GradientBackground>
   );
