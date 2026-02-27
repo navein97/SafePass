@@ -259,8 +259,19 @@ export function SocialScreen() {
   const loadFeed = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // Fetch Posts
+      if (!user) return;
+
+      // Get current user's company
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+        
+      const companyId = profile?.company_id;
+
+      // Fetch Posts - thanks to RLS, this naturally filters, but we can make it explicit 
+      // if posts had a company_id. For now, RLS handles it.
       const { data, error } = await supabase
         .from('posts')
         .select(`
@@ -286,24 +297,28 @@ export function SocialScreen() {
         setFeed(mappedFeed);
       }
 
-      // Fetch Pit Lane (Drivers with < 70 safety index)
-      const { data: pitData } = await supabase
+      let pitDataQuery = supabase
         .from('profiles')
         .select('full_name, safety_index')
         .lt('safety_index', 70)
         .order('safety_index', { ascending: true })
         .limit(3);
         
+      if (companyId) { pitDataQuery = pitDataQuery.eq('company_id', companyId); }
+      const { data: pitData } = await pitDataQuery;
+        
       if (pitData) {
         setPitLaneDrivers(pitData);
       }
 
-      // Fetch Top 3 Drivers (by safety_index)
-      const { data: topData } = await supabase
+      let topDataQuery = supabase
         .from('profiles')
         .select('full_name, safety_index')
         .order('safety_index', { ascending: false })
         .limit(3);
+        
+      if (companyId) { topDataQuery = topDataQuery.eq('company_id', companyId); }
+      const { data: topData } = await topDataQuery;
       
       if (topData) {
         setTopDrivers(topData);
@@ -321,7 +336,19 @@ export function SocialScreen() {
     try {
       const week = getWeek(new Date());
       const year = getYear(new Date());
-      const weekTag = `[Week ${week}-${year}]`;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+        
+      const companyId = profile?.company_id;
+      // We append company_id to the weekTag so we only check if THIS company has posted this week
+      const weekTag = `[Week ${week}-${year}-C${companyId || 'Global'}]`;
 
       // 1. Check if posts already exist for this week
       const { data: existingPosts } = await supabase
@@ -337,20 +364,26 @@ export function SocialScreen() {
 
       console.log('Generating weekly auto-posts...');
 
-      // 2. Fetch Top 3
-      const { data: topDrivers } = await supabase
+      // 2. Fetch Top 3 for this company
+      let topDriversQuery = supabase
         .from('profiles')
         .select('id, full_name, safety_index')
         .order('safety_index', { ascending: false })
         .limit(3);
+      
+      if (companyId) { topDriversQuery = topDriversQuery.eq('company_id', companyId); }
+      const { data: topDrivers } = await topDriversQuery;
 
-      // 3. Fetch Bottom 3 (Pit Lane)
-      const { data: bottomDrivers } = await supabase
+      // 3. Fetch Bottom 3 (Pit Lane) for this company
+      let bottomDriversQuery = supabase
         .from('profiles')
         .select('id, full_name, safety_index')
         .lt('safety_index', 70)
         .order('safety_index', { ascending: true })
         .limit(3);
+        
+      if (companyId) { bottomDriversQuery = bottomDriversQuery.eq('company_id', companyId); }
+      const { data: bottomDrivers } = await bottomDriversQuery;
 
       const postsToCreate: any[] = [];
 

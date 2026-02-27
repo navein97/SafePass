@@ -440,12 +440,24 @@ export const QuizService = {
                 });
             }
 
-            // 3. Check if user is now in Top 3
-            const { data: topDrivers } = await supabase
+            // 3. Check if user is now in Top 3 for their company
+            const { data: currentProfile } = await supabase
+                .from('profiles')
+                .select('company_id')
+                .eq('id', userId)
+                .single();
+
+            let topDriversQuery = supabase
                 .from('profiles')
                 .select('id')
                 .order('safety_index', { ascending: false })
                 .limit(3);
+
+            if (currentProfile?.company_id) {
+                topDriversQuery = topDriversQuery.eq('company_id', currentProfile.company_id);
+            }
+
+            const { data: topDrivers } = await topDriversQuery;
 
             if (topDrivers) {
                 const userRank = topDrivers.findIndex(d => d.id === userId);

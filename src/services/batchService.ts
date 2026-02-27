@@ -504,19 +504,43 @@ export const BatchService = {
         }>
     > {
         try {
-            // 1. Get all participants (exclude only managers)
-            const { data: users, error: userError } = await supabase
+            // Get current user's company to filter
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            const { data: currentProfile } = await supabase
+                .from('profiles')
+                .select('company_id')
+                .eq('id', user.id)
+                .single();
+
+            // 1. Get all participants in the SAME company
+            let usersQuery = supabase
                 .from('profiles')
                 .select('id, full_name, division, region, employee_id, role, age, vehicle_type')
                 .neq('role', 'manager')
                 .order('full_name');
 
+            if (currentProfile?.company_id) {
+                usersQuery = usersQuery.eq('company_id', currentProfile.company_id);
+            }
+
+            const { data: users, error: userError } = await usersQuery;
+
             if (userError) throw userError;
 
-            // 2. Get ALL progress data at once to avoid N+1 queries
+            // 2. Get ALL progress data at once to avoid N+1 queries. 
+            // Note: If RLS is enabled, this will ONLY return rows the user is allowed to see.
+            // But we filter by user IDs anyway for extra safety.
+            const userIds = users?.map(u => u.id) || [];
+
+            if (userIds.length === 0) return [];
+
             const { data: allProgress, error: progressError } = await supabase
                 .from('user_batch_progress')
-                .select('*');
+                .select('*')
+                .in('user_id', userIds);
+
 
             if (progressError) throw progressError;
 
