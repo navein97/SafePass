@@ -26,10 +26,40 @@ export const AuthService = {
      */
     async signUp(data: SignUpData) {
         try {
-            // Generate dummy email if none provided - ensure it's lowercase and trimmed to prevent duplicates
+            // Generate dummy email if none provided
             const normalizedId = data.employeeId.trim().toLowerCase();
             const email = data.email?.trim().toLowerCase() || `${normalizedId}@safepass.internal`;
 
+            // IF LOGGED IN (e.g. Master User creating a driver):
+            // Use the secure RPC instead of public signUp. This prevents "500 Internal Server Errors"
+            // that happen when hitting Supabase's public rate limits or trying to sign up while already signed in.
+            const { data: sessionData } = await supabase.auth.getSession();
+
+            if (sessionData.session) {
+                const result = await supabase.rpc('create_company_user', {
+                    p_email: email,
+                    p_password: data.password,
+                    p_full_name: data.fullName.trim(),
+                    p_employee_id: data.employeeId.trim(),
+                    p_region: data.region,
+                    p_role: data.role || 'driver',
+                    p_manager_level: data.manager_level || null,
+                    p_company_id: data.companyId || null,
+                    p_age: data.age || null,
+                    p_vehicle_type: data.vehicle_type || null,
+                    p_phone_number: data.phone_number?.trim() || null
+                });
+
+                const obj = (result.data as any) || {};
+
+                if (obj.success === false) {
+                    throw new Error(obj.error || 'Failed to create user via RPC');
+                }
+
+                return { user: { id: obj.user_id }, error: null };
+            }
+
+            // IF NOT LOGGED IN (e.g. completely new Master user registering a workspace)
             const redirectUrl = Platform.OS === 'web'
                 ? 'https://safepass-kappa.vercel.app/auth/callback'
                 : 'safepass://auth/callback';
@@ -41,20 +71,22 @@ export const AuthService = {
                     emailRedirectTo: redirectUrl,
                     data: {
                         full_name: data.fullName.trim(),
-                        employee_id: data.employeeId.trim(), // Keep original case for display if needed, or normalize?. Usually IDs are case insensitive but let's just trim.
+                        employee_id: data.employeeId.trim(),
                         region: data.region,
                         age: data.age,
                         vehicle_type: data.vehicle_type,
                         phone_number: data.phone_number?.trim(),
                         role: data.role || 'driver',
                         manager_level: data.manager_level,
-                        company_id: data.companyId
+                        company_id: data.companyId,
+                        company_name: (data as any).company_name,
                     },
                 },
             });
 
             if (authError) throw authError;
             return { user: authData.user, error: null };
+
         } catch (error: any) {
             console.error('Sign up error:', error);
             return { user: null, error: error.message };
@@ -163,14 +195,31 @@ export const AuthService = {
     },
 
     /**
-     * Get all users (Manager only)
+     * Get all users (Manager only) - filtered by company
      */
     async getAllUsers() {
         try {
-            const { data: users, error } = await supabase
+            // Get the current user's company_id
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            const { data: currentProfile } = await supabase
+                .from('profiles')
+                .select('company_id')
+                .eq('id', user.id)
+                .single();
+
+            let query = supabase
                 .from('profiles')
                 .select('*')
                 .order('created_at', { ascending: false });
+
+            // Filter by company if user has one
+            if (currentProfile?.company_id) {
+                query = query.eq('company_id', currentProfile.company_id);
+            }
+
+            const { data: users, error } = await query;
 
             if (error) throw error;
             return { users, error: null };

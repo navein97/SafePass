@@ -88,6 +88,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     try {
         setLoading(true);
         
+        const { profile: currentProfile } = await AuthService.getUserProfile();
+
         const { error } = await AuthService.signUp({
             fullName: fullName.trim(),
             employeeId: employeeId.trim(),
@@ -97,7 +99,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
             region,
             phone_number: phoneNumber.trim(),
             role: role,
-            manager_level: role === 'manager' ? 2 : undefined
+            manager_level: role === 'manager' ? 2 : undefined,
+            companyId: currentProfile?.company_id
         });
         
         if (error) throw new Error(error);
@@ -297,7 +300,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                   />
                 </View>
                 <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.phone', 'Phone')}</Text>
+                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.phone', 'Phone No.')}</Text>
                   <TextInput 
                       style={[
                           styles.input, 
@@ -456,6 +459,7 @@ const styles = StyleSheet.create({
   },
   optionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   optionsWrap: {

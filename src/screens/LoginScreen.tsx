@@ -12,6 +12,7 @@ import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { CompanySettingsService } from '../services/companySettingsService';
+import { WorkspaceService } from '../services/workspaceService';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t, i18n } = useTranslation();
@@ -79,6 +80,8 @@ export const LoginScreen = ({ navigation }: any) => {
       setErrors(prev => ({ ...prev, general: friendlyMsg }));
       Alert.alert(t('auth.loginFailed'), friendlyMsg);
     } else if (session) {
+      // If this is a new Master User's first login, create their company
+      await WorkspaceService.setupWorkspaceIfNeeded();
       navigation.replace('MainTabs');
     }
   };
@@ -116,8 +119,8 @@ export const LoginScreen = ({ navigation }: any) => {
                 ) : null}
 
                 <GlassInput
-                  label={t('auth.employeeId', 'Employee ID')}
-                  placeholder="MY-CNG001"
+                  label={t('auth.employeeIdOrEmail', 'Email / Employee ID')}
+                  placeholder="jane@example.com or MY-001"
                   value={employeeId}
                   onChangeText={(text) => {
                     setEmployeeId(text);
@@ -174,7 +177,13 @@ export const LoginScreen = ({ navigation }: any) => {
 
                 <View style={styles.linkButton}>
                   <Text style={styles.linkText}>
-                    {t('auth.contactManager', 'Only managers can create accounts')}
+                    {t('auth.doNotHaveAccount', "Don't have an account?")}{' '}
+                    <Text 
+                      style={styles.linkTextBold}
+                      onPress={() => navigation.navigate('RegisterWorkspace')}
+                    >
+                      {t('auth.registerWorkspace', 'Register Your Company')}
+                    </Text>
                   </Text>
                 </View>
 

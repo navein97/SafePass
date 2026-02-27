@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp, CreditCard } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { BatchService } from '../services/batchService';
@@ -18,6 +18,7 @@ import { Toast } from '../components/Toast';
 import Svg, { Circle } from 'react-native-svg';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { CompanySettingsModal } from '../components/CompanySettingsModal';
+import { CompanySettingsService } from '../services/companySettingsService';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { MilestoneTracker } from '../components/MilestoneTracker';
 import { Building, BookOpen, UserPlus } from 'lucide-react-native';
@@ -93,6 +94,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   // User Management
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showCompanySettings, setShowCompanySettings] = useState(false);
+  const [hasNoPlan, setHasNoPlan] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage(message);
@@ -191,6 +193,22 @@ export const ProfileScreen = ({ navigation }: any) => {
           setQuizHistory(trends);
           setTotalXP(xp);
           setTotalQuestionsAnswered(answeredQs);
+      }
+
+      // Check if Master User needs a plan
+      console.log('[ProfileScreen] DEBUG profile:', {
+        role: userProfile.role,
+        manager_level: userProfile.manager_level,
+        company_id: userProfile.company_id,
+      });
+      if (userProfile.role === 'manager' && userProfile.manager_level === 1 && userProfile.company_id) {
+        const stats = await CompanySettingsService.getCompanyStats(userProfile.company_id);
+        console.log('[ProfileScreen] Master User Stats:', stats);
+        if (stats && stats.quota_drivers === 0) {
+          setHasNoPlan(true);
+        } else {
+          setHasNoPlan(false);
+        }
       }
 
 
@@ -423,6 +441,40 @@ export const ProfileScreen = ({ navigation }: any) => {
             </View>
           </GlassCard>
 
+          {/* Nudge Banner - Choose a Plan */}
+          {profile?.role === 'manager' && profile?.managerLevel === 1 && hasNoPlan && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Billing')}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[colors.primary.DEFAULT, '#6C63FF'] as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  borderRadius: 16,
+                  padding: 20,
+                  marginTop: 10,
+                  marginBottom: 4,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 14,
+                }}
+              >
+                <Text style={{ fontSize: 28 }}>🚀</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#FFF', fontSize: 16, fontFamily: typography.fonts.bold }}>
+                    Choose a Plan to Get Started!
+                  </Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: typography.fonts.regular, marginTop: 4 }}>
+                    Select a package to start adding drivers and managers to your team.
+                  </Text>
+                </View>
+                <Text style={{ color: '#FFF', fontSize: 20 }}>→</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
           {/* Master Profile Details - For ALL Users */}
           <GlassCard style={styles.inputCard}>
                  <TouchableOpacity 
@@ -558,6 +610,17 @@ export const ProfileScreen = ({ navigation }: any) => {
                     <UserPlus size={24} color={colors.text.inverse} />
                     <Text style={styles.manageUsersText}>{t('profile.manageUsers')}</Text>
                  </TouchableOpacity>
+
+                 {/* Billing & Subscription - For Level 1 Master Users */}
+                 {profile?.managerLevel === 1 && (
+                    <TouchableOpacity 
+                      style={[styles.manageUsersButton, { marginTop: 12, backgroundColor: 'rgba(100, 149, 237, 0.2)', borderWidth: 1, borderColor: 'rgba(100, 149, 237, 0.5)' }]} 
+                      onPress={() => navigation.navigate('Billing')}
+                    >
+                       <CreditCard size={24} color="#6495ED" />
+                       <Text style={[styles.manageUsersText, { color: '#6495ED' }]}>{t('profile.billing', 'Billing & Plans')}</Text>
+                    </TouchableOpacity>
+                 )}
 
 
 

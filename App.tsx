@@ -12,9 +12,11 @@ import { MainTabNavigator } from './src/navigation/MainTabNavigator';
 
 // Auth Screens
 import { LoginScreen } from './src/screens/LoginScreen';
+import { RegisterWorkspaceScreen } from './src/screens/RegisterWorkspaceScreen';
 import { AuthCallbackScreen } from './src/screens/AuthCallbackScreen';
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { ResetPasswordScreen } from './src/screens/ResetPasswordScreen';
+import { BillingScreen } from './src/screens/BillingScreen';
 
 // Other Screens
 import { QuizScreen } from './src/screens/QuizScreen';
@@ -46,12 +48,14 @@ const linking = {
   config: {
     screens: {
       Login: 'login',
+      RegisterWorkspace: 'register',
       AuthCallback: 'auth/callback',
       MainTabs: 'home',
       Quiz: 'quiz',
       Review: 'review',
       ManagerQuickView: 'manager',
       ResetPassword: 'reset-password',
+      Billing: 'billing',
     },
   },
 };
@@ -92,6 +96,7 @@ function AppContent() {
           >
             {/* Auth Stack */}
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="RegisterWorkspace" component={RegisterWorkspaceScreen} />
             <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
@@ -104,6 +109,7 @@ function AppContent() {
             <Stack.Screen name="Review" component={ReviewScreen} />
             <Stack.Screen name="ManagerQuickView" component={ManagerQuickViewScreen} />
             <Stack.Screen name="UserManagement" component={UserManagementScreen} />
+            <Stack.Screen name="Billing" component={BillingScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>
