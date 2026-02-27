@@ -53,16 +53,19 @@ export const SubscriptionService = {
         return data;
     },
 
-    /**
-     * Create a Stripe Checkout Session
-     * In a real app, this would be a Supabase Edge Function or Backend API call
-     */
     async createCheckoutSession(packageId: string, companyId: string) {
-        // For now, we mock the checkout URL. 
-        // In production, this would return a real Stripe URL.
-        return {
-            url: `https://checkout.stripe.com/pay/${packageId}?client_reference_id=${companyId}`,
-            error: null
-        };
+        // Redirect back to the app using a deep link URL 
+        const returnUrl = 'safepass://'; 
+
+        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+            body: { packageId, companyId, returnUrl }
+        });
+
+        if (error || !data) {
+            console.error('Error creating checkout session', error);
+            return { url: null, error: error?.message || 'Failed to create session' };
+        }
+
+        return { url: data.url, error: null };
     }
 };
