@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { Platform } from 'react-native';
 
 export type SubscriptionTier = 'starter' | 'growth' | 'enterprise';
 
@@ -54,8 +55,11 @@ export const SubscriptionService = {
     },
 
     async createCheckoutSession(packageId: string, companyId: string) {
-        // Redirect back to the app using a deep link URL 
-        const returnUrl = 'safepass://'; 
+        // Use window.location.origin on web to support local dev, preview domains, and prod correctly.
+        // For native apps, use the production HTTPS universal link to ensure Stripe redirects reliably.
+        const returnUrl = Platform.OS === 'web'
+            ? `${window.location.origin}/billing`
+            : 'https://safepass.app/billing';
 
         const { data, error } = await supabase.functions.invoke('create-checkout-session', {
             body: { packageId, companyId, returnUrl }

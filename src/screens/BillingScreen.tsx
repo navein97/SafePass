@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, Check, CreditCard, Zap, Shield, Crown } from 'lucide-react-native';
@@ -10,6 +10,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
 import { SubscriptionService, PACKAGES } from '../services/subscriptionService';
 import { AuthService } from '../services/authService';
+import { supabase } from '../lib/supabase';
 
 export const BillingScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -24,10 +25,65 @@ export const BillingScreen = ({ navigation }: any) => {
     loadData();
   }, []);
 
+  // Try to create and link a company for the user if they don't have one
+  const tryCreateCompany = async (profile: any): Promise<string | null> => {
+    try {
+      // Only manager level 1 can auto-create a company
+      if (profile.role !== 'manager' || profile.manager_level !== 1) {
+        console.log('[BillingScreen] Not a master manager, cannot auto-create company');
+        return null;
+      }
+
+      // Get company_name from auth metadata
+      const { data: { user } } = await supabase.auth.getUser();
+      const companyName = user?.user_metadata?.company_name;
+      if (!companyName) {
+        console.log('[BillingScreen] No company_name in auth metadata');
+        return null;
+      }
+
+      console.log('[BillingScreen] Creating company:', companyName);
+      const { data: companyId, error: companyError } = await supabase
+        .rpc('register_workspace', { p_company_name: companyName });
+
+      if (companyError) {
+        console.error('[BillingScreen] Company creation error:', companyError);
+        return null;
+      }
+
+      console.log('[BillingScreen] Company created, linking user. ID:', companyId);
+      const { error: linkError } = await supabase.rpc('link_user_to_company', {
+        p_user_id: profile.id,
+        p_company_id: companyId
+      });
+
+      if (linkError) {
+        console.error('[BillingScreen] Link error:', linkError);
+        return null;
+      }
+
+      console.log('[BillingScreen] ✅ Company created and linked:', companyId);
+      return companyId;
+    } catch (err) {
+      console.error('[BillingScreen] tryCreateCompany error:', err);
+      return null;
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const { profile } = await AuthService.getUserProfile();
+      let { profile } = await AuthService.getUserProfile();
+      
+      // If no company_id, try to create the company directly
+      if (profile && !profile.company_id) {
+        console.log('[BillingScreen] No company_id found, attempting to create company...');
+        const newCompanyId = await tryCreateCompany(profile);
+        if (newCompanyId) {
+          profile.company_id = newCompanyId;
+        }
+      }
+
       setUserProfile(profile);
       
       if (profile?.company_id) {
@@ -41,25 +97,83 @@ export const BillingScreen = ({ navigation }: any) => {
     }
   };
 
-  const handleUpgrade = async (packageId: string) => {
-    if (!userProfile?.company_id) return;
-    
-    Alert.alert(
-      t('billing.confirmUpgrade', 'Upgrade Plan'),
-      t('billing.upgradePrompt', 'You will be redirected to Stripe for payment.'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('billing.proceed', 'Proceed to Payment'),
-          onPress: async () => {
-             const { url } = await SubscriptionService.createCheckoutSession(packageId, userProfile.company_id);
-             if (url) {
-               Linking.openURL(url);
-             }
-          }
+  const doCheckout = async (packageId: string, companyId: string) => {
+    try {
+      const { url, error } = await SubscriptionService.createCheckoutSession(packageId, companyId);
+      if (error) {
+        if (Platform.OS === 'web') {
+          window.alert(error);
+        } else {
+          Alert.alert(t('common.error', 'Error'), error);
         }
-      ]
-    );
+        return;
+      }
+      if (url) {
+        Linking.openURL(url);
+      } else {
+        const msg = t('billing.checkoutFailed', 'Could not open checkout. Please try again.');
+        if (Platform.OS === 'web') {
+          window.alert(msg);
+        } else {
+          Alert.alert(t('common.error', 'Error'), msg);
+        }
+      }
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      const msg = err?.message || 'An unexpected error occurred.';
+      if (Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert(t('common.error', 'Error'), msg);
+      }
+    }
+  };
+
+  const proceedToCheckout = (packageId: string, companyId: string) => {
+    if (Platform.OS === 'web') {
+      // Alert.alert doesn't work on web
+      const confirmed = window.confirm(
+        t('billing.upgradePrompt', 'You will be redirected to Stripe for payment. Proceed?')
+      );
+      if (confirmed) {
+        doCheckout(packageId, companyId);
+      }
+    } else {
+      Alert.alert(
+        t('billing.confirmUpgrade', 'Upgrade Plan'),
+        t('billing.upgradePrompt', 'You will be redirected to Stripe for payment.'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { 
+            text: t('billing.proceed', 'Proceed to Payment'),
+            onPress: () => doCheckout(packageId, companyId)
+          }
+        ]
+      );
+    }
+  };
+
+  const handleUpgrade = async (packageId: string) => {
+    // If company_id is still missing, try to create it now
+    if (!userProfile?.company_id) {
+      console.log('[BillingScreen] company_id missing on upgrade, trying to create company...');
+      const newCompanyId = await tryCreateCompany(userProfile);
+      if (newCompanyId) {
+        const updatedProfile = { ...userProfile, company_id: newCompanyId };
+        setUserProfile(updatedProfile);
+        proceedToCheckout(packageId, newCompanyId);
+        return;
+      }
+      const msg = t('billing.noCompany', 'No company associated with your account. Please contact support.');
+      if (Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert(t('common.error', 'Error'), msg);
+      }
+      return;
+    }
+
+    proceedToCheckout(packageId, userProfile.company_id);
   };
 
   const renderPackage = (pkg: any) => {

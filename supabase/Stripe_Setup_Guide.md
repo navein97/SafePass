@@ -23,9 +23,9 @@ To get Stripe fully working, you will need to complete these steps in your Strip
 3. Once created, copy the **API ID** for each price (they start with `price_...`).
 4. Run these commands using the API IDs you copied:
    ```bash
-   npx supabase secrets set STRIPE_PRICE_STARTER=price_YOUR_STARTER_ID
-   npx supabase secrets set STRIPE_PRICE_GROWTH=price_YOUR_GROWTH_ID
-   npx supabase secrets set STRIPE_PRICE_ENTERPRISE=price_YOUR_ENTERPRISE_ID
+   npx supabase secrets set STRIPE_PRICE_STARTER=price_YOUR_STARTER_PRICE_ID
+   npx supabase secrets set STRIPE_PRICE_GROWTH=price_YOUR_GROWTH_PRICE_ID
+   npx supabase secrets set STRIPE_PRICE_ENTERPRISE=price_YOUR_ENTERPRISE_PRICE_ID
    ```
 
 ## 4. Set up the Webhook

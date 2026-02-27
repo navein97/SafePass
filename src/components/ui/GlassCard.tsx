@@ -33,6 +33,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
         intensity={intensity} 
         tint={theme === 'dark' ? 'dark' : 'light'} 
         style={StyleSheet.absoluteFill} 
+        pointerEvents="none"
       />
       <View style={[
         styles.content,
@@ -53,5 +54,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    position: 'relative',
+    zIndex: 1,
   },
 });
