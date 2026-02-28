@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Mail, Lock, User, Building, ArrowLeft, CheckCircle } from 'lucide-react-native';
+import { Mail, Lock, User, Building, ArrowLeft, CheckCircle, Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,17 +19,20 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false); // SUCCESS state
-  const [errors, setErrors] = useState({ fullName: '', email: '', password: '', companyName: '', general: '' });
+  const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirmPassword: '', companyName: '', general: '' });
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
     let isValid = true;
-    const newErrors = { fullName: '', email: '', password: '', companyName: '', general: '' };
+    const newErrors = { fullName: '', email: '', password: '', confirmPassword: '', companyName: '', general: '' };
 
     if (!fullName.trim()) {
       newErrors.fullName = t('auth.fullNameRequired', 'Full Name is required');
@@ -41,6 +44,10 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
     }
     if (password.length < 6) {
       newErrors.password = t('auth.passwordTooShort', 'Password must be at least 6 characters');
+      isValid = false;
+    }
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = t('auth.passwordsDoNotMatch', 'Passwords do not match');
       isValid = false;
     }
     if (!companyName.trim()) {
@@ -186,9 +193,37 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   placeholder="••••••••"
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   error={errors.password}
                   leftIcon={<Lock size={20} color={colors.text.secondary} />}
+                  rightIcon={
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                      {showPassword ? (
+                        <EyeOff size={20} color={colors.text.secondary} />
+                      ) : (
+                        <Eye size={20} color={colors.text.secondary} />
+                      )}
+                    </TouchableOpacity>
+                  }
+                />
+
+                <GlassInput
+                  label={t('auth.confirmPassword', 'Confirm Password')}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  error={errors.confirmPassword}
+                  leftIcon={<Lock size={20} color={colors.text.secondary} />}
+                  rightIcon={
+                    <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                      {showConfirmPassword ? (
+                        <EyeOff size={20} color={colors.text.secondary} />
+                      ) : (
+                        <Eye size={20} color={colors.text.secondary} />
+                      )}
+                    </TouchableOpacity>
+                  }
                 />
 
                 <GlassButton

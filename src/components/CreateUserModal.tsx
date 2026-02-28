@@ -106,7 +106,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         if (error) throw new Error(error);
 
         // Show success toast
-        setToastMessage(`User created! Name: ${fullName}, ID: ${employeeId}, Password: ${password}`);
+        setToastMessage(`User created successfully! Welcome, ${fullName}.`);
         setToastType('success');
         setToastVisible(true);
         

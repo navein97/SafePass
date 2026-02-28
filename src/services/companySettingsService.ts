@@ -14,18 +14,27 @@ export interface CompanyStats {
 
 export const CompanySettingsService = {
     /**
-     * Get company info (publicly accessible)
+     * Get company info, scoped to a specific company
+     * If no companyId is provided, fetches the current user's company info
      */
-    async getCompanyInfo(): Promise<CompanyInfo> {
+    async getCompanyInfo(companyId?: string | null): Promise<CompanyInfo> {
         try {
+            // If no companyId given, try to get it from the current user
+            let resolvedCompanyId = companyId;
+            if (!resolvedCompanyId) {
+                resolvedCompanyId = await this.getCurrentUserCompanyId();
+            }
+
+            // Use a company-scoped key if we have a company ID
+            const key = resolvedCompanyId ? `company_info_${resolvedCompanyId}` : 'company_info';
+
             const { data, error } = await supabase
                 .from('app_settings')
                 .select('value')
-                .eq('key', 'company_info')
-                .single();
+                .eq('key', key)
+                .maybeSingle();
 
             if (error) {
-                // Return default if not found (or table doesn't exist yet)
                 console.warn('Error fetching company info:', error.message);
                 return { name: 'SafePass', logo_url: null };
             }
@@ -38,14 +47,22 @@ export const CompanySettingsService = {
     },
 
     /**
-     * Update company info (Level 1 Managers only)
+     * Update company info, scoped to a specific company
      */
-    async updateCompanyInfo(info: CompanyInfo): Promise<{ success: boolean; error?: any }> {
+    async updateCompanyInfo(info: CompanyInfo, companyId?: string | null): Promise<{ success: boolean; error?: any }> {
         try {
+            // Resolve companyId if not provided
+            let resolvedCompanyId = companyId;
+            if (!resolvedCompanyId) {
+                resolvedCompanyId = await this.getCurrentUserCompanyId();
+            }
+
+            const key = resolvedCompanyId ? `company_info_${resolvedCompanyId}` : 'company_info';
+
             const { error } = await supabase
                 .from('app_settings')
                 .upsert({
-                    key: 'company_info',
+                    key: key,
                     value: info,
                     updated_at: new Date().toISOString()
                 });

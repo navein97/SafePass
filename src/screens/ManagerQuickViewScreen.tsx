@@ -63,7 +63,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
 
   const fetchLeaderboard = async () => {
     try {
-      // Get current user
+      // Get current user and their company
       const { profile } = await AuthService.getUserProfile();
       setCurrentUser(profile);
 
@@ -71,8 +71,21 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
       const currentWeek = getWeek(now);
       const currentYear = getYear(now);
 
-      // Fetch all compliance logs for this week
-      const { data: logs, error } = await supabase
+      // Get all user IDs that belong to the same company (for filtering)
+      let companyUserIds: string[] = [];
+      if (profile?.company_id) {
+        const { data: companyProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('company_id', profile.company_id);
+        
+        if (companyProfiles) {
+          companyUserIds = companyProfiles.map((p: any) => p.id);
+        }
+      }
+
+      // Fetch compliance logs for this week, filtered to this company's users
+      let logsQuery = supabase
         .from('compliance_logs')
         .select(`
           id,
@@ -85,6 +98,13 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
         .eq('week_number', currentWeek)
         .eq('year', currentYear)
         .order('score', { ascending: false });
+
+      // Filter by company user IDs if available
+      if (companyUserIds.length > 0) {
+        logsQuery = logsQuery.in('user_id', companyUserIds);
+      }
+
+      const { data: logs, error } = await logsQuery;
 
       if (error) throw error;
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet, View } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { Animated, Text, StyleSheet, Platform } from 'react-native';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
@@ -66,21 +65,30 @@ export const Toast: React.FC<ToastProps> = ({
 
   if (!visible) return null;
 
-  const getBorderColor = () => {
+  const getColors = () => {
     switch (type) {
-      case 'success': return colors.status.success;
-      case 'error': return colors.status.danger;
-      default: return colors.primary.DEFAULT;
+      case 'success':
+        return {
+          bg: 'rgba(34, 197, 94, 0.88)',
+          border: '#16a34a',
+          text: '#021a07',
+        };
+      case 'error':
+        return {
+          bg: 'rgba(220, 38, 38, 0.88)',
+          border: '#b91c1c',
+          text: '#1a0202',
+        };
+      default:
+        return {
+          bg: 'rgba(59, 130, 246, 0.88)',
+          border: '#1d4ed8',
+          text: '#020c1a',
+        };
     }
   };
 
-  const getBackgroundColor = () => {
-    switch (type) {
-      case 'success': return 'rgba(52, 199, 89, 0.2)';
-      case 'error': return 'rgba(255, 59, 48, 0.2)';
-      default: return 'rgba(0, 122, 255, 0.2)';
-    }
-  };
+  const { bg, border, text } = getColors();
 
   return (
     <Animated.View
@@ -89,13 +97,12 @@ export const Toast: React.FC<ToastProps> = ({
         {
           opacity,
           transform: [{ translateY }],
-          borderColor: getBorderColor(),
-          backgroundColor: getBackgroundColor(),
+          borderColor: border,
+          backgroundColor: bg,
         },
       ]}
     >
-      <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.message, { color: text }]}>{message}</Text>
     </Animated.View>
   );
 };
@@ -106,19 +113,31 @@ const styles = StyleSheet.create({
     top: 60,
     left: 20,
     right: 20,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 2,
     overflow: 'hidden',
     zIndex: 9999,
     alignItems: 'center',
     justifyContent: 'center',
+    // Shadow for extra pop
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
   },
   message: {
-    color: colors.text.primary,
     fontSize: typography.sizes.base,
-    fontFamily: typography.fonts.medium,
+    fontFamily: typography.fonts.bold,
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
 });
 

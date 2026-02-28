@@ -23,6 +23,7 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
   const [companyName, setCompanyName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
 
   // Load existing settings
   useEffect(() => {
@@ -33,11 +34,19 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
 
   const loadSettings = async () => {
     try {
-        const info = await CompanySettingsService.getCompanyInfo();
+        // First, get the current user's company ID
+        const companyId = await CompanySettingsService.getCurrentUserCompanyId();
+        setCurrentCompanyId(companyId);
+        
+        // Load company-specific settings
+        const info = await CompanySettingsService.getCompanyInfo(companyId);
         if (info.name) setCompanyName(info.name);
         if (info.logo_url) {
             setLogoUrl(info.logo_url);
             setSelectedImage(info.logo_url);
+        } else {
+            setLogoUrl('');
+            setSelectedImage(null);
         }
     } catch (e) {
         console.error('Failed to load company settings', e);
@@ -93,7 +102,7 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
         const { success, error } = await CompanySettingsService.updateCompanyInfo({
             name: companyName,
             logo_url: finalLogoUrl || null
-        });
+        }, currentCompanyId);
         
         if (!success) throw error;
         

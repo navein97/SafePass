@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
@@ -51,6 +51,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
     const [selectedUserForDelete, setSelectedUserForDelete] = useState<UserProfile | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [companyStats, setCompanyStats] = useState<CompanyStats | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -84,7 +85,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
     };
 
     const loadUsers = async () => {
-         // Helper to refresh just the user list
+        // Helper to refresh just the user list
         try {
             const { users: allUsers, error } = await AuthService.getAllUsers();
             if (error) throw new Error(error);
@@ -92,6 +93,12 @@ export const UserManagementScreen = ({ navigation }: any) => {
         } catch (error: any) {
             console.error('Refresh users error:', error);
         }
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await loadData();
+        setRefreshing(false);
     };
 
     const filteredUsers = useMemo(() => {
@@ -152,9 +159,9 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>{item.full_name?.charAt(0).toUpperCase()}</Text>
                 </View>
-                <View style={{flex: 1}}>
-                    <Text style={styles.userName}>{item.full_name}</Text>
-                    <Text style={styles.userSubtext} numberOfLines={1}>{item.employee_id} • {item.role}</Text>
+                <View style={{flex: 1, minWidth: 0}}>
+                    <Text style={styles.userName} numberOfLines={1}>{item.full_name}</Text>
+                    <Text style={styles.userSubtext} numberOfLines={1}>{item.employee_id}</Text>
                     {/* Display User Results */}
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 1 }}>
                         <Text style={styles.resultText}>
@@ -283,14 +290,22 @@ export const UserManagementScreen = ({ navigation }: any) => {
                         <FlatList 
                             data={paginatedUsers}
                             keyExtractor={item => item.id}
-                        renderItem={renderUserItem}
-                        contentContainerStyle={styles.listContent}
-                        ListEmptyComponent={
-                            <View style={styles.center}>
-                                <Text style={styles.emptyText}>{t('common.noUsers', 'No users found')}</Text>
-                            </View>
-                        }
-                    />
+                            renderItem={renderUserItem}
+                            contentContainerStyle={styles.listContent}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={onRefresh}
+                                    tintColor={colors.primary.DEFAULT}
+                                    colors={[colors.primary.DEFAULT]}
+                                />
+                            }
+                            ListEmptyComponent={
+                                <View style={styles.center}>
+                                    <Text style={styles.emptyText}>{t('common.noUsers', 'No users found')}</Text>
+                                </View>
+                            }
+                        />
                     {/* Pagination Controls */}
                     <View style={styles.paginationContainer}>
                         <TouchableOpacity 
@@ -329,7 +344,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     currentUserLevel={currentUserProfile?.manager_level || 2}
                     onUserCreated={() => {
                         setShowCreateModal(false);
-                        loadUsers();
+                        loadData(); // Reload both users AND quota stats
                     }}
                 />
 
@@ -432,7 +447,6 @@ const createStyles = (colors: any) => StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 12,
-        flexWrap: 'wrap', // Added to go down if no space
     },
     userInfo: {
         flexDirection: 'row',

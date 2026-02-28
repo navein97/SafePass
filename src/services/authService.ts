@@ -36,8 +36,12 @@ export const AuthService = {
             const { data: sessionData } = await supabase.auth.getSession();
 
             if (sessionData.session) {
+                // Always normalize employee ID to lowercase+trimmed to ensure login will always match
+                const normalizedEmployeeId = data.employeeId.trim().toLowerCase();
+                const normalizedEmail = data.email?.trim().toLowerCase() || `${normalizedEmployeeId}@safepass.internal`;
+                
                 const result = await supabase.rpc('create_company_user', {
-                    p_email: email,
+                    p_email: normalizedEmail,
                     p_password: data.password,
                     p_full_name: data.fullName.trim(),
                     p_employee_id: data.employeeId.trim(),
@@ -98,11 +102,12 @@ export const AuthService = {
      */
     async signIn(data: SignInData) {
         try {
-            // Convert Employee ID to internal email format directly
-            // This removes the need for the 'email' column in the profiles table
-            const email = data.employeeId.includes('@')
-                ? data.employeeId
-                : `${data.employeeId.toLowerCase().trim()}@safepass.internal`;
+            // Normalize: always lowercase+trim the employee ID before converting to email
+            // This ensures login always matches how the account was created
+            const normalizedInput = data.employeeId.trim();
+            const email = normalizedInput.includes('@')
+                ? normalizedInput.toLowerCase()
+                : `${normalizedInput.toLowerCase()}@safepass.internal`;
 
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: email,
@@ -268,6 +273,27 @@ export const AuthService = {
         } catch (error: any) {
             console.error('Change password error:', error);
             return { success: false, error: error.message };
+        }
+    },
+
+    /**
+     * Send password reset email (for Forgot Password flow)
+     */
+    async resetPassword(email: string) {
+        try {
+            const redirectUrl = Platform.OS === 'web'
+                ? 'https://safepass-kappa.vercel.app/reset-password'
+                : 'safepass://reset-password';
+
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: redirectUrl,
+            });
+
+            if (error) throw error;
+            return { error: null };
+        } catch (error: any) {
+            console.error('Reset password error:', error);
+            return { error: error.message };
         }
     },
 };

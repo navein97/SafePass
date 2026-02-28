@@ -296,7 +296,7 @@
     "settings": "Tetapan Syarikat",
     "name": "Nama Syarikat",
     "namePlaceholder": "Cth: SafePass Logistics",
-    "logo": "URL Logo (Pilihan)",
+    "logo": "Logo (Pilihan)",
     "logoPlaceholder": "https://example.com/logo.png",
     "helperText": "Nama dan logo ini akan muncul pada papan pemuka untuk semua pemandu anda.",
     "saving": "Menyimpan...",

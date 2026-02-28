@@ -296,7 +296,7 @@
     "settings": "Company Settings",
     "name": "Company Name",
     "namePlaceholder": "E.g. SafePass Logistics",
-    "logo": "Logo URL (Optional)",
+    "logo": "Logo (Optional)",
     "logoPlaceholder": "https://example.com/logo.png",
     "helperText": "This name and logo will appear on the dashboard for all your drivers.",
     "saving": "Saving...",
