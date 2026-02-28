@@ -212,7 +212,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                   }}
                   placeholder="MY-CNG001"
                   placeholderTextColor={colors.text.tertiary}
-                  autoCapitalize="characters"
+                  autoCapitalize="none"
               />
 
               <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password', 'Password')}</Text>

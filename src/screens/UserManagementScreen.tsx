@@ -154,7 +154,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
     };
 
     const renderUserItem = ({ item }: { item: UserProfile }) => (
-        <GlassCard style={styles.userCard} noPadding>
+        <View style={styles.userCard}>
             <View style={styles.userInfo}>
                 <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>{item.full_name?.charAt(0).toUpperCase()}</Text>
@@ -162,8 +162,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 <View style={{flex: 1, minWidth: 0}}>
                     <Text style={styles.userName} numberOfLines={1}>{item.full_name}</Text>
                     <Text style={styles.userSubtext} numberOfLines={1}>{item.employee_id}</Text>
-                    {/* Display User Results */}
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 1 }}>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
                         <Text style={styles.resultText}>
                             📊 {item.safety_index ? `${Math.round(item.safety_index)}%` : 'N/A'}
                         </Text>
@@ -173,7 +172,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     </View>
                 </View>
             </View>
-            
+
             <View style={styles.actions}>
                 <TouchableOpacity onPress={() => {
                     setSelectedUserForNotification(item);
@@ -181,20 +180,18 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 }} style={styles.actionButton}>
                     <Text style={{fontSize: 14}}>🔔</Text>
                 </TouchableOpacity>
-                {/* Hide change password for Master (Level 1) users */}
                 {item.manager_level !== 1 && (
                     <TouchableOpacity onPress={() => handleChangePasswordPress(item)} style={styles.actionButton}>
                         <Key size={14} color={colors.text.secondary} />
                     </TouchableOpacity>
                 )}
-                {/* Hide delete for Master (Level 1) users */}
                 {item.manager_level !== 1 && (
                     <TouchableOpacity onPress={() => handleDeletePress(item)} style={styles.actionButton}>
                         <Trash2 size={14} color={colors.status.danger} />
                     </TouchableOpacity>
                 )}
             </View>
-        </GlassCard>
+        </View>
     );
 
     return (
@@ -443,10 +440,13 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 6,
+        marginBottom: 8,
         paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 12,
+        paddingVertical: 10,
+        borderRadius: 14,
+        backgroundColor: colors.background.card,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     userInfo: {
         flexDirection: 'row',

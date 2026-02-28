@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Mail, Phone, ArrowLeft, CheckCircle } from 'lucide-react-native';
+import { Mail, ArrowLeft, CheckCircle } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,42 +22,26 @@ import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 
-type RecoveryMethod = 'email' | 'sms';
-
 export const ForgotPasswordScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
   const { colors, theme } = useTheme();
-  const [recoveryMethod, setRecoveryMethod] = useState<RecoveryMethod>('email');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [errors, setErrors] = useState({ email: '', phone: '', general: '' });
+  const [errors, setErrors] = useState({ email: '', general: '' });
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
     let isValid = true;
-    const newErrors = { email: '', phone: '', general: '' };
+    const newErrors = { email: '', general: '' };
 
-    if (recoveryMethod === 'email') {
-      if (!email.trim()) {
-        newErrors.email = t('auth.emailRequired');
-        isValid = false;
-      } else if (!Validation.isValidEmail(email)) {
-        newErrors.email = t('auth.invalidEmail');
-        isValid = false;
-      }
-    } else {
-      if (!phone.trim()) {
-        newErrors.phone = t('auth.phoneRequired');
-        isValid = false;
-      }
-      // Basic phone validation - you can enhance this
-      if (phone.trim() && !/^\+?[\d\s-()]+$/.test(phone)) {
-        newErrors.phone = t('auth.invalidPhone');
-        isValid = false;
-      }
+    if (!email.trim()) {
+      newErrors.email = t('auth.emailRequired');
+      isValid = false;
+    } else if (!Validation.isValidEmail(email)) {
+      newErrors.email = t('auth.invalidEmail');
+      isValid = false;
     }
 
     setErrors(newErrors);
@@ -68,27 +52,17 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
     if (!validateForm()) return;
 
     setLoading(true);
-    setErrors({ email: '', phone: '', general: '' });
+    setErrors({ email: '', general: '' });
 
     try {
-      if (recoveryMethod === 'email') {
-        const { error } = await AuthService.resetPassword(email);
-        
-        if (error) {
-          const friendlyMsg = Validation.getFriendlyErrorMessage(error);
-          setErrors(prev => ({ ...prev, general: friendlyMsg }));
-          Alert.alert(t('common.error'), friendlyMsg);
-        } else {
-          setEmailSent(true);
-        }
+      const { error } = await AuthService.resetPassword(email);
+      
+      if (error) {
+        const friendlyMsg = Validation.getFriendlyErrorMessage(error);
+        setErrors(prev => ({ ...prev, general: friendlyMsg }));
+        Alert.alert(t('common.error'), friendlyMsg);
       } else {
-        // SMS recovery - This would need to be implemented in your backend
-        // For now, show a placeholder message
-        Alert.alert(
-          t('auth.smsRecovery'),
-          t('auth.smsNotImplemented'),
-          [{ text: 'OK' }]
-        );
+        setEmailSent(true);
       }
     } catch (error) {
       console.error('Password reset error:', error);
@@ -173,53 +147,6 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               </Text>
             </View>
 
-            {/* Recovery Method Selector */}
-            <View style={styles.methodSelector}>
-              <TouchableOpacity
-                style={[
-                  styles.methodButton,
-                  recoveryMethod === 'email' && styles.methodButtonActive,
-                ]}
-                onPress={() => setRecoveryMethod('email')}
-                disabled={loading}
-              >
-                <Mail
-                  size={24}
-                  color={recoveryMethod === 'email' ? colors.text.inverse : colors.text.secondary}
-                />
-                <Text
-                  style={[
-                    styles.methodButtonText,
-                    recoveryMethod === 'email' && styles.methodButtonTextActive,
-                  ]}
-                >
-                  Email
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.methodButton,
-                  recoveryMethod === 'sms' && styles.methodButtonActive,
-                ]}
-                onPress={() => setRecoveryMethod('sms')}
-                disabled={loading}
-              >
-                <Phone
-                  size={24}
-                  color={recoveryMethod === 'sms' ? colors.text.inverse : colors.text.secondary}
-                />
-                <Text
-                  style={[
-                    styles.methodButtonText,
-                    recoveryMethod === 'sms' && styles.methodButtonTextActive,
-                  ]}
-                >
-                  SMS
-                </Text>
-              </TouchableOpacity>
-            </View>
-
             <GlassCard style={styles.formCard}>
               <View style={styles.form}>
                 {errors.general ? (
@@ -228,36 +155,20 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
                   </View>
                 ) : null}
 
-                {recoveryMethod === 'email' ? (
-                  <GlassInput
-                    label={t('auth.email')}
-                    placeholder="driver@company.com"
-                    value={email}
-                    onChangeText={(text) => {
-                      setEmail(text);
-                      if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
-                    }}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    editable={!loading}
-                    error={errors.email}
-                    leftIcon={<Mail size={20} color={colors.text.secondary} />}
-                  />
-                ) : (
-                  <GlassInput
-                    label={t('auth.phone')}
-                    placeholder="+60 12-345 6789"
-                    value={phone}
-                    onChangeText={(text) => {
-                      setPhone(text);
-                      if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
-                    }}
-                    keyboardType="phone-pad"
-                    editable={!loading}
-                    error={errors.phone}
-                    leftIcon={<Phone size={20} color={colors.text.secondary} />}
-                  />
-                )}
+                <GlassInput
+                  label={t('auth.email')}
+                  placeholder="yourcompany@example.com"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                  }}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  editable={!loading}
+                  error={errors.email}
+                  leftIcon={<Mail size={20} color={colors.text.secondary} />}
+                />
 
                 <GlassButton
                   title={t('auth.sendResetLink')}
