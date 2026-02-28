@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TextInput, View, StyleSheet, Text, TextInputProps, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../../context/ThemeContext';
@@ -20,34 +20,55 @@ export const GlassInput: React.FC<GlassInputProps> = ({
   style,
   ...props
 }) => {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Background and border handling for input wrapper
+  const wrapperStyle = [
+    styles.inputWrapper,
+    {
+      backgroundColor: theme === 'light' ? '#F5F5F5' : colors.background.glass,
+      borderColor: 'transparent', // We'll handle border manually via wrapper
+    }
+  ];
 
   return (
     <View style={[styles.container, containerStyle]}>
       {label ? <Text style={[styles.label, { color: colors.text.secondary }]}>{label}</Text> : null}
+      
+      {/* Wrapper for border on focus */}
       <View style={[
-        styles.inputWrapper, 
-        { 
-          backgroundColor: colors.background.glass,
-          borderColor: colors.background.glassBorder 
-        }
+        styles.gradientBorderWrapper, 
+        isFocused 
+          ? { padding: 2, backgroundColor: theme === 'light' ? '#000000' : colors.text.primary }
+          : { padding: 1, backgroundColor: theme === 'dark' ? colors.border : '#E0E0E0' }
       ]}>
-        <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={wrapperStyle}>
+          {theme === 'dark' && <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />}
         <View style={styles.contentContainer}>
           {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
-          <TextInput
-            style={[
-              styles.input, 
-              { color: colors.text.primary },
-              leftIcon ? styles.inputWithLeftIcon : undefined, 
-              rightIcon ? styles.inputWithRightIcon : undefined, 
-              style
-            ]}
-            placeholderTextColor={colors.text.tertiary}
-            selectionColor={colors.primary.DEFAULT}
-            {...props}
-          />
-          {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
+            <TextInput
+              style={[
+                styles.input, 
+                { color: colors.text.primary },
+                leftIcon ? styles.inputWithLeftIcon : undefined, 
+                rightIcon ? styles.inputWithRightIcon : undefined, 
+                style
+              ]}
+              placeholderTextColor={colors.text.tertiary}
+              selectionColor={theme === 'light' ? '#000000' : colors.text.primary}
+              onFocus={(e) => {
+                setIsFocused(true);
+                props.onFocus?.(e);
+              }}
+              onBlur={(e) => {
+                setIsFocused(false);
+                props.onBlur?.(e);
+              }}
+              {...props}
+            />
+            {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
+          </View>
         </View>
       </View>
       {error ? <Text style={[styles.error, { color: colors.status.danger }]}>{error}</Text> : null}
@@ -66,10 +87,14 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   inputWrapper: {
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
-    borderWidth: 1,
-    height: 50,
+    height: '100%',
+    width: '100%',
+  },
+  gradientBorderWrapper: {
+    borderRadius: 12, // slightly larger to hold border
+    height: 52,
   },
   contentContainer: {
     flex: 1,

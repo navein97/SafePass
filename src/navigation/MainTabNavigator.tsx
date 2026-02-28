@@ -77,8 +77,13 @@ export function MainTabNavigator() {
           height: 80,
           paddingBottom: 12,
           paddingTop: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
+          elevation: 10,
         },
-        tabBarActiveTintColor: '#CA8A04', // Darker Gold for visibility
+        tabBarActiveTintColor: colors.primary.DEFAULT, // Theme primary tint
         tabBarInactiveTintColor: colors.text.tertiary,
         tabBarShowLabel: true,
         tabBarLabelStyle: styles.tabLabel,

@@ -473,11 +473,16 @@ const createStyles = (colors: any) => StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12, // slightly larger rounds for premium view
     backgroundColor: colors.background.card,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   tabActive: {
     backgroundColor: colors.primary.DEFAULT,
@@ -489,7 +494,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.primary,
   },
   tabTextActive: {
-    color: '#000000', // Black text on yellow for best contrast
+    color: '#FFFFFF', // White text on pink background
     fontFamily: typography.fonts.bold,
   },
   content: {

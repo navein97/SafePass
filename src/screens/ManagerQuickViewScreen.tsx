@@ -167,7 +167,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
           showsVerticalScrollIndicator={false}
         >
           <GlassCard style={styles.banner}>
-            <Trophy size={48} color="#FFD700" />
+            <Trophy size={48} color={colors.primary.DEFAULT} />
             <Text style={styles.bannerTitle}>{t('manager.safetyChampions')}</Text>
             <Text style={styles.bannerSubtitle}>{t('manager.week')}</Text>
           </GlassCard>
@@ -191,7 +191,6 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
                     index === 1 && styles.silverCard,
                     index === 2 && styles.bronzeCard
                   ]}
-                  intensity={isMe ? 40 : 20}
                 >
                   <View style={styles.cardContent}>
                     <View style={styles.rankContainer}>
@@ -278,14 +277,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.background.subtle, // More subtle bg
   },
   goldCard: {
-    borderColor: '#FFD700',
+    borderColor: '#E1257C',
     borderWidth: 2,
   },
   silverCard: {
-    borderColor: '#C0C0C0',
+    borderColor: '#F564A9',
   },
   bronzeCard: {
-    borderColor: '#CD7F32',
+    borderColor: '#C2185B',
   },
   rankContainer: {
     width: 40,

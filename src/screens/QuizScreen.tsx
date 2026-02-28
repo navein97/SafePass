@@ -1017,7 +1017,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingBottom: 30,
   },
   nextButton: {
-    backgroundColor: '#FFD700',
+    backgroundColor: colors.primary.DEFAULT,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -1030,7 +1030,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   nextButtonText: {
     fontSize: 18,
     fontFamily: typography.fonts.bold,
-    color: '#1A1A1A',
+    color: '#FFFFFF',
   },
   retryButton: {
     backgroundColor: '#FF6B6B',
@@ -1073,7 +1073,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    backgroundColor: colors.primary.DEFAULT + '26', // 15% opacity
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
@@ -1106,7 +1106,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
   },
   resumeButtonPrimary: {
-    backgroundColor: '#FFD700',
+    backgroundColor: colors.primary.DEFAULT,
   },
   resumeButtonSecondary: {
     backgroundColor: 'transparent',
@@ -1116,7 +1116,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   resumeButtonTextPrimary: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: '#1A1A1A',
+    color: '#FFFFFF',
   },
   resumeButtonTextSecondary: {
     fontSize: 16,

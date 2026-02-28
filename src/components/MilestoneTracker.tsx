@@ -9,10 +9,10 @@ interface MilestoneTrackerProps {
 }
 
 const MILESTONES = [
-  { name: 'Rookie', threshold: 0, color: '#CD7F32' }, // Bronze
-  { name: 'Pro', threshold: 1000, color: '#C0C0C0' }, // Silver
-  { name: 'Elite', threshold: 2500, color: '#FFD700' }, // Gold
-  { name: 'Legend', threshold: 5000, color: '#E5E4E2' } // Platinum
+  { name: 'Rookie', threshold: 0, color: '#A11A58' }, // Dark Pink
+  { name: 'Pro', threshold: 1000, color: '#C2185B' }, // Hotter Pink
+  { name: 'Elite', threshold: 2500, color: '#E1257C' }, // Primary Pink
+  { name: 'Legend', threshold: 5000, color: '#F564A9' } // Lightest Pink
 ];
 
 export const MilestoneTracker = ({ currentPoints }: MilestoneTrackerProps) => {

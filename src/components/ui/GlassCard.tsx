@@ -7,7 +7,6 @@ interface GlassCardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
-  intensity?: number;
   noPadding?: boolean;
 }
 
@@ -15,7 +14,6 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   children, 
   style, 
   contentStyle,
-  intensity = 20,
   noPadding = false
 }) => {
   const { colors, theme } = useTheme();
@@ -24,17 +22,12 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     <View style={[
       styles.container, 
       { 
-        backgroundColor: colors.background.glass,
-        borderColor: colors.background.glassBorder 
+        backgroundColor: theme === 'light' ? '#FFFFFF' : colors.background.card,
+        borderColor: theme === 'dark' ? colors.border : 'transparent',
       }, 
+      theme === 'light' && styles.shadow,
       style
     ]}>
-      <BlurView 
-        intensity={intensity} 
-        tint={theme === 'dark' ? 'dark' : 'light'} 
-        style={StyleSheet.absoluteFill} 
-        pointerEvents="none"
-      />
       <View style={[
         styles.content,
         noPadding && { padding: 0 },
@@ -49,8 +42,17 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     borderRadius: 20,
-    overflow: 'hidden',
     borderWidth: 1,
+  },
+  shadow: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 8,
   },
   content: {
     padding: 20,

@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import CountryFlag from 'react-native-country-flag';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -110,7 +112,7 @@ export const LoginScreen = ({ navigation }: any) => {
               <Text style={styles.subtitle}>{t('auth.welcomeTo')} {companyName}</Text>
             </View>
 
-            <GlassCard style={styles.formCard}>
+            <View style={[styles.formCard, styles.solidCard]}>
               <View style={styles.form}>
                 {errors.general ? (
                   <View style={styles.errorBanner}>
@@ -192,33 +194,48 @@ export const LoginScreen = ({ navigation }: any) => {
                   <Text style={styles.langToggleLabel}>Language / Bahasa:</Text>
                   <View style={styles.langToggleButtons}>
                     <TouchableOpacity
-                      style={[
-                        styles.langButton,
-                        activeLang === 'en' && styles.langButtonActive,
-                      ]}
+                      activeOpacity={0.8}
                       onPress={() => handleLangSwitch('en')}
                     >
-                      <Text style={[
-                        styles.langButtonText,
-                        activeLang === 'en' && styles.langButtonTextActive,
-                      ]}>🇬🇧 EN</Text>
+                      <LinearGradient
+                        colors={activeLang === 'en' ? colors.gradients.primary as any : ['#000', '#000']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.langButtonGradientWrapper}
+                      >
+                        <View style={styles.langButtonInner}>
+                          <CountryFlag isoCode="GB" size={14} style={{ borderRadius: 2 }} />
+                          <Text style={[
+                            styles.langButtonText,
+                            activeLang === 'en' && styles.langButtonTextActive,
+                          ]}>EN</Text>
+                        </View>
+                      </LinearGradient>
                     </TouchableOpacity>
+
                     <TouchableOpacity
-                      style={[
-                        styles.langButton,
-                        activeLang === 'ms' && styles.langButtonActive,
-                      ]}
+                      activeOpacity={0.8}
                       onPress={() => handleLangSwitch('ms')}
                     >
-                      <Text style={[
-                        styles.langButtonText,
-                        activeLang === 'ms' && styles.langButtonTextActive,
-                      ]}>🇲🇾 BM</Text>
+                      <LinearGradient
+                        colors={activeLang === 'ms' ? colors.gradients.primary as any : ['#000', '#000']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.langButtonGradientWrapper}
+                      >
+                        <View style={styles.langButtonInner}>
+                          <CountryFlag isoCode="MY" size={14} style={{ borderRadius: 2 }} />
+                          <Text style={[
+                            styles.langButtonText,
+                            activeLang === 'ms' && styles.langButtonTextActive,
+                          ]}>BM</Text>
+                        </View>
+                      </LinearGradient>
                     </TouchableOpacity>
                   </View>
                 </View>
               </View>
-            </GlassCard>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -295,6 +312,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.medium,
     textAlign: 'center',
   },
+  solidCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
   langToggleRow: {
     alignItems: 'center',
     marginTop: 20,
@@ -309,22 +336,24 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  langButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: 'transparent',
+  langButtonGradientWrapper: {
+    padding: 2, // Border width
+    borderRadius: 24,
   },
-  langButtonActive: {
-    borderColor: colors.primary.DEFAULT,
-    backgroundColor: colors.primary.DEFAULT + '20',
+  langButtonInner: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
   },
   langButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: typography.fonts.medium,
-    color: colors.text.secondary,
+    color: '#666666',
   },
   langButtonTextActive: {
     color: colors.primary.DEFAULT,

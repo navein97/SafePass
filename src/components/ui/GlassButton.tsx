@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, StyleProp } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, StyleProp, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -63,6 +63,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
       activeOpacity={0.8}
       style={[
         styles.container,
+        !disabled && variant !== 'outline' && styles.shadowStyle,
         variant === 'outline' && styles.outlineContainer,
         variant === 'outline' && { borderColor: colors.primary.DEFAULT },
         style
@@ -94,24 +95,23 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
+  shadowStyle: {
+    shadowColor: '#E1257C', // Use primary pink for a vibrant glow
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   container: {
     borderRadius: 12,
-    overflow: 'hidden',
     height: 50,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+    backgroundColor: 'transparent',
   },
   outlineContainer: {
     borderWidth: 1,
     // colors is not available here, so we use a style prop injection or move this style to dynamic styles
     // Simpler: use the color prop in the component render
-    borderColor: '#FFD700', // Default gold, overwritten dynamically if needed? No, 'outline' variant expects border.
+    borderColor: '#E1257C', // Default pink, overwritten dynamically if needed? No, 'outline' variant expects border.
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+    borderRadius: 12, // Added here to crop gradient without overflow:hidden on parent
   },
   gradientPadding: {
     paddingHorizontal: 20,

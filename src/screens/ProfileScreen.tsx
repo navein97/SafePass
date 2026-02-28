@@ -383,10 +383,10 @@ export const ProfileScreen = ({ navigation }: any) => {
                 style={styles.settingsButton}
                 onPress={toggleTheme}
               >
-                {theme === 'dark' ? (
+                 {theme === 'dark' ? (
                   <Sun color={colors.text.accent} size={24} />
                 ) : (
-                  <Moon color={colors.text.accent} size={24} />
+                  <Moon color={colors.primary.DEFAULT} size={24} />
                 )}
               </TouchableOpacity>
               <TouchableOpacity 
@@ -415,23 +415,22 @@ export const ProfileScreen = ({ navigation }: any) => {
                     {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : profile?.region}
                   </Text>
                 </View>
-                {/* Role Badge - only shown for managers */}
                 {isManager && (
                   <View style={[
                     styles.regionBadge,
                     { 
                       marginTop: 6,
                       backgroundColor: profile?.managerLevel === 1
-                        ? 'rgba(255, 180, 0, 0.2)'
+                        ? 'rgba(225, 37, 124, 0.2)'
                         : 'rgba(100, 149, 237, 0.2)',
                       borderColor: profile?.managerLevel === 1
-                        ? 'rgba(255, 180, 0, 0.5)'
+                        ? 'rgba(225, 37, 124, 0.5)'
                         : 'rgba(100, 149, 237, 0.5)',
                     }
                   ]}>
                     <Text style={[
                       styles.regionText,
-                      { color: profile?.managerLevel === 1 ? '#FFB400' : '#6495ED' }
+                      { color: profile?.managerLevel === 1 ? '#E1257C' : '#6495ED' }
                     ]}>
                       {profile?.managerLevel === 1 ? '⭐ Master User' : '👔 Manager'}
                     </Text>
@@ -718,13 +717,13 @@ export const ProfileScreen = ({ navigation }: any) => {
                     {/* Professionalism */}
                     <View style={styles.scoreRow}>
                       <View style={styles.scoreLabelRow}>
-                        <View style={[styles.scoreDot, { backgroundColor: '#FFC107' }]} />
+                        <View style={[styles.scoreDot, { backgroundColor: colors.primary.DEFAULT }]} />
                         <Text style={styles.scoreLabelText}>{t('profile.profConduct')}</Text>
-                        <Text style={[styles.scoreValueText, { color: '#FFC107' }]}>{profile?.professionalConduct || 0}%</Text>
+                        <Text style={[styles.scoreValueText, { color: colors.primary.DEFAULT }]}>{profile?.professionalConduct || 0}%</Text>
                       </View>
                       <View style={styles.scoreBarTrack}>
                         <LinearGradient
-                          colors={['#FFD54F', '#FFC107'] as any}
+                          colors={colors.gradients.primary as any}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 0 }}
                           style={[
@@ -905,7 +904,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   languageButton: {
     width: 44,
@@ -915,7 +919,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   languageText: {
     fontFamily: typography.fonts.bold,

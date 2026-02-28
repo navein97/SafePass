@@ -259,7 +259,7 @@ export function MissionScreen() {
                       ) : batch.passed ? (
                         <CheckCircle size={32} color="#00C853" />
                       ) : batch.attemptCount > 0 ? (
-                        <AlertCircle size={32} color="#FF9800" />
+                        <AlertCircle size={32} color={colors.primary.DEFAULT} />
                       ) : (
                         <PlayCircle size={32} color={colors.primary.DEFAULT} />
                       )}
