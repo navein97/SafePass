@@ -115,6 +115,23 @@ export const AuthService = {
             });
 
             if (authError) throw authError;
+
+            // NEW: After successful auth, check if the account is ACTIVE in the profiles table
+            const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('status')
+                .eq('id', authData.user.id)
+                .single();
+
+            if (profileError) {
+                // If profile doesn't exist or error, stay cautious
+                console.error('Login profile check error:', profileError);
+            } else if (profileData && profileData.status === 'inactive') {
+                // BLOCK LOGIN: If status is 'inactive', signed out immediately
+                await supabase.auth.signOut();
+                throw new Error('Account inactive. Please contact your administrator.');
+            }
+
             return { session: authData.session, user: authData.user, error: null };
         } catch (error: any) {
             console.error('Sign in error:', error);
@@ -217,6 +234,7 @@ export const AuthService = {
             let query = supabase
                 .from('profiles')
                 .select('*')
+                .eq('status', 'active') // Only show active users by default
                 .order('created_at', { ascending: false });
 
             // Filter by company if user has one

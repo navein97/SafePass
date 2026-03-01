@@ -5,50 +5,17 @@
 
 -- 1. Add Master Profile columns to profiles table
 -- =====================================================
-ALTER TABLE profiles 
+ALTER TABLE public.profiles 
 ADD COLUMN IF NOT EXISTS designation TEXT,
 ADD COLUMN IF NOT EXISTS company_name TEXT,
-ADD COLUMN IF NOT EXISTS address TEXT;
+ADD COLUMN IF NOT EXISTS address TEXT,
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'; -- Added for soft delete
 
--- Note: phone_number should already exist, but if not:
--- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS phone_number TEXT;
+-- ... existing code ...
 
-
--- 2. Create notifications table
+-- 3. Create function to delete user (soft delete)
 -- =====================================================
-CREATE TABLE IF NOT EXISTS notifications (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    message TEXT NOT NULL,
-    data JSONB,
-    read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Add index for faster queries
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
-
--- Enable RLS (Row Level Security)
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-
--- Policy: Users can only see their own notifications
-CREATE POLICY "Users can view own notifications" ON notifications
-    FOR SELECT USING (auth.uid() = user_id);
-
--- Policy: Managers can insert notifications for any user
-CREATE POLICY "Managers can create notifications" ON notifications
-    FOR INSERT WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() AND role = 'manager'
-        )
-    );
-
-
--- 3. Create function to delete user (admin only)
--- =====================================================
+DROP FUNCTION IF EXISTS delete_user(UUID);
 CREATE OR REPLACE FUNCTION delete_user(target_user_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -57,23 +24,28 @@ AS $$
 BEGIN
     -- Check if the caller is a manager
     IF NOT EXISTS (
-        SELECT 1 FROM profiles 
+        SELECT 1 FROM public.profiles 
         WHERE id = auth.uid() AND role = 'manager'
     ) THEN
         RAISE EXCEPTION 'Only managers can delete users';
     END IF;
 
-    -- Delete from profiles table (cascade will handle related data)
-    DELETE FROM profiles WHERE id = target_user_id;
+    -- Perform soft delete by updating status
+    UPDATE public.profiles 
+    SET status = 'inactive', 
+        updated_at = NOW() 
+    WHERE id = target_user_id;
     
-    -- Delete from auth.users table
-    DELETE FROM auth.users WHERE id = target_user_id;
+    -- We do NOT delete from auth.users to keep the account for history
+    -- Instead, we could optionally lock the user out if needed, 
+    -- but for now, the UI will filter them out.
 END;
 $$;
 
 
 -- 4. Create function to change user password (admin only)
 -- =====================================================
+DROP FUNCTION IF EXISTS change_user_password(UUID, TEXT);
 CREATE OR REPLACE FUNCTION change_user_password(
     target_user_id UUID,
     new_password TEXT
