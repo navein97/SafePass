@@ -87,33 +87,6 @@
     "passwordUpdateSuccess": "✅ Your password has been updated successfully.",
     "enterNewPasswordError": "Please enter a new password"
   },
-  "home": {
-    "hello": "Hello",
-    "driver": "Driver",
-    "safetyIndex": "Driver Safety Index",
-    "weeklyStatus": "Weekly Status",
-    "compliant": "COMPLIANT",
-    "overdue": "OVERDUE",
-    "startQuiz": "Start Weekly Quiz",
-    "practiceQuiz": "Practice Quiz",
-    "quizDue": "Quiz due by Sunday 11:59 PM",
-    "greatJob": "Great job! You are up to date.",
-    "rollingAverage": "90-day rolling average"
-  },
-  "social": {
-    "title": "Social Feed",
-    "topPerformers": "Top Performers",
-    "pitLane": "Pit Lane",
-    "pitLaneSubtitle": "These drivers need a tune-up!",
-    "needsImprovement": "Needs improvement",
-    "noPosts": "No posts yet. Be the first!",
-    "posts": {
-      "top1": "🏆 UNSTOPPABLE! I secured 1st place this week with a {{score}}% Safety Index! {{weekTag}}",
-      "top2": "🥈 Staying consistent! Ranked 2nd this week. Chasing gold next! {{weekTag}}",
-      "top3": "🥉 Made it to the podium! Top 3 finish for me. {{weekTag}}",
-      "pitlane": "🔧 Heading to the Pit Lane. My Safety Index is {{score}}%. Time to focus and improve! {{weekTag}}"
-    }
-  },
   "leaderboard": {
     "title": "Leaderboard",
     "weekly": "Weekly",

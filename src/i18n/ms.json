@@ -87,33 +87,6 @@
     "passwordUpdateSuccess": "✅ Kata laluan anda telah berjaya dikemas kini.",
     "enterNewPasswordError": "Sila masukkan kata laluan baru"
   },
-  "home": {
-    "hello": "Apa Khabar",
-    "driver": "Pemandu",
-    "safetyIndex": "Indeks Keselamatan Pemandu",
-    "weeklyStatus": "Status Mingguan",
-    "compliant": "PATUH",
-    "overdue": "TERLEWAT",
-    "startQuiz": "Mula Kuiz Mingguan",
-    "practiceQuiz": "Latihan Kuiz",
-    "quizDue": "Kuiz perlu disiapkan sebelum Ahad 11:59 PM",
-    "greatJob": "Syabas! Anda telah melengkapkan tugasan.",
-    "rollingAverage": "Purata berterusan 90-hari"
-  },
-  "social": {
-    "title": "Suapan Sosial",
-    "topPerformers": "Prestasi Terbaik",
-    "pitLane": "Lorong Pit",
-    "pitLaneSubtitle": "Pemandu ini perlukan perhatian!",
-    "needsImprovement": "Perlu Pembaikan",
-    "noPosts": "Tiada siaran lagi. Jadilah yang pertama!",
-    "posts": {
-      "top1": "🏆 LUAR BIASA! Saya mendapat tempat pertama minggu ini dengan Indeks Keselamatan {{score}}%! {{weekTag}}",
-      "top2": "🥈 Kekal konsisten! Di tangga ke-2 minggu ini. Sasar emas selepas ini! {{weekTag}}",
-      "top3": "🥉 Berjaya ke podium! Penamat 3 teratas untuk saya. {{weekTag}}",
-      "pitlane": "🔧 Menuju ke Lorong Pit. Indeks Keselamatan saya ialah {{score}}%. Masa untuk fokus dan perbaiki diri! {{weekTag}}"
-    }
-  },
   "leaderboard": {
     "title": "Papan Pendahulu",
     "weekly": "Mingguan",

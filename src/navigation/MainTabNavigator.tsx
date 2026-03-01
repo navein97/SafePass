@@ -13,7 +13,6 @@ import { useTheme } from '../context/ThemeContext';
 // Screens
 // Screens
 import { ProfileScreen } from '../screens/ProfileScreen';
-import { SocialScreen } from '../screens/SocialScreen';
 import { MissionScreen } from '../screens/MissionScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { BatchLeaderboardScreen } from '../screens/BatchLeaderboardScreen';
