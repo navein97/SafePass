@@ -161,7 +161,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
           console.log(`[QuizScreen Practice] Loaded ${loadedQuestions.length} practice questions`);
         } else {
           // Use BatchService for Live Mode (Deterministic batches)
-          loadedQuestions = await BatchService.getBatchQuestions(batchNumber);
+          loadedQuestions = await BatchService.getBatchQuestions(batchNumber, profile.id);
           console.log(`[QuizScreen] Loaded ${loadedQuestions.length} questions for Batch ${batchNumber}`);
         }
         

@@ -40,17 +40,69 @@ export interface BatchProgress {
 
 export const BatchService = {
     /**
-     * Get questions for a specific batch
+     * Get questions for a specific batch based on Smart Learning logic:
+     * 1. Unseen questions first
+     * 2. Questions answered wrong previously
+     * 3. Random pool (Reshuffle all) if all were answered correctly
      */
-    async getBatchQuestions(batchNumber: number): Promise<Question[]> {
+    async getBatchQuestions(batchNumber: number, userId: string): Promise<Question[]> {
         if (batchNumber < 1 || batchNumber > 4) {
             throw new Error(`Invalid batch number: ${batchNumber}`);
         }
 
         const batchData = BATCH_QUESTIONS[batchNumber as keyof typeof BATCH_QUESTIONS];
 
-        // Shuffle options for each question to prevent memorization
-        const questions = batchData.map(q => {
+        // We need to fetch the past attempts for THIS user and THIS batch
+        const attempts = await this.getBatchAttempts(userId, batchNumber);
+
+        // Track user's success on each question
+        const questionStatus = new Map<string, boolean>();
+        
+        attempts.forEach(attempt => {
+            attempt.answers?.forEach(answer => {
+                // If they ever got it right, mark as true.
+                if (answer.isCorrect) {
+                    questionStatus.set(answer.questionId, true);
+                } else if (!questionStatus.has(answer.questionId)) {
+                    // Start as false if they got it wrong and it's not already true
+                    questionStatus.set(answer.questionId, false);
+                }
+            });
+        });
+
+        // Sort the source pool based on learning priority
+        const unseenPool: typeof batchData = [];
+        const incorrectPool: typeof batchData = [];
+        const masteredPool: typeof batchData = [];
+
+        batchData.forEach(q => {
+            if (!questionStatus.has(q.id)) {
+                unseenPool.push(q);
+            } else if (questionStatus.get(q.id) === false) {
+                incorrectPool.push(q);
+            } else {
+                masteredPool.push(q);
+            }
+        });
+
+        const shufflePool = (pool: typeof batchData) => {
+            const shuffled = [...pool];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        };
+
+        // Combine pools in priority order: Unseen -> Incorrect -> Mastered
+        const prioritizedData = [
+            ...shufflePool(unseenPool),
+            ...shufflePool(incorrectPool),
+            ...shufflePool(masteredPool)
+        ];
+
+        // Map and format options for the prioritized list
+        const questions = prioritizedData.map(q => {
             const originalOptions = [...q.options];
             const correctOptionText = originalOptions[q.correctOptionIndex];
 
@@ -86,12 +138,6 @@ export const BatchService = {
                 componentWeights: q.componentWeights || (q as any).component_weights,
             } as Question;
         });
-
-        // Shuffle the questions array so that even Live Mode gets random questions each time
-        for (let i = questions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [questions[i], questions[j]] = [questions[j], questions[i]];
-        }
 
         // CRITICAL: Return exactly 30 questions
         // For Live Mode, the QuizScreen will only show the first 3
