@@ -201,7 +201,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <ChevronLeft color={colors.text.primary} size={24} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('profile.manageUsers', 'User Management')}</Text>
+                    <Text style={styles.headerTitle}>{t('profile.teamManagement', 'User Management')}</Text>
                     <TouchableOpacity 
                         onPress={() => {
                             setSelectedUserForNotification(null);

@@ -23,6 +23,7 @@ import { QuizScreen } from './src/screens/QuizScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
 import { ManagerQuickViewScreen } from './src/screens/ManagerQuickViewScreen';
 import { UserManagementScreen } from './src/screens/UserManagementScreen';
+import { HelpCenterScreen } from './src/screens/HelpCenterScreen';
 import { colors } from './src/theme/colors';
 
 import { NotificationService } from './src/services/notificationService';
@@ -56,6 +57,7 @@ const linking = {
       ManagerQuickView: 'manager',
       ResetPassword: 'reset-password',
       Billing: 'billing',
+      HelpCenter: 'help',
     },
   },
 };
@@ -110,6 +112,7 @@ function AppContent() {
             <Stack.Screen name="ManagerQuickView" component={ManagerQuickViewScreen} />
             <Stack.Screen name="UserManagement" component={UserManagementScreen} />
             <Stack.Screen name="Billing" component={BillingScreen} />
+            <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

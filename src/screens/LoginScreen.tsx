@@ -189,6 +189,8 @@ export const LoginScreen = ({ navigation }: any) => {
                   </Text>
                 </View>
 
+
+
                 {/* Language Selector */}
                 <View style={styles.langToggleRow}>
                   <Text style={styles.langToggleLabel}>Language / Bahasa:</Text>

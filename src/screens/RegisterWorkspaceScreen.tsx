@@ -362,7 +362,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: colors.primary.DEFAULT + '30',
+    borderColor: `${colors.primary.DEFAULT}30`,
     maxHeight: '70%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },

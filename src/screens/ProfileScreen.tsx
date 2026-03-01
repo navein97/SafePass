@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp, CreditCard } from 'lucide-react-native';
+import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp, CreditCard, HelpCircle } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { BatchService } from '../services/batchService';
@@ -607,7 +607,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                  {/* Manage Users Button - For all Managers */}
                  <TouchableOpacity style={styles.manageUsersButton} onPress={() => navigation.navigate('UserManagement')}>
                     <UserPlus size={24} color={colors.text.inverse} />
-                    <Text style={styles.manageUsersText}>{t('profile.manageUsers')}</Text>
+                    <Text style={styles.manageUsersText}>{t('profile.teamManagement')}</Text>
                  </TouchableOpacity>
 
                  {/* Billing & Subscription - For Level 1 Master Users */}
@@ -839,6 +839,14 @@ export const ProfileScreen = ({ navigation }: any) => {
              
              </View>
           )}
+
+          {/* Help Center */}
+          <GlassButton
+            title={t('help.centerTitle', 'Help Center')}
+            onPress={() => navigation.navigate('HelpCenter')}
+            icon={<HelpCircle color={colors.text.primary} size={20} />}
+            style={{ marginBottom: 16 }}
+          />
 
           {/* Logout */}
           <GlassButton

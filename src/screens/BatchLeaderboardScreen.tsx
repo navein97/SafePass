@@ -306,21 +306,6 @@ export function BatchLeaderboardScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* Manager Actions */}
-            {isManager && (
-              <View style={styles.managerActions}>
-                <TouchableOpacity 
-                  style={styles.deleteButton}
-                  onPress={() => {
-                    setUserToDelete(entry);
-                    setShowDeleteModal(true);
-                  }}
-                >
-                  <Trash2 size={16} color={colors.status.danger} />
-                  <Text style={styles.deleteButtonText}>{t('user.deleteAccount', 'Delete Account')}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         )}
       </TouchableOpacity>
