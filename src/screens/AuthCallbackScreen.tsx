@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { supabase } from '../lib/supabase';
@@ -10,8 +11,9 @@ import { GlassCard } from '../components/ui/GlassCard';
 import * as Linking from 'expo-linking';
 
 export const AuthCallbackScreen = ({ navigation }: any) => {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Verifying your email...');
+  const [message, setMessage] = useState(t('auth.verifyingEmail'));
 
   useEffect(() => {
     // Check initial URL
@@ -77,7 +79,7 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
         // Supabase fires onAuthStateChange with 'PASSWORD_RECOVERY' event.
         
         setStatus('success');
-        setMessage('✅ Successfully verified!');
+        setMessage(t('auth.successfullyVerified'));
         
         // If we are in a recovery flow, supabase fires a signed in event.
         // We can check if we want to support reset password. 
@@ -91,7 +93,7 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
         // to see if we get a PASSWORD_RECOVERY event.
       } else {
         setStatus('success');
-        setMessage('✅ Email verified! Please log in to continue.');
+        setMessage(t('auth.emailVerifiedLogin'));
         
         setTimeout(() => {
           navigation.replace('Login');
@@ -100,7 +102,7 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
     } catch (error: any) {
       console.error('Auth callback error:', error);
       setStatus('error');
-      setMessage('❌ Verification failed. Please try again.');
+      setMessage(t('auth.verificationFailed'));
       
       setTimeout(() => {
         navigation.replace('Login');
@@ -154,7 +156,7 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
 
             {status === 'loading' && (
               <Text style={styles.subMessage}>
-                Please wait while we verify your email...
+                {t('auth.waitVerifying')}
               </Text>
             )}
           </GlassCard>

@@ -122,7 +122,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
                 <GlassInput
                   label={t('auth.employeeIdOrEmail', 'Email / Employee ID')}
-                  placeholder="jane@example.com or MY-001"
+                  placeholder={t('auth.employeeIdPlaceholder')}
                   value={employeeId}
                   onChangeText={(text) => {
                     setEmployeeId(text);
@@ -179,7 +179,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
                 <View style={styles.linkButton}>
                   <Text style={styles.linkText}>
-                    {t('auth.doNotHaveAccount', "Don't have an account?")}{' '}
+                    {t('auth.noAccount', "Don't have an account?")}{' '}
                     <Text 
                       style={styles.linkTextBold}
                       onPress={() => navigation.navigate('RegisterWorkspace')}
@@ -193,14 +193,14 @@ export const LoginScreen = ({ navigation }: any) => {
 
                 {/* Language Selector */}
                 <View style={styles.langToggleRow}>
-                  <Text style={styles.langToggleLabel}>Language / Bahasa:</Text>
+                  <Text style={styles.langToggleLabel}>{t('auth.languageLabel')}</Text>
                   <View style={styles.langToggleButtons}>
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handleLangSwitch('en')}
                     >
                       <LinearGradient
-                        colors={activeLang === 'en' ? colors.gradients.primary as any : ['#000', '#000']}
+                        colors={activeLang === 'en' ? colors.gradients.primary as any : [colors.border, colors.border]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.langButtonGradientWrapper}
@@ -220,7 +220,7 @@ export const LoginScreen = ({ navigation }: any) => {
                       onPress={() => handleLangSwitch('ms')}
                     >
                       <LinearGradient
-                        colors={activeLang === 'ms' ? colors.gradients.primary as any : ['#000', '#000']}
+                        colors={activeLang === 'ms' ? colors.gradients.primary as any : [colors.border, colors.border]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.langButtonGradientWrapper}
@@ -295,6 +295,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   linkText: {
     color: colors.text.secondary,
     fontSize: typography.sizes.sm,
+    textAlign: 'center',
   },
   linkTextBold: {
     color: colors.mode === 'light' ? colors.primary.dark : colors.primary.light,
@@ -315,7 +316,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
   },
   solidCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background.card,
     borderRadius: 24,
     padding: 24,
     shadowColor: '#000',
@@ -346,7 +347,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background.card,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -355,7 +356,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   langButtonText: {
     fontSize: 15,
     fontFamily: typography.fonts.medium,
-    color: '#666666',
+    color: colors.text.secondary,
   },
   langButtonTextActive: {
     color: colors.primary.DEFAULT,

@@ -157,7 +157,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
 
                 <GlassInput
                   label={t('auth.email')}
-                  placeholder="yourcompany@example.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   value={email}
                   onChangeText={(text) => {
                     setEmail(text);

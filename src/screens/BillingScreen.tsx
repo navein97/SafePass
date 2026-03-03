@@ -104,27 +104,27 @@ export const BillingScreen = ({ navigation }: any) => {
         if (Platform.OS === 'web') {
           window.alert(error);
         } else {
-          Alert.alert(t('common.error', 'Error'), error);
+          Alert.alert(t('common.error'), error);
         }
         return;
       }
       if (url) {
         Linking.openURL(url);
       } else {
-        const msg = t('billing.checkoutFailed', 'Could not open checkout. Please try again.');
+        const msg = t('billing.checkoutFailed');
         if (Platform.OS === 'web') {
           window.alert(msg);
         } else {
-          Alert.alert(t('common.error', 'Error'), msg);
+          Alert.alert(t('common.error'), msg);
         }
       }
     } catch (err: any) {
       console.error('Checkout error:', err);
-      const msg = err?.message || 'An unexpected error occurred.';
+      const msg = err?.message || t('common.unexpectedErrorOccurred');
       if (Platform.OS === 'web') {
         window.alert(msg);
       } else {
-        Alert.alert(t('common.error', 'Error'), msg);
+        Alert.alert(t('common.error'), msg);
       }
     }
   };
@@ -133,19 +133,19 @@ export const BillingScreen = ({ navigation }: any) => {
     if (Platform.OS === 'web') {
       // Alert.alert doesn't work on web
       const confirmed = window.confirm(
-        t('billing.upgradePrompt', 'You will be redirected to Stripe for payment. Proceed?')
+        t('billing.upgradePrompt')
       );
       if (confirmed) {
         doCheckout(packageId, companyId);
       }
     } else {
       Alert.alert(
-        t('billing.confirmUpgrade', 'Upgrade Plan'),
-        t('billing.upgradePrompt', 'You will be redirected to Stripe for payment.'),
+        t('billing.confirmUpgrade'),
+        t('billing.upgradePrompt'),
         [
           { text: t('common.cancel'), style: 'cancel' },
           { 
-            text: t('billing.proceed', 'Proceed to Payment'),
+            text: t('billing.proceed'),
             onPress: () => doCheckout(packageId, companyId)
           }
         ]
@@ -164,11 +164,11 @@ export const BillingScreen = ({ navigation }: any) => {
         proceedToCheckout(packageId, newCompanyId);
         return;
       }
-      const msg = t('billing.noCompany', 'No company associated with your account. Please contact support.');
+      const msg = t('billing.noCompany');
       if (Platform.OS === 'web') {
         window.alert(msg);
       } else {
-        Alert.alert(t('common.error', 'Error'), msg);
+        Alert.alert(t('common.error'), msg);
       }
       return;
     }
@@ -191,31 +191,31 @@ export const BillingScreen = ({ navigation }: any) => {
              <Icon size={24} color={isCurrent ? colors.text.inverse : colors.primary.DEFAULT} />
           </View>
           <View>
-            <Text style={styles.packageName}>{pkg.name}</Text>
-            {isCurrent && <Text style={styles.currentLabel}>{t('billing.currentPlan', 'Current Plan')}</Text>}
+            <Text style={styles.packageName}>{t('billing.' + pkg.id)}</Text>
+            {isCurrent && <Text style={styles.currentLabel}>{t('billing.currentPlan')}</Text>}
           </View>
         </View>
 
-        <Text style={styles.priceText}>{pkg.price}</Text>
+        <Text style={styles.priceText}>{t('billing.' + pkg.id + 'Price')}</Text>
 
         <View style={styles.featuresContainer}>
            <View style={styles.featureRow}>
              <Check size={16} color={colors.status.success} />
-             <Text style={styles.featureText}>{pkg.driverQuota} {t('billing.drivers', 'Drivers')}</Text>
-           </View>
-           <View style={styles.featureRow}>
-             <Check size={16} color={colors.status.success} />
-             <Text style={styles.featureText}>{pkg.managerQuota} {t('billing.managers', 'Managers')}</Text>
-           </View>
-           <View style={styles.featureRow}>
-             <Check size={16} color={colors.status.success} />
-             <Text style={styles.featureText}>{t('billing.analytics', 'Full Analytics Dashboard')}</Text>
-           </View>
+            <Text style={styles.featureText}>{pkg.driverQuota} {t('billing.drivers')}</Text>
+          </View>
+          <View style={styles.featureRow}>
+            <Check size={16} color={colors.status.success} />
+            <Text style={styles.featureText}>{pkg.managerQuota} {t('billing.managers')}</Text>
+          </View>
+          <View style={styles.featureRow}>
+            <Check size={16} color={colors.status.success} />
+            <Text style={styles.featureText}>{t('billing.analytics')}</Text>
+          </View>
         </View>
 
         {!isCurrent && (
           <GlassButton 
-            title={t('billing.choosePlan', 'Select Plan')}
+            title={t('billing.choosePlan')}
             onPress={() => handleUpgrade(pkg.id)}
             style={styles.selectButton}
           />
@@ -231,7 +231,7 @@ export const BillingScreen = ({ navigation }: any) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <ChevronLeft color={colors.text.primary} size={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('billing.title', 'Billing & Plans')}</Text>
+          <Text style={styles.headerTitle}>{t('billing.title')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -242,26 +242,26 @@ export const BillingScreen = ({ navigation }: any) => {
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.currentStats}>
-               <Text style={styles.sectionTitle}>{t('billing.currentUsage', 'Usage Overview')}</Text>
+               <Text style={styles.sectionTitle}>{t('billing.currentUsage')}</Text>
                <GlassCard style={styles.statsCard}>
                   <View style={styles.statItem}>
                     <Text style={styles.statVal}>{currentSubscription?.quota_drivers || 0}</Text>
-                    <Text style={styles.statLab}>{t('billing.driverQuota', 'Driver Quota')}</Text>
+                    <Text style={styles.statLab}>{t('billing.driverQuota')}</Text>
                   </View>
                   <View style={styles.divider} />
                   <View style={styles.statItem}>
                     <Text style={styles.statVal}>{currentSubscription?.quota_managers || 0}</Text>
-                    <Text style={styles.statLab}>{t('billing.managerQuota', 'Manager Quota')}</Text>
+                    <Text style={styles.statLab}>{t('billing.managerQuota')}</Text>
                   </View>
                </GlassCard>
             </View>
 
-            <Text style={styles.sectionTitle}>{t('billing.availablePlans', 'Premium Tiers')}</Text>
+            <Text style={styles.sectionTitle}>{t('billing.availablePlans')}</Text>
             {PACKAGES.map(renderPackage)}
             
             <View style={styles.stripeNotice}>
                <CreditCard size={16} color={colors.text.tertiary} />
-               <Text style={styles.stripeNoticeText}>Payments secured by Stripe</Text>
+               <Text style={styles.stripeNoticeText}>{t('billing.securePayments')}</Text>
             </View>
           </ScrollView>
         )}

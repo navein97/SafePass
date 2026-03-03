@@ -45,7 +45,7 @@ export const darkColors = {
     primary: '#FFFFFF',
     secondary: 'rgba(255, 255, 255, 0.7)',
     tertiary: 'rgba(255, 255, 255, 0.4)',
-    inverse: '#000000',
+    inverse: '#FFFFFF',
     accent: '#E1257C',
   },
   border: 'rgba(225, 37, 124, 0.3)',

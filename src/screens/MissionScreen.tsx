@@ -127,7 +127,7 @@ export function MissionScreen() {
         } catch (error) {
           console.error('Error loading batch statuses:', error);
           if (isActive && isFirstLoadRef.current) {
-            Alert.alert(t('common.error', 'Error'), 'Failed to load batch progress');
+            Alert.alert(t('common.error'), t('quiz.failedToLoadQuiz'));
           }
         } finally {
           if (isActive) {
@@ -161,8 +161,8 @@ export function MissionScreen() {
 
     // Check general access (locked batch)
     if (!canAccess && selectedMode === 'live') {
-      const title = t('common.error') || 'Locked';
-      const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `Complete Batch ${batchNumber - 1} first!`;
+      const title = t('quiz.batchLocked');
+      const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 });
       
       if (Platform.OS === 'web') {
         window.alert(`${title}\n\n${message}`);
@@ -183,7 +183,7 @@ export function MissionScreen() {
       <GradientBackground>
         <SafeAreaView style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-          <Text style={styles.loadingText}>{t('mission.loading', 'Loading training data...')}</Text>
+          <Text style={styles.loadingText}>{t('mission.loading')}</Text>
         </SafeAreaView>
       </GradientBackground>
     );
@@ -195,8 +195,8 @@ export function MissionScreen() {
         <StatusBar barStyle="light-content" />
         
         <View style={styles.header}>
-          <Text style={styles.title}>SafePass Training</Text>
-          <Text style={styles.subtitle}>Select a batch to continue your training</Text>
+          <Text style={styles.title}>{t('mission.trainingTitle')}</Text>
+          <Text style={styles.subtitle}>{t('mission.trainingSubtitle')}</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -236,7 +236,7 @@ export function MissionScreen() {
             <>
               <View style={styles.modeHeader}>
                 <TouchableOpacity style={styles.backToMode} onPress={() => setSelectedMode(null)}>
-                  <Text style={styles.backToModeText}>← Change Mode ({selectedMode === 'live' ? 'Live' : 'Practice'})</Text>
+                  <Text style={styles.backToModeText}>← {t('mission.changeMode')} ({selectedMode === 'live' ? t('mission.liveModeTitle') : t('mission.practiceModeTitle')})</Text>
                 </TouchableOpacity>
               </View>
               
@@ -264,8 +264,8 @@ export function MissionScreen() {
                         <PlayCircle size={32} color={colors.primary.DEFAULT} />
                       )}
                       <View style={styles.batchTitleContainer}>
-                        <Text style={styles.batchTitle}>Batch {batch.batchNumber}</Text>
-                        <Text style={styles.batchSubtitle}>Training Course</Text>
+                        <Text style={styles.batchTitle}>{t('quiz.batchTitle', { number: batch.batchNumber })}</Text>
+                        <Text style={styles.batchSubtitle}>{t('mission.trainingCourse')}</Text>
                       </View>
                     </View>
                   </View>
@@ -275,7 +275,7 @@ export function MissionScreen() {
                       <>
                         {selectedMode !== 'practice' && (
                           <View style={styles.statRow}>
-                            <Text style={styles.statLabel}>Average Score:</Text>
+                            <Text style={styles.statLabel}>{t('mission.averageScore')}</Text>
                             <Text
                               style={[
                                 styles.statValue,
@@ -288,12 +288,12 @@ export function MissionScreen() {
                           </View>
                         )}
                         <View style={styles.statRow}>
-                          <Text style={styles.statLabel}>Attempts:</Text>
+                          <Text style={styles.statLabel}>{t('mission.attempts')}</Text>
                           <Text style={styles.statValue}>{batch.attemptCount}</Text>
                         </View>
                         {selectedMode !== 'practice' && (
                           <View style={styles.statRow}>
-                            <Text style={styles.statLabel}>Status:</Text>
+                            <Text style={styles.statLabel}>{t('mission.status')}</Text>
                             <Text
                               style={[
                                 styles.statValue,
@@ -302,19 +302,19 @@ export function MissionScreen() {
                               ]}
                             >
                               {selectedMode === 'live' && (batch.dailyCount >= 3 || batch.passed)
-                                ? '✓ Goal Done' 
+                                ? `✓ ${t('mission.goalDone')}` 
                                 : batch.passed
-                                  ? '✓ Passed'
-                                  : `Need ${(60 - batch.averageScore).toFixed(1)}% more to pass`}
+                                  ? `✓ ${t('mission.passed')}`
+                                  : t('mission.needMoreToPass', { percent: (60 - batch.averageScore).toFixed(1) })}
                             </Text>
                           </View>
                         )}
                       </>
                     ) : (batch.canAccess || selectedMode === 'practice') ? (
-                      <Text style={styles.notStartedText}>Tap to start →</Text>
+                      <Text style={styles.notStartedText}>{t('mission.tapToStart')}</Text>
                     ) : (
                       <Text style={styles.lockedText}>
-                        🔒 Complete Batch {batch.batchNumber - 1} with ≥60% average to unlock
+                        {t('mission.lockMessage', { number: batch.batchNumber - 1 })}
                       </Text>
                     )}
                   </View>

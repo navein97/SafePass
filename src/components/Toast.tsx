@@ -71,19 +71,19 @@ export const Toast: React.FC<ToastProps> = ({
         return {
           bg: 'rgba(34, 197, 94, 0.88)',
           border: '#16a34a',
-          text: '#021a07',
+          text: '#FFFFFF',
         };
       case 'error':
         return {
           bg: 'rgba(220, 38, 38, 0.88)',
           border: '#b91c1c',
-          text: '#1a0202',
+          text: '#FFFFFF',
         };
       default:
         return {
           bg: 'rgba(59, 130, 246, 0.88)',
           border: '#1d4ed8',
-          text: '#020c1a',
+          text: '#FFFFFF',
         };
     }
   };

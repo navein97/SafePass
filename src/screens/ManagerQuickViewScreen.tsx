@@ -206,7 +206,9 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
 
                     <View style={styles.scoreContainer}>
                       <Text style={[styles.score, isMe && styles.myScore]}>{entry.score}%</Text>
-                      <Text style={styles.status}>{entry.status}</Text>
+                      <Text style={styles.status}>
+                        {entry.status === 'COMPLIANT' ? t('common.compliant') : t('common.overdue')}
+                      </Text>
                     </View>
                   </View>
                 </GlassCard>

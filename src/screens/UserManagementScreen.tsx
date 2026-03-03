@@ -78,7 +78,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 if (stats) setCompanyStats(stats);
             }
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to load data');
+            Alert.alert(t('common.error'), error.message || t('common.unexpectedErrorOccurred'));
         } finally {
             setLoading(false);
         }
@@ -138,11 +138,11 @@ export const UserManagementScreen = ({ navigation }: any) => {
             const { success, error } = await AuthService.deleteUser(selectedUserForDelete.id);
             if (!success || error) throw new Error(error || 'Failed to delete user');
             
-            Alert.alert('Success', 'User deleted successfully');
+            Alert.alert(t('common.success'), t('user.userDeleted'));
             setShowFinalDeleteConfirm(false);
             loadUsers(); // Refresh the list
         } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to delete user');
+            Alert.alert(t('common.error'), err.message || t('user.errorDelete'));
         } finally {
             setDeleteLoading(false);
         }
@@ -201,7 +201,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <ChevronLeft color={colors.text.primary} size={24} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('profile.teamManagement', 'User Management')}</Text>
+                    <Text style={styles.headerTitle}>{t('profile.teamManagement')}</Text>
                     <TouchableOpacity 
                         onPress={() => {
                             setSelectedUserForNotification(null);
@@ -218,7 +218,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     <View style={styles.quotaContainer}>
                         <GlassCard contentStyle={styles.quotaCard}>
                             <View style={styles.quotaItem}>
-                                <Text style={styles.quotaLabel}>👤 Drivers</Text>
+                                <Text style={styles.quotaLabel}>👤 {t('user.drivers')}</Text>
                                 <View style={styles.quotaBar}>
                                     <View style={[
                                         styles.quotaFill,
@@ -237,7 +237,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                                 </Text>
                             </View>
                             <View style={styles.quotaItem}>
-                                <Text style={styles.quotaLabel}>👔 Managers</Text>
+                                <Text style={styles.quotaLabel}>👔 {t('user.managers')}</Text>
                                 <View style={styles.quotaBar}>
                                     <View style={[
                                         styles.quotaFill,
@@ -265,7 +265,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                         <Search size={20} color={colors.text.tertiary} />
                         <TextInput 
                             style={styles.searchInput}
-                            placeholder={t('common.search', 'Search by name or ID...')}
+                            placeholder={t('common.searchPlaceholder')}
                             placeholderTextColor={colors.text.tertiary}
                             value={searchQuery}
                             onChangeText={setSearchQuery}

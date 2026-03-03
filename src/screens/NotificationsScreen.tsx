@@ -223,7 +223,7 @@ export function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('notifications.title', 'Notifications')}</Text>
+        <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
         {unreadCount > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -241,14 +241,14 @@ export function NotificationsScreen() {
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickActionButton} onPress={markAllRead}>
-            <Text style={styles.quickActionText}>{t('notifications.markAllRead', 'Mark all as read')}</Text>
+            <Text style={styles.quickActionText}>{t('notifications.markAllRead')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Notifications List */}
         {notifications.length === 0 ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ color: colors.text.secondary }}>{t('notifications.empty', 'No notifications yet')}</Text>
+            <Text style={{ color: colors.text.secondary }}>{t('notifications.empty')}</Text>
           </View>
         ) : (
           notifications.map(notification => (
@@ -294,7 +294,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   badgeText: {
     fontFamily: 'Inter-Bold',
     fontSize: 12,
-    color: colors.text.primary,
+    color: colors.text.inverse,
   },
   scrollView: {
     flex: 1,

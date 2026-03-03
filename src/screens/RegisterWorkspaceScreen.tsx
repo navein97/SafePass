@@ -87,12 +87,12 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
       if (result.success) {
         setRegistered(true); // Show success screen
       } else {
-        const errorMsg = result.error || 'Something went wrong. Please try again.';
+        const errorMsg = result.error || t('common.unexpectedErrorOccurred');
         setErrors(prev => ({ ...prev, general: errorMsg }));
       }
     } catch (error: any) {
       setLoading(false);
-      const errorMsg = error.message || 'An unexpected error occurred.';
+      const errorMsg = error.message || t('common.unexpectedErrorOccurred');
       setErrors(prev => ({ ...prev, general: errorMsg }));
     }
   };
@@ -113,19 +113,19 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                 <CheckCircle size={48} color="#4CAF50" />
               </View>
 
-              <Text style={styles.successTitle}>Registration Successful! 🎉</Text>
+              <Text style={styles.successTitle}>{t('auth.registrationSuccessful')}</Text>
 
               <Text style={styles.successMessage}>
-                Your account has been created with the email:
+                {t('auth.accountCreatedWithEmail')}
               </Text>
               <Text style={styles.successEmail}>{email}</Text>
 
               <Text style={styles.successNote}>
-                Log in now to activate your company workspace "{companyName}" and start managing your team.
+                {t('auth.loginActivateWorkspace', { companyName })}
               </Text>
 
               <GlassButton
-                title="Go to Login"
+                title={t('auth.goToLogin')}
                 onPress={() => navigation.navigate('Login')}
                 style={styles.goToLoginButton}
               />

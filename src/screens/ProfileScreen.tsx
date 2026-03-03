@@ -138,7 +138,7 @@ export const ProfileScreen = ({ navigation }: any) => {
       }
 
       if (!userProfile) {
-        Alert.alert('Error', 'User profile not found');
+        Alert.alert(t('common.error'), t('profile.userNotFound'));
         return;
       }
 
@@ -242,7 +242,7 @@ export const ProfileScreen = ({ navigation }: any) => {
       }
     } catch (error) {
       console.error('Fatal loadProfile error:', error);
-      Alert.alert('System Error', 'An unexpected error occurred while loading your profile.');
+      Alert.alert(t('common.systemError'), t('common.unexpectedErrorOccurred'));
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
@@ -427,14 +427,14 @@ export const ProfileScreen = ({ navigation }: any) => {
                         ? 'rgba(225, 37, 124, 0.5)'
                         : 'rgba(100, 149, 237, 0.5)',
                     }
-                  ]}>
-                    <Text style={[
-                      styles.regionText,
-                      { color: profile?.managerLevel === 1 ? '#E1257C' : '#6495ED' }
                     ]}>
-                      {profile?.managerLevel === 1 ? '⭐ Master User' : '👔 Manager'}
-                    </Text>
-                  </View>
+                      <Text style={[
+                        styles.regionText,
+                        { color: profile?.managerLevel === 1 ? '#E1257C' : '#6495ED' }
+                      ]}>
+                        {profile?.managerLevel === 1 ? t('profile.roles.masterUser') : t('profile.roles.manager')}
+                      </Text>
+                    </View>
                 )}
               </View>
             </View>
@@ -463,10 +463,10 @@ export const ProfileScreen = ({ navigation }: any) => {
                 <Text style={{ fontSize: 28 }}>🚀</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: '#FFF', fontSize: 16, fontFamily: typography.fonts.bold }}>
-                    Choose a Plan to Get Started!
+                    {t('profile.choosePlanTitle')}
                   </Text>
                   <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: typography.fonts.regular, marginTop: 4 }}>
-                    Select a package to start adding drivers and managers to your team.
+                    {t('profile.choosePlanSubtitle')}
                   </Text>
                 </View>
                 <Text style={{ color: '#FFF', fontSize: 20 }}>→</Text>
@@ -491,7 +491,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                         <User size={20} color={colors.primary.DEFAULT} />
                         <Text style={{ fontSize: 16, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
-                            Profile Details
+                            {t('profile.profileDetails')}
                         </Text>
                     </View>
                     {showMasterDetails ? <ChevronUp size={20} color={colors.text.secondary} /> : <ChevronDown size={20} color={colors.text.secondary} />}
@@ -499,7 +499,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
                  {showMasterDetails && (
                     <View style={{ marginBottom: 16 }}>
-                        <Text style={styles.inputLabel}>Full Name</Text>
+                        <Text style={styles.inputLabel}>{t('profile.fullName')}</Text>
                         <TextInput 
                             style={styles.textInput}
                             placeholder="e.g. John Doe"
@@ -508,7 +508,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                             onChangeText={setFullName}
                         />
                         
-                        <Text style={styles.inputLabel}>Designation</Text>
+                        <Text style={styles.inputLabel}>{t('profile.designation')}</Text>
                         <TextInput 
                             style={styles.textInput}
                             placeholder="e.g. Senior Driver"
@@ -517,7 +517,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                             onChangeText={setDesignation}
                         />
                         
-                        <Text style={styles.inputLabel}>Company Name</Text>
+                        <Text style={styles.inputLabel}>{t('profile.companyName')}</Text>
                         <TextInput 
                             style={styles.textInput}
                             placeholder="e.g. Transport Co."
@@ -526,7 +526,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                             onChangeText={setCompanyName}
                         />
 
-                        <Text style={styles.inputLabel}>Address</Text>
+                        <Text style={styles.inputLabel}>{t('profile.address')}</Text>
                         <TextInput 
                             style={styles.textInput}
                             placeholder="Full Address"
@@ -535,7 +535,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                             onChangeText={setAddress}
                         />
 
-                        <Text style={styles.inputLabel}>Contact Number</Text>
+                        <Text style={styles.inputLabel}>{t('profile.contactNumber')}</Text>
                         <TextInput 
                             style={styles.textInput}
                             placeholder="+60..."
@@ -844,7 +844,7 @@ export const ProfileScreen = ({ navigation }: any) => {
           <GlassButton
             title={t('help.centerTitle', 'Help Center')}
             onPress={() => navigation.navigate('HelpCenter')}
-            icon={<HelpCircle color={colors.text.primary} size={20} />}
+            icon={<HelpCircle color={colors.text.inverse} size={20} />}
             style={{ marginBottom: 16 }}
           />
 
@@ -853,7 +853,7 @@ export const ProfileScreen = ({ navigation }: any) => {
             title={t('auth.logout')}
             onPress={handleLogout}
             variant="danger"
-            icon={<LogOut color={colors.text.primary} size={20} />}
+            icon={<LogOut color={colors.text.inverse} size={20} />}
             style={styles.logoutButton}
           />
         </ScrollView>
@@ -998,6 +998,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   streakCard: {
     alignItems: 'center',
     paddingVertical: 20,
+    marginTop: 16,
     marginBottom: 16,
   },
   flameContainer: {

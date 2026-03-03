@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy } from 'lucide-react-native';
+import { GlassCard } from './ui/GlassCard';
 
 interface MilestoneTrackerProps {
   currentPoints: number;
@@ -41,7 +42,7 @@ export const MilestoneTracker = ({ currentPoints }: MilestoneTrackerProps) => {
   const bgElement = theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background.card, borderColor: (colors as any).border?.DEFAULT || colors.border || '#E5E7EB' }]}>
+    <GlassCard style={styles.container} contentStyle={styles.content}>
       <View style={styles.header}>
         <View style={[styles.badgeContainer, { backgroundColor: bgElement }]}>
              <Trophy size={20} color={currentLevel.color} />
@@ -63,16 +64,16 @@ export const MilestoneTracker = ({ currentPoints }: MilestoneTrackerProps) => {
             style={[styles.progressBarFill, { width: `${progress}%` }]}
          />
       </View>
-    </View>
+    </GlassCard>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
     marginVertical: 12,
+  },
+  content: {
+    padding: 16,
   },
   header: {
     flexDirection: 'row',

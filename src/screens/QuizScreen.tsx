@@ -184,7 +184,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         console.error('Error fetching questions:', qError);
         Alert.alert(
           t('quiz.loadingError') || 'Loading Error',
-          t('quiz.couldNotLoadQuestions', { mode: isPractice ? (t('mission.practiceModeTitle') || 'Practice') : 'Batch ' + batchNumber }) || `Could not load questions${isPractice ? ' for Practice.' : ' for Batch ' + batchNumber + '.'} Please try again.`
+          t('quiz.couldNotLoadQuestions', { mode: isPractice ? (t('mission.practiceModeTitle') || 'Practice') : t('quiz.batchTitle', { number: batchNumber }) })
         );
         navigation.goBack();
         return;
@@ -506,8 +506,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
     return (
       <GradientBackground>
         <SafeAreaView style={styles.loadingContainer}>
-          <Text style={styles.errorTitle}>Unable to Load Questions</Text>
-          <Text style={styles.errorText}>No questions found for this batch</Text>
+          <Text style={styles.errorTitle}>{t('quiz.unableToLoadQuestions')}</Text>
+          <Text style={styles.errorText}>{t('quiz.noQuestionsFoundBatch')}</Text>
         </SafeAreaView>
       </GradientBackground>
     );
@@ -609,28 +609,28 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
             <Text style={[styles.resumeTitle, { color: accentColor }]}>{resultData.title}</Text>
 
-            {isPracticeResult ? (
-              <>
-                <Text style={styles.resultScoreText}>{resultData.correct}/{resultData.total} Correct</Text>
-                <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.score}%</Text>
-                <Text style={styles.resultSubLabel}>Accuracy</Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.resultScoreText}>Score: {resultData.score.toFixed(1)}%</Text>
-                <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.avgScore.toFixed(1)}%</Text>
-                <Text style={styles.resultSubLabel}>Average Score</Text>
-                {resultData.passed ? (
-                  <Text style={[styles.resultMessage, { color: '#00C853' }]}>
-                    ✅ {batchNumber < 4 ? `Batch ${batchNumber + 1} Unlocked!` : 'All Batches Complete!'}
-                  </Text>
-                ) : (
-                  <Text style={[styles.resultMessage, { color: colors.text.secondary }]}>
-                    Need {(60 - resultData.avgScore).toFixed(1)}% more to pass
-                  </Text>
-                )}
-              </>
-            )}
+              {isPracticeResult ? (
+                <>
+                  <Text style={styles.resultScoreText}>{t('quiz.correctCount', { correct: resultData.correct, total: resultData.total })}</Text>
+                  <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.score}%</Text>
+                  <Text style={styles.resultSubLabel}>{t('quiz.accuracy')}</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.resultScoreText}>{t('quiz.scoreLabel')} {resultData.score.toFixed(1)}%</Text>
+                  <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.avgScore.toFixed(1)}%</Text>
+                  <Text style={styles.resultSubLabel}>{t('quiz.averageScore')}</Text>
+                  {resultData.passed ? (
+                    <Text style={[styles.resultMessage, { color: '#00C853' }]}>
+                      ✅ {batchNumber < 4 ? t('quiz.nextBatchUnlocked', { number: batchNumber + 1 }) : t('quiz.allBatchesComplete')}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.resultMessage, { color: colors.text.secondary }]}>
+                      {t('mission.needMoreToPass', { percent: (60 - resultData.avgScore).toFixed(1) })}
+                    </Text>
+                  )}
+                </>
+              )}
 
             {/* Buttons */}
             <View style={{ gap: 12, width: '100%', marginTop: 24 }}>
@@ -639,16 +639,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   style={[styles.resumeButton, styles.resumeButtonPrimary]}
                   onPress={() => navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 })}
                 >
-                  <Text style={styles.resumeButtonTextPrimary}>Practice Again</Text>
+                  <Text style={styles.resumeButtonTextPrimary}>{t('quiz.practiceAgain')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={[styles.resumeButton, isPracticeResult ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } })}
               >
-                <Text style={isPracticeResult ? styles.resumeButtonTextSecondary : styles.resumeButtonTextPrimary}>
-                  Back to Menu
-                </Text>
+                  <Text style={isPracticeResult ? styles.resumeButtonTextSecondary : styles.resumeButtonTextPrimary}>
+                    {t('quiz.backToMenu')}
+                  </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -681,7 +681,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
              </Text>
             {!isPractice && (
               <View style={[styles.statItem, {flexDirection: 'row', gap: 4}]}>
-                <Text style={styles.statLabel}>Accuracy:</Text>
+                <Text style={styles.statLabel}>{t('quiz.accuracy')}:</Text>
                 <Text style={styles.statValue}>{accuracy.toFixed(0)}%</Text>
               </View>
             )}
@@ -756,12 +756,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
           {showFeedback && (
             <View style={styles.feedbackCard}>
               <Text style={styles.feedbackText}>
-                {isPractice ? t('quiz.oopsTryAgain') : '❌ Wrong answer.'}
+                {isPractice ? t('quiz.oopsTryAgain') : t('quiz.wrongAnswer')}
               </Text>
               {currentQuestion.explanation ? (
                 <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,107,107,0.3)' }}>
                   <Text style={{ fontSize: 12, fontFamily: typography.fonts.bold, color: '#FF6B6B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    💡 {isPractice ? 'Hint' : 'Explanation'}
+                    💡 {isPractice ? t('quiz.hint') : t('quiz.explanation')}
                   </Text>
                   <Text style={{ fontSize: 14, fontFamily: typography.fonts.regular, color: '#555', lineHeight: 20 }}>
                     {currentQuestion.explanation}
@@ -795,7 +795,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   ? (t('common.continue') || 'Continue')
                   : currentIndex === sessionLimit - 1
                     ? (t('quiz.finish') || 'Finish ✓')
-                    : 'Next Question →'}
+                    : t('quiz.nextQuestion')}
               </Text>
             </TouchableOpacity>
           ) : isAnswered && (

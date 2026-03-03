@@ -27,7 +27,7 @@ export const ReviewScreen = ({ route, navigation }: any) => {
             <Text style={styles.scoreValue}>{attempt.score}%</Text>
           </GlassCard>
 
-          <Text style={styles.sectionTitle}>{t('quiz.review', 'Review')}</Text>
+          <Text style={styles.sectionTitle}>{t('quiz.review')}</Text>
 
           {questions.map((question, index) => {
             const answer = attempt.answers.find(a => a.questionId === question.id);
@@ -56,7 +56,7 @@ export const ReviewScreen = ({ route, navigation }: any) => {
 
                 {!isCorrect && (
                   <View style={styles.correctionBox}>
-                    <Text style={styles.correctionLabel}>{t('quiz.correctAnswer', 'Correct Answer')}:</Text>
+                    <Text style={styles.correctionLabel}>{t('quiz.correctAnswer')}:</Text>
                     <Text style={styles.correctionText}>
                       {question.options[question.correctOptionIndex]}
                     </Text>
@@ -72,9 +72,9 @@ export const ReviewScreen = ({ route, navigation }: any) => {
           })}
 
           <GlassButton
-            title={t('common.backToHome', 'Back to Home')}
+            title={t('common.backToHome')}
             onPress={() => navigation.navigate('MainTabs')}
-            icon={<Home color={colors.text.primary} size={20} />}
+            icon={<Home color={colors.text.inverse} size={20} />}
             style={styles.homeButton}
           />
         </ScrollView>

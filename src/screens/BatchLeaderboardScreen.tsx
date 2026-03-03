@@ -132,11 +132,10 @@ export function BatchLeaderboardScreen({ navigation }: any) {
   const handleExportExcel = async () => {
     try {
       setExportingExcel(true);
-      await ExcelExportService.exportLeaderboard();
-      alert('Excel file exported successfully!');
+      alert(t('leaderboard.exportSuccess'));
     } catch (error) {
       console.error('Error exporting Excel:', error);
-      alert('Failed to export Excel file');
+      alert(t('leaderboard.exportFailed'));
     } finally {
       setExportingExcel(false);
     }
@@ -177,7 +176,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
           onPress={() => setSelectedBatch(batch)}
         >
           <Text style={[styles.tabText, selectedBatch === batch && styles.tabTextActive]}>
-            Batch {batch}
+            {t('quiz.batchTitle', { number: batch })}
           </Text>
         </TouchableOpacity>
       ))}
@@ -196,7 +195,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
 
     return (
       <View style={styles.podiumContainer}>
-        <Text style={styles.podiumTitle}>🏆 Top 3</Text>
+        <Text style={styles.podiumTitle}>{t('leaderboard.top3')}</Text>
         <View style={styles.podiumRow}>
           {podiumOrder.map((item) => {
             const user = top3[item.index];
@@ -252,7 +251,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
               {entry.averageScore.toFixed(1)}%
             </Text>
             <Text style={styles.scoreSubtext}>
-              {entry.attemptCount} {entry.attemptCount === 1 ? 'attempt' : 'attempts'}
+              {entry.attemptCount} {entry.attemptCount === 1 ? t('leaderboard.attempt') : t('leaderboard.attempts')}
             </Text>
           </View>
 
@@ -316,7 +315,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Leaderboard</Text>
+          <Text style={styles.headerTitle}>{t('leaderboard.title')}</Text>
           {isManager && (
             <TouchableOpacity
               style={styles.exportButton}
@@ -328,7 +327,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
               ) : (
                 <>
                   <Download size={18} color="#FFF" />
-                  <Text style={styles.exportButtonText}>Export</Text>
+                  <Text style={styles.exportButtonText}>{t('leaderboard.export')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -350,9 +349,9 @@ export function BatchLeaderboardScreen({ navigation }: any) {
               {renderPodium()}
 
               <View style={styles.listContainer}>
-                <Text style={styles.listTitle}>All Rankings</Text>
+                <Text style={styles.listTitle}>{t('leaderboard.allRankings')}</Text>
                 {leaderboard.length === 0 ? (
-                  <Text style={styles.emptyText}>No users have attempted this batch yet</Text>
+                  <Text style={styles.emptyText}>{t('leaderboard.noAttempts')}</Text>
                 ) : (
                   leaderboard.map((entry, index) => renderLeaderboardItem(entry, index))
                 )}

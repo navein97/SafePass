@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { typography } from '../theme/typography';
 import { GlassCard } from './ui/GlassCard';
 import { AlertTriangle } from 'lucide-react-native';
@@ -19,9 +20,10 @@ export const DeleteUserModal = ({
     loading = false
 }: DeleteUserModalProps) => {
     const { colors } = useTheme();
+    const { t } = useTranslation();
     const [confirmText, setConfirmText] = useState('');
 
-    const isMatch = confirmText === 'confirm';
+    const isMatch = confirmText === t('common.confirmPlaceholder');
 
     return (
         <Modal 
@@ -34,7 +36,7 @@ export const DeleteUserModal = ({
                 <GlassCard style={styles.container}>
                     <View style={styles.header}>
                         <Text style={[styles.title, { color: colors.text.primary }]}>
-                            Are you absolutely sure?
+                            {t('common.areYouSure')}
                         </Text>
                         <TouchableOpacity onPress={onClose}>
                              <Text style={{ color: colors.text.tertiary, fontSize: 20 }}>×</Text>
@@ -42,11 +44,11 @@ export const DeleteUserModal = ({
                     </View>
 
                     <Text style={[styles.message, { color: colors.text.secondary }]}>
-                        This action cannot be undone. This will permanently delete the user account.
+                        {t('common.cannotBeUndone')} {t('auth.permanentlyDeleteNote', 'This will permanently delete the user account.')}
                     </Text>
 
                     <Text style={[styles.instruction, { color: colors.text.primary }]}>
-                        To confirm, type "confirm" in the box below.
+                        {t('common.confirmToType', { text: t('common.confirmPlaceholder') })}
                     </Text>
 
                     <TextInput 
@@ -60,7 +62,7 @@ export const DeleteUserModal = ({
                         ]}
                         value={confirmText}
                         onChangeText={setConfirmText}
-                        placeholder="confirm"
+                        placeholder={t('common.confirmPlaceholder')}
                         placeholderTextColor={colors.text.tertiary}
                         autoCapitalize="none"
                     />
@@ -83,7 +85,7 @@ export const DeleteUserModal = ({
                                 styles.buttonText, 
                                 { color: isMatch ? '#FFF' : colors.text.secondary }
                             ]}>
-                                Delete this user
+                                {t('user.deleteUser')}
                             </Text>
                         )}
                     </TouchableOpacity>

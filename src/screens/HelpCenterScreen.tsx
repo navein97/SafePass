@@ -34,38 +34,38 @@ export const HelpCenterScreen = ({ navigation }: any) => {
   const allGuides = [
     {
       id: 'master',
-      title: t('help.masterUser', 'Master User Guide'),
+      title: t('help.masterUser'),
       icon: <Crown size={24} color={colors.primary.DEFAULT} />,
       content: [
-        { title: t('help.masterStep1', 'How to Manage Workspaces'), description: t('help.masterStep1Desc', 'Go to "Company Settings" to update your logo and company details.') },
-        { title: t('help.masterStep2', 'How to Create & Delete Managers/Drivers'), description: t('help.masterStep2Desc', 'Go to "Team Management" -> tap "Add User" to create a Manager/Driver. To delete, tap the red trash can icon next to their name.') },
-        { title: t('help.masterStep3', 'How to Reset User Passwords'), description: t('help.masterStep3Desc', 'Go to "Team Management" -> tap the Key icon next to a user\'s name -> type a new password and save.') },
-        { title: t('help.masterStep4', 'How to Send Broadcast Notifications'), description: t('help.masterStep4Desc', 'Go to "Team Management" -> tap the Loudspeaker icon at the top -> enter your message and select "All Users".') },
-        { title: t('help.masterStep5', 'How to Monitor Performance'), description: t('help.masterStep5Desc', 'Go to either Team or Leaderboard page to see a summary of your driver\'s Scores and who needs a Tune-Up.') },
-        { title: t('help.masterStep6', 'How to Export Reports'), description: t('help.masterStep6Desc', 'Go to the Leaderboard -> click "Export" to download a full Excel report of all scores.') },
+        { title: t('help.masterStep1'), description: t('help.masterStep1Desc') },
+        { title: t('help.masterStep2'), description: t('help.masterStep2Desc') },
+        { title: t('help.masterStep3'), description: t('help.masterStep3Desc') },
+        { title: t('help.masterStep4'), description: t('help.masterStep4Desc') },
+        { title: t('help.masterStep5'), description: t('help.masterStep5Desc') },
+        { title: t('help.masterStep6'), description: t('help.masterStep6Desc') },
       ]
     },
     {
       id: 'manager',
-      title: t('help.manager', 'Manager Guide'),
+      title: t('help.manager'),
       icon: <UserCheck size={24} color={colors.status.info} />,
       content: [
-        { title: t('help.managerStep1', 'How to Onboard Drivers'), description: t('help.managerStep1Desc', 'Go to "Team Management" -> tap "Add User" -> select "Driver" role and their vehicle type -> share the password with them.') },
-        { title: t('help.managerStep2', 'How to Monitor Performance'), description: t('help.managerStep2Desc', 'Go to either Team or Leaderboard page to see a summary of your driver\'s Scores and who needs a Tune-Up.') },
-        { title: t('help.managerStep3', 'How to Send a Normal Notification'), description: t('help.managerStep3Desc', 'Go to "Team Management" -> tap the Bell icon next to a specific driver\'s name -> send them a direct message.') },
-        { title: t('help.managerStep4', 'How to Export Reports'), description: t('help.managerStep4Desc', 'Go to the Leaderboard -> click "Export" to download a full Excel report of your team\'s scores.') },
+        { title: t('help.managerStep1'), description: t('help.managerStep1Desc') },
+        { title: t('help.managerStep2'), description: t('help.managerStep2Desc') },
+        { title: t('help.managerStep3'), description: t('help.managerStep3Desc') },
+        { title: t('help.managerStep4'), description: t('help.managerStep4Desc') },
       ]
     },
     {
       id: 'driver',
-      title: t('help.driver', 'Driver Guide'),
+      title: t('help.driver'),
       icon: <Car size={24} color={colors.status.success} />,
       content: [
-        { title: t('help.driverStep1', 'How to Take Assessments'), description: t('help.driverStep1Desc', 'Go to "Quiz" -> click "Start Quiz (Live)" to answer questions that affect your safety score.') },
-        { title: t('help.driverStep2', 'How to Practice Safely'), description: t('help.driverStep2Desc', 'Go to "Quiz" -> click "Practice Mode" to practice questions without affecting your score.') },
-        { title: t('help.driverStep3', 'How to Check the Leaderboard'), description: t('help.driverStep3Desc', 'Go to "Leaderboard" -> look at "All Time" views to see your rank among peers.') },
-        { title: t('help.driverStep4', 'How to Read Notifications'), description: t('help.driverStep4Desc', 'Go to "Notifications" (Bell icon at the bottom tab) -> click on unread alerts to view assigned tasks or broadcast messages.') },
-        { title: t('help.driverStep5', 'How to Update Your Profile'), description: t('help.driverStep5Desc', 'Go to "Profile" -> click on your Profile Details card to update your region or vehicle type.') },
+        { title: t('help.driverStep1'), description: t('help.driverStep1Desc') },
+        { title: t('help.driverStep2'), description: t('help.driverStep2Desc') },
+        { title: t('help.driverStep3'), description: t('help.driverStep3Desc') },
+        { title: t('help.driverStep4'), description: t('help.driverStep4Desc') },
+        { title: t('help.driverStep5'), description: t('help.driverStep5Desc') },
       ]
     }
   ];
@@ -100,7 +100,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
           >
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={styles.title}>{t('help.centerTitle', 'Help Center')}</Text>
+          <Text style={styles.title}>{t('help.centerTitle')}</Text>
           <View style={{ width: 44 }} />
         </View>
 
@@ -110,9 +110,9 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         >
           <View style={styles.introCard}>
             <HelpCircle size={40} color={colors.primary.DEFAULT} style={{ marginBottom: 12 }} />
-            <Text style={styles.introTitle}>{t('help.welcome', 'User Guide & FAQ')}</Text>
+            <Text style={styles.introTitle}>{t('help.welcome')}</Text>
             <Text style={styles.introSubtitle}>
-              {t('help.intro', 'Learn how to maximize your safety performance and manage your workspace effectively.')}
+              {t('help.intro')}
             </Text>
           </View>
 
@@ -141,7 +141,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              {t('help.footer', 'Need more help? Contact your administrator or support.')}
+              {t('help.footer')}
             </Text>
           </View>
         </ScrollView>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { typography } from '../theme/typography';
 import { GlassCard } from './ui/GlassCard';
 import { GlassButton } from './ui/GlassButton';
@@ -15,13 +16,14 @@ interface ChangePasswordModalProps {
 
 export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordModalProps) => {
     const { colors } = useTheme();
+    const { t } = useTranslation();
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleChange = async () => {
         if (!user) return;
         if (password.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters');
+            Alert.alert(t('common.error'), t('auth.passwordMinLength'));
             return;
         }
 
@@ -30,14 +32,14 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
             const { success, error } = await AuthService.changeUserPassword(user.id, password);
             
             if (!success || error) {
-                throw new Error(error || 'Failed to change password');
+                throw new Error(error || t('user.errorChangePassword', 'Failed to change password'));
             }
 
-            Alert.alert('Success', `Password for ${user.name} changed successfully!`);
+            Alert.alert(t('common.success'), t('user.passwordChangedSuccess', { name: user.name }));
             setPassword('');
             onClose();
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            Alert.alert(t('common.error'), error.message);
         } finally {
             setLoading(false);
         }
@@ -52,7 +54,7 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
                     <View style={styles.header}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                             <Key size={24} color={colors.primary.DEFAULT} />
-                            <Text style={[styles.title, { color: colors.text.primary }]}>Change Password</Text>
+                            <Text style={[styles.title, { color: colors.text.primary }]}>{t('user.changePassword')}</Text>
                         </View>
                         <TouchableOpacity onPress={onClose}>
                             <X size={24} color={colors.text.secondary} />
@@ -60,7 +62,7 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
                     </View>
 
                     <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
-                        Enter new password for <Text style={{ fontWeight: 'bold', color: colors.text.primary }}>{user.name}</Text>
+                        {t('user.enterNewPasswordFor')} <Text style={{ fontWeight: 'bold', color: colors.text.primary }}>{user.name}</Text>
                     </Text>
 
                     <TextInput 
@@ -69,7 +71,7 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
                             color: colors.text.primary,
                             borderColor: colors.border 
                         }]}
-                        placeholder="New Password (min 6 chars)"
+                        placeholder={t('user.newPasswordPlaceholder')}
                         placeholderTextColor={colors.text.tertiary}
                         secureTextEntry
                         value={password}
@@ -77,7 +79,7 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
                     />
 
                     <GlassButton 
-                        title={loading ? "Changing..." : "Change Password"}
+                        title={loading ? t('user.changing') : t('user.changePassword')}
                         onPress={handleChange}
                         disabled={loading}
                         style={{ marginTop: 20 }}

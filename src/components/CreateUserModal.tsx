@@ -106,7 +106,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         if (error) throw new Error(error);
 
         // Show success toast
-        setToastMessage(`User created successfully! Welcome, ${fullName}.`);
+        setToastMessage(t('user.userCreated', { fullName }));
         setToastType('success');
         setToastVisible(true);
         
@@ -210,7 +210,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       setEmployeeId(text);
                       if (text) setErrors(prev => ({ ...prev, employeeId: false }));
                   }}
-                  placeholder="MY-CNG001"
+                  placeholder={t('auth.employeeIdPlaceholder')}
                   placeholderTextColor={colors.text.tertiary}
                   autoCapitalize="none"
               />
@@ -229,7 +229,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                           setPassword(text);
                           if (text) setErrors(prev => ({ ...prev, password: false }));
                       }}
-                      placeholder="Enter password"
+                      placeholder={t('auth.passwordPlaceholder', 'Enter password')}
                       placeholderTextColor={colors.text.tertiary}
                       secureTextEntry={!showPassword}
                   />
@@ -259,7 +259,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                           setConfirmPassword(text);
                           if (text) setErrors(prev => ({ ...prev, confirmPassword: false }));
                       }}
-                      placeholder="Re-enter password"
+                      placeholder={t('auth.confirmPasswordPlaceholder', 'Re-enter password')}
                       placeholderTextColor={colors.text.tertiary}
                       secureTextEntry={!showConfirmPassword}
                   />
@@ -338,7 +338,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                     <Text style={[
                       styles.optionText,
                       { color: colors.text.secondary },
-                      region === opt.value && { color: '#000', fontFamily: typography.fonts.bold }
+                      region === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
                     ]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -363,7 +363,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                     <Text style={[
                       styles.optionText,
                       { color: colors.text.secondary },
-                      vehicleType === opt.value && { color: '#000', fontFamily: typography.fonts.bold }
+                      vehicleType === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
                     ]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -384,7 +384,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                     <Text style={[
                       styles.optionText,
                       { color: colors.text.secondary },
-                      role === opt.value && { color: '#000', fontFamily: typography.fonts.bold }
+                      role === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
                     ]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -392,7 +392,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 
               <View style={{ marginTop: 24, marginBottom: 10 }}>
                   <GlassButton 
-                      title={loading ? t('user.creating', 'Creating...') : t('user.createUser', 'Create Account')}
+                      title={loading ? t('user.creating') : t('user.createUser')}
                       onPress={handleCreateUser}
                       variant="primary"
                       disabled={loading}
