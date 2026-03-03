@@ -11,14 +11,6 @@ import { Question } from '../types/models';
 import { Check, X, AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 
-const QUIZ_IMAGES: Record<string, any> = {
-  'stop_sign': require('../../assets/quiz/stop_sign.jpg'),
-  'pedestrian_crossing': require('../../assets/quiz/pedestrian_crossing.jpg'),
-  'no_entry': require('../../assets/quiz/no_entry.jpg'),
-  'turn_right': require('../../assets/quiz/turn_right.jpg'),
-  'warning': require('../../assets/quiz/warning.jpg'),
-};
-
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export const QuizScreen = ({ navigation, route }: any) => {
@@ -696,13 +688,6 @@ export const QuizScreen = ({ navigation, route }: any) => {
         >
           {/* Question Card */}
           <View style={styles.questionCard}>
-            {currentQuestion.imageUrl && QUIZ_IMAGES[currentQuestion.imageUrl] && (
-              <Image 
-                source={QUIZ_IMAGES[currentQuestion.imageUrl]}
-                style={styles.questionImage}
-                resizeMode="contain"
-              />
-            )}
             <Text style={styles.questionText}>{currentQuestion.text}</Text>
           </View>
 
