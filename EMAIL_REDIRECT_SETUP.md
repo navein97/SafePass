@@ -31,7 +31,7 @@ The email verification links need to redirect to your mobile app using a deep li
 
 #### app.json
 - Added `"scheme": "safepass"` to enable deep linking for mobile
-- Added `"bundleIdentifier": "com.safepass.app"` for iOS
+- Added `"bundleIdentifier": "com.cngsynergy.training"` for iOS
 
 #### authService.ts
 - Added platform detection using `Platform.OS`
