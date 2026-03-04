@@ -10,6 +10,7 @@ import { QuizStorageService, SavedQuizProgress } from '../services/quizStorageSe
 import { Question } from '../types/models';
 import { Check, X, AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { GradientBackground } from '../components/ui/GradientBackground';
+import { SubscriptionService } from '../services/subscriptionService';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
@@ -103,6 +104,25 @@ export const QuizScreen = ({ navigation, route }: any) => {
       if (profile.role === 'manager') {
         navigation.replace('ManagerQuickView');
         return;
+      }
+
+      // Trial gating: block batches beyond subscription limit
+      if (!isPractice && batchNumber > 1) {
+        const maxBatches = await SubscriptionService.getMaxBatches(profile.company_id);
+        if (batchNumber > maxBatches) {
+          setLoading(false);
+          const title = t('billing.upgradeRequired');
+          const message = t('billing.trialBatchLocked');
+          if (Platform.OS === 'web') {
+            window.alert(`${title}\n\n${message}`);
+            navigation.goBack();
+          } else {
+            Alert.alert(title, message, [
+              { text: t('common.ok'), onPress: () => navigation.goBack() }
+            ]);
+          }
+          return;
+        }
       }
 
       // [TESTING] Daily limit disabled — re-enable for production

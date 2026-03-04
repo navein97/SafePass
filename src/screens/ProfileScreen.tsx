@@ -23,6 +23,7 @@ import { PerformanceChart } from '../components/PerformanceChart';
 import { MilestoneTracker } from '../components/MilestoneTracker';
 import { Building, BookOpen, UserPlus } from 'lucide-react-native';
 import { QuizAttempt } from '../types/models';
+import { SubscriptionService } from '../services/subscriptionService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SHIELD_SIZE = 120;
@@ -57,6 +58,7 @@ interface ProfileData {
   totalScore?: number;
   current_batch?: number;
   total_batches_completed?: number;
+  subscription_tier?: 'trial' | 'standard' | 'enterprise';
 }
 
 export const ProfileScreen = ({ navigation }: any) => {
@@ -201,13 +203,26 @@ export const ProfileScreen = ({ navigation }: any) => {
         manager_level: userProfile.manager_level,
         company_id: userProfile.company_id,
       });
-      if (userProfile.role === 'manager' && userProfile.manager_level === 1 && userProfile.company_id) {
-        const stats = await CompanySettingsService.getCompanyStats(userProfile.company_id);
+      if (userProfile.role === 'manager' && userProfile.company_id) {
+        const [stats, subDetails] = await Promise.all([
+            CompanySettingsService.getCompanyStats(userProfile.company_id),
+            SubscriptionService.getSubscriptionDetails(userProfile.company_id)
+        ]);
+
         console.log('[ProfileScreen] Master User Stats:', stats);
-        if (stats && stats.quota_drivers === 0) {
+        console.log('[ProfileScreen] Subscription Details:', subDetails);
+
+        if (stats && stats.quota_drivers === 0 && subDetails?.subscription_tier === 'trial') {
           setHasNoPlan(true);
         } else {
           setHasNoPlan(false);
+        }
+
+        if (subDetails) {
+            setProfile(prev => prev ? ({
+                ...prev,
+                subscription_tier: subDetails.subscription_tier as any
+            }) : prev);
         }
       }
 
@@ -410,32 +425,51 @@ export const ProfileScreen = ({ navigation }: any) => {
               <View style={styles.profileInfo}>
                 <Text style={styles.name}>{profile?.full_name || 'Driver'}</Text>
                 <Text style={styles.id}>{profile?.employee_id || 'EMP-001'}</Text>
-                <View style={styles.regionBadge}>
-                  <Text style={styles.regionText}>
-                    {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : profile?.region}
-                  </Text>
-                </View>
-                {isManager && (
-                  <View style={[
-                    styles.regionBadge,
-                    { 
-                      marginTop: 6,
-                      backgroundColor: profile?.managerLevel === 1
-                        ? 'rgba(225, 37, 124, 0.2)'
-                        : 'rgba(100, 149, 237, 0.2)',
-                      borderColor: profile?.managerLevel === 1
-                        ? 'rgba(225, 37, 124, 0.5)'
-                        : 'rgba(100, 149, 237, 0.5)',
-                    }
-                    ]}>
-                      <Text style={[
-                        styles.regionText,
-                        { color: profile?.managerLevel === 1 ? '#E1257C' : '#6495ED' }
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  <View style={styles.regionBadge}>
+                    <Text style={styles.regionText}>
+                      {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : profile?.region}
+                    </Text>
+                  </View>
+                  {isManager && (
+                    <View style={[
+                      styles.regionBadge,
+                      { 
+                        backgroundColor: profile?.managerLevel === 1
+                          ? 'rgba(225, 37, 124, 0.2)'
+                          : 'rgba(100, 149, 237, 0.2)',
+                        borderColor: profile?.managerLevel === 1
+                          ? 'rgba(225, 37, 124, 0.5)'
+                          : 'rgba(100, 149, 237, 0.5)',
+                      }
                       ]}>
-                        {profile?.managerLevel === 1 ? t('profile.roles.masterUser') : t('profile.roles.manager')}
-                      </Text>
-                    </View>
-                )}
+                        <Text style={[
+                          styles.regionText,
+                          { color: profile?.managerLevel === 1 ? '#E1257C' : '#6495ED' }
+                        ]}>
+                          {profile?.managerLevel === 1 ? t('profile.roles.masterUser') : t('profile.roles.manager')}
+                        </Text>
+                      </View>
+                  )}
+                  {isManager && profile?.subscription_tier && (
+                    <View style={[
+                      styles.regionBadge,
+                      { 
+                        backgroundColor: profile.subscription_tier === 'trial' ? 'rgba(158, 158, 158, 0.2)' : 'rgba(100, 255, 218, 0.15)',
+                        borderColor: profile.subscription_tier === 'trial' ? 'rgba(158, 158, 158, 0.5)' : 'rgba(100, 255, 218, 0.3)',
+                      }
+                      ]}>
+                        <Text style={[
+                          styles.regionText,
+                          { color: profile.subscription_tier === 'trial' ? '#9E9E9E' : '#64FFDA' }
+                        ]}>
+                          {profile.subscription_tier === 'trial' ? t('billing.tierTrial') :
+                           profile.subscription_tier === 'standard' ? t('billing.tierStandard') :
+                           t('billing.tierEnterprise')}
+                        </Text>
+                      </View>
+                  )}
+                </View>
               </View>
             </View>
           </GlassCard>
@@ -606,7 +640,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
                  {/* Manage Users Button - For all Managers */}
                  <TouchableOpacity style={styles.manageUsersButton} onPress={() => navigation.navigate('UserManagement')}>
-                    <UserPlus size={24} color={colors.text.inverse} />
+                    <UserPlus size={24} color="#FFFFFF" />
                     <Text style={styles.manageUsersText}>{t('profile.teamManagement')}</Text>
                  </TouchableOpacity>
 
@@ -1129,13 +1163,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     marginBottom: 20,
-    backgroundColor: colors.text.primary, // Black background
+    backgroundColor: colors.primary.DEFAULT,
     borderRadius: 12,
   },
   manageUsersText: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: colors.text.inverse, // White text
+    color: '#FFFFFF',
     marginLeft: 8,
   },
   companySettingsButton: {

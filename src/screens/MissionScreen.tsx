@@ -20,6 +20,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { typography } from '../theme/typography';
 import { Lock, CheckCircle, PlayCircle, AlertCircle, Target } from 'lucide-react-native';
+import { SubscriptionService } from '../services/subscriptionService';
 
 interface BatchStatus {
   batchNumber: number;
@@ -40,6 +41,7 @@ export function MissionScreen() {
   const [loading, setLoading] = useState(true);
   const [batchStatuses, setBatchStatuses] = useState<BatchStatus[]>([]);
   const [selectedMode, setSelectedMode] = useState<'live' | 'practice' | null>(null);
+  const [maxBatches, setMaxBatches] = useState(4); // 1 = trial, 4 = subscribed
   
   // Ref to track if it's the very first load to avoid spinner on subsequent visits
   const isFirstLoadRef = useRef(true);
@@ -82,6 +84,10 @@ export function MissionScreen() {
             navigation.navigate('ManagerQuickView' as never);
             return;
           }
+
+          // Check subscription level for trial gating
+          const batches = await SubscriptionService.getMaxBatches(profile.company_id);
+          if (isActive) setMaxBatches(batches);
 
           // 2. Fetch Batch Data Sequentially to prevent network hang
           // (Fetching 12 requests at once can freeze the network layer on mobile)
@@ -173,6 +179,23 @@ export function MissionScreen() {
     }
 
     if (canAccess && selectedMode) {
+      // Trial gating: block batches beyond maxBatches
+      if (batchNumber > maxBatches) {
+        const title = t('billing.upgradeRequired');
+        const message = t('billing.trialBatchLocked');
+        if (Platform.OS === 'web') {
+          const shouldUpgrade = window.confirm(`${title}\n\n${message}`);
+          if (shouldUpgrade) {
+            navigation.navigate('Billing' as never);
+          }
+        } else {
+          Alert.alert(title, message, [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('billing.upgrade'), onPress: () => navigation.navigate('Billing' as never) }
+          ]);
+        }
+        return;
+      }
       // @ts-ignore
       navigation.navigate('Quiz', { batchNumber, mode: selectedMode });
     }
@@ -247,9 +270,10 @@ export function MissionScreen() {
                     styles.batchCard,
                     !(batch.canAccess || selectedMode === 'practice') && styles.batchCardLocked,
                     batch.passed && styles.batchCardPassed,
+                    batch.batchNumber > maxBatches && { opacity: 0.5 },
                   ]}
                   onPress={() => handleBatchPress(batch.batchNumber, batch.canAccess || selectedMode === 'practice')}
-                  disabled={!(batch.canAccess || selectedMode === 'practice')}
+                  disabled={!(batch.canAccess || selectedMode === 'practice') && batch.batchNumber <= maxBatches}
                   activeOpacity={0.7}
                 >
                   <View style={styles.batchHeader}>
@@ -310,8 +334,13 @@ export function MissionScreen() {
                           </View>
                         )}
                       </>
-                    ) : (batch.canAccess || selectedMode === 'practice') ? (
+                    ) : (batch.canAccess || selectedMode === 'practice') && batch.batchNumber <= maxBatches ? (
                       <Text style={styles.notStartedText}>{t('mission.tapToStart')}</Text>
+                    ) : batch.batchNumber > maxBatches ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        <Lock size={16} color={colors.primary.DEFAULT} />
+                        <Text style={[styles.notStartedText, { color: colors.primary.DEFAULT }]}>{t('billing.upgradeToUnlock')}</Text>
+                      </View>
                     ) : (
                       <Text style={styles.lockedText}>
                         {t('mission.lockMessage', { number: batch.batchNumber - 1 })}

@@ -2,15 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, Check, CreditCard, Zap, Shield, Crown } from 'lucide-react-native';
+import { ChevronLeft, Check, CreditCard, Zap, Crown, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
-import { SubscriptionService, PACKAGES } from '../services/subscriptionService';
+import { SubscriptionService, PACKAGES, calculateAnnualCost } from '../services/subscriptionService';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export const BillingScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -21,6 +22,8 @@ export const BillingScreen = ({ navigation }: any) => {
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  const isOnTrial = !currentSubscription?.subscription_tier || currentSubscription?.subscription_tier === 'trial';
+
   useEffect(() => {
     loadData();
   }, []);
@@ -28,41 +31,25 @@ export const BillingScreen = ({ navigation }: any) => {
   // Try to create and link a company for the user if they don't have one
   const tryCreateCompany = async (profile: any): Promise<string | null> => {
     try {
-      // Only manager level 1 can auto-create a company
       if (profile.role !== 'manager' || profile.manager_level !== 1) {
-        console.log('[BillingScreen] Not a master manager, cannot auto-create company');
         return null;
       }
 
-      // Get company_name from auth metadata
       const { data: { user } } = await supabase.auth.getUser();
       const companyName = user?.user_metadata?.company_name;
-      if (!companyName) {
-        console.log('[BillingScreen] No company_name in auth metadata');
-        return null;
-      }
+      if (!companyName) return null;
 
-      console.log('[BillingScreen] Creating company:', companyName);
       const { data: companyId, error: companyError } = await supabase
         .rpc('register_workspace', { p_company_name: companyName });
 
-      if (companyError) {
-        console.error('[BillingScreen] Company creation error:', companyError);
-        return null;
-      }
+      if (companyError) return null;
 
-      console.log('[BillingScreen] Company created, linking user. ID:', companyId);
       const { error: linkError } = await supabase.rpc('link_user_to_company', {
         p_user_id: profile.id,
         p_company_id: companyId
       });
 
-      if (linkError) {
-        console.error('[BillingScreen] Link error:', linkError);
-        return null;
-      }
-
-      console.log('[BillingScreen] ✅ Company created and linked:', companyId);
+      if (linkError) return null;
       return companyId;
     } catch (err) {
       console.error('[BillingScreen] tryCreateCompany error:', err);
@@ -75,9 +62,7 @@ export const BillingScreen = ({ navigation }: any) => {
     try {
       let { profile } = await AuthService.getUserProfile();
       
-      // If no company_id, try to create the company directly
       if (profile && !profile.company_id) {
-        console.log('[BillingScreen] No company_id found, attempting to create company...');
         const newCompanyId = await tryCreateCompany(profile);
         if (newCompanyId) {
           profile.company_id = newCompanyId;
@@ -99,7 +84,8 @@ export const BillingScreen = ({ navigation }: any) => {
 
   const doCheckout = async (packageId: string, companyId: string) => {
     try {
-      const { url, error } = await SubscriptionService.createCheckoutSession(packageId, companyId);
+      const driverCount = currentSubscription?.quota_drivers || 1;
+      const { url, error } = await SubscriptionService.createCheckoutSession(packageId, companyId, driverCount);
       if (error) {
         if (Platform.OS === 'web') {
           window.alert(error);
@@ -131,10 +117,7 @@ export const BillingScreen = ({ navigation }: any) => {
 
   const proceedToCheckout = (packageId: string, companyId: string) => {
     if (Platform.OS === 'web') {
-      // Alert.alert doesn't work on web
-      const confirmed = window.confirm(
-        t('billing.upgradePrompt')
-      );
+      const confirmed = window.confirm(t('billing.upgradePrompt'));
       if (confirmed) {
         doCheckout(packageId, companyId);
       }
@@ -154,9 +137,7 @@ export const BillingScreen = ({ navigation }: any) => {
   };
 
   const handleUpgrade = async (packageId: string) => {
-    // If company_id is still missing, try to create it now
     if (!userProfile?.company_id) {
-      console.log('[BillingScreen] company_id missing on upgrade, trying to create company...');
       const newCompanyId = await tryCreateCompany(userProfile);
       if (newCompanyId) {
         const updatedProfile = { ...userProfile, company_id: newCompanyId };
@@ -176,9 +157,14 @@ export const BillingScreen = ({ navigation }: any) => {
     proceedToCheckout(packageId, userProfile.company_id);
   };
 
-  const renderPackage = (pkg: any) => {
-    const isCurrent = currentSubscription?.subscription_tier === pkg.id;
-    const Icon = pkg.id === 'starter' ? Zap : pkg.id === 'growth' ? Shield : Crown;
+  const renderPackage = (pkg: typeof PACKAGES[0], index: number) => {
+    const tier = currentSubscription?.subscription_tier?.toLowerCase();
+    const isCurrent = tier === pkg.id.toLowerCase() || 
+                     (pkg.id === 'standard' && tier === 'starter') ||
+                     (pkg.id === 'enterprise' && (tier === 'growth' || tier === 'pro'));
+    const isStandard = pkg.id === 'standard';
+    const exampleDrivers = isStandard ? 50 : 150;
+    const { total, freeManagers } = calculateAnnualCost(exampleDrivers);
     
     return (
       <GlassCard 
@@ -186,36 +172,67 @@ export const BillingScreen = ({ navigation }: any) => {
         style={[styles.packageCard, isCurrent && styles.currentPackageCard]}
         contentStyle={styles.packageCardContent}
       >
+        {/* Header */}
         <View style={styles.packageHeader}>
-          <View style={[styles.iconContainer, { backgroundColor: isCurrent ? colors.primary.DEFAULT : colors.background.subtle }]}>
-             <Icon size={24} color={isCurrent ? colors.text.inverse : colors.primary.DEFAULT} />
+          <View style={[styles.iconContainer, { backgroundColor: isStandard ? colors.primary.DEFAULT + '20' : '#7B2CBF20' }]}>
+             {isStandard 
+               ? <Zap size={24} color={colors.primary.DEFAULT} />
+               : <Crown size={24} color="#7B2CBF" />
+             }
           </View>
-          <View>
-            <Text style={styles.packageName}>{t('billing.' + pkg.id)}</Text>
-            {isCurrent && <Text style={styles.currentLabel}>{t('billing.currentPlan')}</Text>}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.packageName}>{pkg.name}</Text>
+            <Text style={styles.fleetRange}>{pkg.fleetRange} {t('billing.drivers')}</Text>
           </View>
+          {isCurrent && (
+            <View style={styles.currentBadge}>
+              <Check size={14} color="#64FFDA" />
+              <Text style={styles.currentBadgeText}>{t('billing.currentPlan')}</Text>
+            </View>
+          )}
         </View>
 
-        <Text style={styles.priceText}>{t('billing.' + pkg.id + 'Price')}</Text>
+        {/* Price */}
+        <View style={styles.priceRow}>
+          <Text style={styles.priceAmount}>RM {pkg.pricePerUser}</Text>
+          <Text style={styles.pricePer}>/ {t('billing.perDriverYear')}</Text>
+        </View>
 
+        {/* Features */}
         <View style={styles.featuresContainer}>
-           <View style={styles.featureRow}>
-             <Check size={16} color={colors.status.success} />
-            <Text style={styles.featureText}>{pkg.driverQuota} {t('billing.drivers')}</Text>
+          <View style={styles.featureRow}>
+            <Check size={16} color={colors.status.success} />
+            <Text style={styles.featureText}>{t('billing.allBatches')}</Text>
           </View>
           <View style={styles.featureRow}>
             <Check size={16} color={colors.status.success} />
-            <Text style={styles.featureText}>{pkg.managerQuota} {t('billing.managers')}</Text>
+            <Text style={styles.featureText}>{t('billing.freeManagerRatio', { ratio: pkg.freeManagerRatio })}</Text>
           </View>
           <View style={styles.featureRow}>
             <Check size={16} color={colors.status.success} />
             <Text style={styles.featureText}>{t('billing.analytics')}</Text>
           </View>
+          <View style={styles.featureRow}>
+            <Check size={16} color={colors.status.success} />
+            <Text style={styles.featureText}>{t('billing.annualBilling')}</Text>
+          </View>
         </View>
 
+        {/* Example calculation */}
+        <View style={styles.exampleBox}>
+          <Text style={styles.exampleTitle}>{t('billing.exampleCalc')}</Text>
+          <Text style={styles.exampleText}>
+            {exampleDrivers} {t('billing.drivers')} × RM {pkg.pricePerUser} = <Text style={{ fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT }}>RM {total.toLocaleString()}</Text>{t('billing.perYear')}
+          </Text>
+          <Text style={styles.exampleSubtext}>
+            + {freeManagers} {t('billing.freeManagers')}
+          </Text>
+        </View>
+
+        {/* CTA Button */}
         {!isCurrent && (
           <GlassButton 
-            title={t('billing.choosePlan')}
+            title={isOnTrial ? t('billing.upgradeToPlan', { plan: pkg.name }) : t('billing.switchToPlan', { plan: pkg.name })}
             onPress={() => handleUpgrade(pkg.id)}
             style={styles.selectButton}
           />
@@ -241,24 +258,55 @@ export const BillingScreen = ({ navigation }: any) => {
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.currentStats}>
-               <Text style={styles.sectionTitle}>{t('billing.currentUsage')}</Text>
-               <GlassCard style={styles.statsCard}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statVal}>{currentSubscription?.quota_drivers || 0}</Text>
-                    <Text style={styles.statLab}>{t('billing.driverQuota')}</Text>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statVal}>{currentSubscription?.quota_managers || 0}</Text>
-                    <Text style={styles.statLab}>{t('billing.managerQuota')}</Text>
-                  </View>
-               </GlassCard>
-            </View>
+            {/* Trial Banner */}
+            {isOnTrial && (
+              <LinearGradient
+                colors={[colors.primary.DEFAULT, '#7B2CBF'] as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.trialBanner}
+              >
+                <AlertCircle size={24} color="#FFFFFF" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.trialBannerTitle}>{t('billing.trialBannerTitle')}</Text>
+                  <Text style={styles.trialBannerText}>{t('billing.trialBannerText')}</Text>
+                </View>
+              </LinearGradient>
+            )}
 
+            {/* Current Status */}
+            <GlassCard style={styles.statusCard}>
+              <View style={styles.statusRow}>
+                <View style={styles.statusItem}>
+                  <Text style={styles.statusLabel}>{t('billing.plan')}</Text>
+                  <Text style={[styles.statusValue, isOnTrial && { color: colors.status.warning }]}>
+                    {isOnTrial 
+                      ? t('billing.tierTrial') 
+                      : (currentSubscription?.subscription_tier?.toLowerCase() === 'enterprise' 
+                          ? t('billing.tierEnterprise') 
+                          : t('billing.tierStandard'))}
+                  </Text>
+                </View>
+                <View style={styles.statusDivider} />
+                <View style={styles.statusItem}>
+                  <Text style={styles.statusLabel}>{t('billing.driverQuota')}</Text>
+                  <Text style={styles.statusValue}>
+                    {isOnTrial ? '3' : (currentSubscription?.quota_drivers || '∞')}
+                  </Text>
+                </View>
+                <View style={styles.statusDivider} />
+                <View style={styles.statusItem}>
+                  <Text style={styles.statusLabel}>{t('billing.batchAccess')}</Text>
+                  <Text style={styles.statusValue}>{isOnTrial ? '1/4' : '4/4'}</Text>
+                </View>
+              </View>
+            </GlassCard>
+
+            {/* Pricing Plans */}
             <Text style={styles.sectionTitle}>{t('billing.availablePlans')}</Text>
-            {PACKAGES.map(renderPackage)}
+            {PACKAGES.map((pkg, index) => renderPackage(pkg, index))}
             
+            {/* Secure payments notice */}
             <View style={styles.stripeNotice}>
                <CreditCard size={16} color={colors.text.tertiary} />
                <Text style={styles.stripeNoticeText}>{t('billing.securePayments')}</Text>
@@ -276,26 +324,134 @@ const createStyles = (colors: any) => StyleSheet.create({
   backButton: { padding: 8 },
   headerTitle: { fontSize: 20, fontFamily: typography.fonts.bold, color: colors.text.primary },
   content: { padding: 20, paddingBottom: 40 },
-  sectionTitle: { fontSize: 16, fontFamily: typography.fonts.bold, color: colors.text.primary, marginBottom: 16, marginTop: 10 },
-  currentStats: { marginBottom: 24 },
-  statsCard: { flexDirection: 'row', padding: 20, justifyContent: 'space-around', alignItems: 'center' },
-  statItem: { alignItems: 'center' },
-  statVal: { fontSize: 24, fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT },
-  statLab: { fontSize: 12, color: colors.text.secondary, marginTop: 4 },
-  divider: { width: 1, height: 40, backgroundColor: colors.border },
-  packageCard: { marginBottom: 16, borderLeftWidth: 0 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  
+  // Trial Banner
+  trialBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    gap: 12,
+    marginBottom: 16,
+  },
+  trialBannerTitle: {
+    fontSize: 15,
+    fontFamily: typography.fonts.bold,
+    color: '#FFFFFF',
+  },
+  trialBannerText: {
+    fontSize: 12,
+    fontFamily: typography.fonts.regular,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
+  },
+  
+  // Status Card
+  statusCard: {
+    marginBottom: 24,
+    padding: 20,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statusItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statusLabel: {
+    fontSize: 11,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  statusValue: {
+    fontSize: 20,
+    fontFamily: typography.fonts.bold,
+    color: colors.primary.DEFAULT,
+  },
+  statusDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: colors.border,
+  },
+  
+  // Section
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    marginBottom: 16,
+  },
+  
+  // Package Cards
+  packageCard: { marginBottom: 16 },
   currentPackageCard: { borderLeftWidth: 4, borderLeftColor: colors.primary.DEFAULT },
   packageCardContent: { padding: 20 },
   packageHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
-  iconContainer: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  packageName: { fontSize: 18, fontFamily: typography.fonts.bold, color: colors.text.primary },
-  currentLabel: { fontSize: 11, fontFamily: typography.fonts.medium, color: colors.primary.DEFAULT, marginTop: 2 },
-  priceText: { fontSize: 28, fontFamily: typography.fonts.bold, color: colors.text.primary, marginBottom: 16 },
-  featuresContainer: { gap: 10, marginBottom: 20 },
+  iconContainer: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  packageName: { fontSize: 20, fontFamily: typography.fonts.bold, color: colors.text.primary },
+  fleetRange: { fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, marginTop: 2 },
+  currentBadge: {
+    backgroundColor: colors.primary.DEFAULT + '20',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  currentBadgeText: {
+    fontSize: 11,
+    fontFamily: typography.fonts.bold,
+    color: colors.primary.DEFAULT,
+  },
+  
+  // Price
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 20, gap: 4 },
+  priceAmount: { fontSize: 32, fontFamily: typography.fonts.bold, color: colors.text.primary },
+  pricePer: { fontSize: 14, fontFamily: typography.fonts.regular, color: colors.text.secondary },
+  
+  // Features
+  featuresContainer: { gap: 10, marginBottom: 16 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  featureText: { fontSize: 14, color: colors.text.secondary },
-  selectButton: { marginTop: 10 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  featureText: { fontSize: 14, color: colors.text.secondary, fontFamily: typography.fonts.medium },
+  
+  // Example Box
+  exampleBox: {
+    backgroundColor: colors.background.subtle,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  exampleTitle: {
+    fontSize: 11,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  exampleText: {
+    fontSize: 14,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.primary,
+  },
+  exampleSubtext: {
+    fontSize: 12,
+    fontFamily: typography.fonts.regular,
+    color: colors.status.success,
+    marginTop: 4,
+  },
+  
+  // CTA
+  selectButton: { marginTop: 4 },
+  
+  // Stripe Notice
   stripeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, opacity: 0.6 },
-  stripeNoticeText: { fontSize: 12, color: colors.text.tertiary }
+  stripeNoticeText: { fontSize: 12, color: colors.text.tertiary },
 });

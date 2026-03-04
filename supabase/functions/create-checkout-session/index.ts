@@ -19,7 +19,7 @@ serve(async (req) => {
   }
 
   try {
-    const { packageId, companyId, returnUrl } = await req.json()
+    const { packageId, companyId, returnUrl, driverCount = 1 } = await req.json()
 
     if (!packageId || !companyId || !returnUrl) {
       return new Response(
@@ -28,12 +28,8 @@ serve(async (req) => {
       )
     }
 
-    // You should define these in your Stripe dashboard and pass them here, 
-    // or map them via environment variables. For now we use some mock logic
-    // but in a real app these must be real Stripe Price IDs.
     const priceMap: Record<string, string> = {
-      starter: Deno.env.get('STRIPE_PRICE_STARTER') || '',
-      growth: Deno.env.get('STRIPE_PRICE_GROWTH') || '',
+      standard: Deno.env.get('STRIPE_PRICE_STANDARD') || '',
       enterprise: Deno.env.get('STRIPE_PRICE_ENTERPRISE') || '',
     }
 
@@ -52,16 +48,17 @@ serve(async (req) => {
       line_items: [
         {
           price: priceId,
-          quantity: 1,
+          quantity: driverCount, // Number of licenses (drivers)
         },
       ],
-      mode: 'subscription', // or 'payment' for one-time
+      mode: 'subscription',
       success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnUrl}?cancel=true`,
       client_reference_id: companyId,
       metadata: {
         package_id: packageId,
-        company_id: companyId
+        company_id: companyId,
+        driver_count: driverCount.toString()
       }
     })
 

@@ -129,9 +129,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     } catch (error: any) {
         let errorMessage = error.message || t('user.errorCreate');
         
-        // Handle duplicate user error specifically
+        // Handle duplicate or quota errors specifically
         if (errorMessage.includes('already registered') || errorMessage.includes('duplicate')) {
-            errorMessage = t('user.errorDuplicate', 'A user with this Employee ID already exists.');
+            errorMessage = t('user.errorDuplicate');
+        } else if (errorMessage.toLowerCase().includes('quota exceeded')) {
+            errorMessage = role === 'manager' ? t('user.errorQuotaExceededManager') : t('user.errorQuotaExceeded');
         }
         
         setToastMessage(errorMessage);

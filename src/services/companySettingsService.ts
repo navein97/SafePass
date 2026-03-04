@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 
 export interface CompanyInfo {
     name: string;
-    logo_url: string | null;
+    logo_url?: string | null;
 }
 
 export interface CompanyStats {
