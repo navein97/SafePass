@@ -46,47 +46,29 @@ export const NotificationService = {
         }
 
         token = (await Notifications.getExpoPushTokenAsync()).data;
+
+        // Save token to Supabase profile
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase
+                    .from('profiles')
+                    .update({ expo_push_token: token })
+                    .eq('id', user.id);
+            }
+        } catch (error) {
+            console.error('Error saving push token to profile:', error);
+        }
+
         return token;
     },
 
     async scheduleWeeklyReminder() {
-        if (Platform.OS === 'web') {
-            // Web doesn't support scheduleNotificationAsync consistently locally
-            return;
+        // User requested to remove all existing scheduled notifications.
+        // We will clear them and not reschedule anything for now.
+        if (Platform.OS !== 'web') {
+            await Notifications.cancelAllScheduledNotificationsAsync();
         }
-
-        // Cancel existing to avoid duplicates
-        await Notifications.cancelAllScheduledNotificationsAsync();
-
-        // Schedule for Sunday 10:00 AM
-        await Notifications.scheduleNotificationAsync({
-            content: {
-                title: "Weekly Safety Quiz Due",
-                body: "Your mandatory safety quiz is due by tonight 11:59 PM.",
-                data: { screen: 'Quiz' },
-            },
-            trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-                weekday: 1, // Sunday
-                hour: 10,
-                minute: 0,
-            },
-        });
-
-        // Schedule for Monday 9:00 AM (New Quiz Available)
-        await Notifications.scheduleNotificationAsync({
-            content: {
-                title: "New Safety Quiz Available",
-                body: "A new set of safety questions is ready for you.",
-                data: { screen: 'Quiz' },
-            },
-            trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-                weekday: 2, // Monday
-                hour: 9,
-                minute: 0,
-            },
-        });
     },
 
     /**
@@ -107,6 +89,22 @@ export const NotificationService = {
                 });
 
             if (error) throw error;
+
+            // Trigger real push notification via Supabase Edge Function
+            try {
+                await supabase.functions.invoke('send-push-notification', {
+                    body: { 
+                        userId, 
+                        title, 
+                        body, 
+                        data 
+                    }
+                });
+            } catch (pushError) {
+                console.error('Push notification delivery error:', pushError);
+                // We don't throw here to ensure the in-app notification still shows as success
+            }
+
             return { success: true };
         } catch (error: any) {
             console.error('Send notification error:', error);

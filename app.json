@@ -26,6 +26,15 @@
     "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
+    "plugins": [
+        [
+          "expo-notifications",
+          {
+            "icon": "./assets/icon.png",
+            "color": "#6366f1"
+          }
+        ]
+    ],
     "scheme": "safepass",
     "web": {
       "favicon": "./assets/favicon.png"
