@@ -9,6 +9,7 @@ import { AuthService } from '../services/authService';
 import { QuizStorageService, SavedQuizProgress } from '../services/quizStorageService';
 import { Question } from '../types/models';
 import { Check, X, AlertCircle, ArrowLeft } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { SubscriptionService } from '../services/subscriptionService';
 
@@ -548,7 +549,14 @@ export const QuizScreen = ({ navigation, route }: any) => {
               <TouchableOpacity 
                 style={[styles.resumeButton, styles.resumeButtonPrimary]} 
                 onPress={restoreProgress}
+                activeOpacity={0.8}
               >
+                <LinearGradient
+                  colors={colors.gradients.primary as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+                />
                 <Text style={styles.resumeButtonTextPrimary}>
                   {t('quiz.resumeButton', { question: savedQuestion }) || `Resume from Q${savedQuestion}`}
                 </Text>
@@ -587,7 +595,14 @@ export const QuizScreen = ({ navigation, route }: any) => {
             <TouchableOpacity 
               style={[styles.resumeButton, styles.resumeButtonPrimary]} 
               onPress={() => setHasAnnouncedReview(true)}
+              activeOpacity={0.8}
             >
+              <LinearGradient
+                colors={colors.gradients.primary as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+              />
               <Text style={styles.resumeButtonTextPrimary}>
                 {t('common.continue') || 'Continue'}
               </Text>
@@ -808,7 +823,14 @@ export const QuizScreen = ({ navigation, route }: any) => {
               style={[styles.nextButton, nextTimer > 0 && { opacity: 0.5 }]} 
               onPress={handleNext}
               disabled={nextTimer > 0}
+              activeOpacity={0.8}
             >
+              <LinearGradient
+                colors={colors.gradients.primary as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+              />
               <Text style={styles.nextButtonText}>
                 {nextTimer > 0 ? `${t('common.wait', 'Wait...')} (${nextTimer}s)` :
                  currentIndex === sessionLimit - 1 ? t('quiz.finish') : t('common.next')}
@@ -1022,7 +1044,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingBottom: 30,
   },
   nextButton: {
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: 'transparent',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -1078,7 +1100,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: colors.primary.DEFAULT + '26', // 15% opacity
+    backgroundColor: 'rgba(225, 37, 124, 0.15)', // 15% opacity primary accent
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
@@ -1111,7 +1133,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
   },
   resumeButtonPrimary: {
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: 'transparent',
   },
   resumeButtonSecondary: {
     backgroundColor: 'transparent',

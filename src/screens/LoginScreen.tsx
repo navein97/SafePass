@@ -31,7 +31,7 @@ export const LoginScreen = ({ navigation }: any) => {
     setActiveLang(lang);
   };
   
-  const [companyName, setCompanyName] = useState('CNG Model Driver 360');
+  const [companyName, setCompanyName] = useState('CNG Driver 360');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -105,11 +105,10 @@ export const LoginScreen = ({ navigation }: any) => {
           >
             <View style={styles.header}>
               <Image 
-                source={companyLogo ? { uri: companyLogo } : require('../../assets/logo.png')} 
+                source={require('../../assets/logo.png')} 
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <Text style={styles.subtitle}>{t('auth.welcomeTo')} {companyName}</Text>
             </View>
 
             <View style={[styles.formCard, styles.solidCard]}>

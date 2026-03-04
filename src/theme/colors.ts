@@ -38,7 +38,7 @@ export const darkColors = {
     subtle: '#1A1A1A',
     card: '#141414',
     glass: 'rgba(20, 20, 20, 0.9)',
-    glassBorder: 'rgba(225, 37, 124, 0.2)',
+    glassBorder: 'rgba(255, 255, 255, 0.1)',
     white: '#FFFFFF',
   },
   text: {
@@ -48,8 +48,8 @@ export const darkColors = {
     inverse: '#FFFFFF',
     accent: '#E1257C',
   },
-  border: 'rgba(225, 37, 124, 0.3)',
-  input: 'rgba(255, 255, 255, 0.1)',
+  border: 'rgba(255, 255, 255, 0.1)',
+  input: 'rgba(255, 255, 255, 0.05)',
   overlay: 'rgba(0, 0, 0, 0.85)',
   gradients: {
     primary: ['#E1257C', '#7B2CBF'],
@@ -89,8 +89,8 @@ export const lightColors = {
     inverse: '#FFFFFF', // White text on pink/black
     accent: '#A11A58',  // Dark Pink for light mode readability
   },
-  border: 'rgba(0, 0, 0, 0.1)',
-  input: 'rgba(0, 0, 0, 0.05)',
+  border: 'rgba(0, 0, 0, 0.08)',
+  input: 'rgba(0, 0, 0, 0.04)',
   overlay: 'rgba(255, 255, 255, 0.85)',
   gradients: {
     primary: ['#E1257C', '#7B2CBF'],

@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import { AuthService } from '../services/authService';
 import { BatchService } from '../services/batchService';
 import { ExcelExportService } from '../services/excelExportService';
+import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { typography } from '../theme/typography';
 
@@ -172,9 +173,18 @@ export function BatchLeaderboardScreen({ navigation }: any) {
       {([1, 2, 3, 4] as BatchTab[]).map((batch) => (
         <TouchableOpacity
           key={batch}
-          style={[styles.tab, selectedBatch === batch && styles.tabActive]}
+          activeOpacity={0.8}
+          style={[styles.tab]}
           onPress={() => setSelectedBatch(batch)}
         >
+          {selectedBatch === batch ? (
+            <LinearGradient
+              colors={colors.gradients.primary as any}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+            />
+          ) : null}
           <Text style={[styles.tabText, selectedBatch === batch && styles.tabTextActive]}>
             {t('quiz.batchTitle', { number: batch })}
           </Text>
@@ -437,7 +447,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   exportButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: '#000000',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,

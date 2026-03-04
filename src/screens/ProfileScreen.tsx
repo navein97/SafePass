@@ -633,7 +633,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                {/* Level 1 Specific: Company Settings */}
                {profile?.managerLevel === 1 && (
                   <TouchableOpacity style={styles.companySettingsButton} onPress={() => setShowCompanySettings(true)}>
-                     <Building size={24} color={colors.primary.DEFAULT} />
+                     <Building size={24} color="#000000" />
                      <Text style={styles.companySettingsText}>{t('profile.companySettings')}</Text>
                   </TouchableOpacity>
                )}
@@ -1163,7 +1163,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     marginBottom: 20,
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: '#000000',
     borderRadius: 12,
   },
   manageUsersText: {
@@ -1178,16 +1178,15 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     marginBottom: 12,
-    backgroundColor: colors.background.subtle,
+    backgroundColor: 'transparent',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.primary.DEFAULT,
-    borderStyle: 'dashed',
+    borderWidth: 1.5,
+    borderColor: '#000000',
   },
   companySettingsText: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: colors.primary.DEFAULT,
+    color: '#000000',
     marginLeft: 8,
   },
   sliderContainer: {
