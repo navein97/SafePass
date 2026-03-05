@@ -1,5 +1,6 @@
--- SafePass Database Schema for Supabase
+-- Driver 360 Database Schema for Supabase
 -- Run this in Supabase SQL Editor after project creation
+-- SAFE TO RE-RUN: All statements are idempotent
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -7,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================
 -- 1. USERS TABLE (extends Supabase auth.users)
 -- ============================================
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT NOT NULL,
@@ -22,7 +23,7 @@ CREATE TABLE public.profiles (
 -- ============================================
 -- 2. QUESTIONS TABLE
 -- ============================================
-CREATE TABLE public.questions (
+CREATE TABLE IF NOT EXISTS public.questions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   text TEXT NOT NULL,
   options JSONB NOT NULL, -- Array of answer options
@@ -37,7 +38,7 @@ CREATE TABLE public.questions (
 -- ============================================
 -- 3. QUIZ ATTEMPTS TABLE
 -- ============================================
-CREATE TABLE public.quiz_attempts (
+CREATE TABLE IF NOT EXISTS public.quiz_attempts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   score INTEGER NOT NULL CHECK (score >= 0 AND score <= 100),
@@ -51,7 +52,7 @@ CREATE TABLE public.quiz_attempts (
 -- ============================================
 -- 4. COMPLIANCE LOGS TABLE (Tamper-Proof)
 -- ============================================
-CREATE TABLE public.compliance_logs (
+CREATE TABLE IF NOT EXISTS public.compliance_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   week_number INTEGER NOT NULL,
@@ -67,13 +68,13 @@ CREATE TABLE public.compliance_logs (
 -- ============================================
 -- 5. INDEXES for Performance
 -- ============================================
-CREATE INDEX idx_profiles_employee_id ON public.profiles(employee_id);
-CREATE INDEX idx_profiles_region ON public.profiles(region);
-CREATE INDEX idx_questions_regions ON public.questions USING GIN(regions);
-CREATE INDEX idx_quiz_attempts_user_id ON public.quiz_attempts(user_id);
-CREATE INDEX idx_quiz_attempts_date ON public.quiz_attempts(week_number, year);
-CREATE INDEX idx_compliance_logs_user_id ON public.compliance_logs(user_id);
-CREATE INDEX idx_compliance_logs_date ON public.compliance_logs(week_number, year);
+CREATE INDEX IF NOT EXISTS idx_profiles_employee_id ON public.profiles(employee_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_region ON public.profiles(region);
+CREATE INDEX IF NOT EXISTS idx_questions_regions ON public.questions USING GIN(regions);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_id ON public.quiz_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_date ON public.quiz_attempts(week_number, year);
+CREATE INDEX IF NOT EXISTS idx_compliance_logs_user_id ON public.compliance_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_logs_date ON public.compliance_logs(week_number, year);
 
 -- ============================================
 -- 6. ROW LEVEL SECURITY (RLS) POLICIES
@@ -86,16 +87,19 @@ ALTER TABLE public.quiz_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.compliance_logs ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: Users can read their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" 
   ON public.profiles FOR SELECT 
   USING (auth.uid() = id);
 
 -- Profiles: Users can update their own profile
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" 
   ON public.profiles FOR UPDATE 
   USING (auth.uid() = id);
 
 -- Profiles: Managers and admins can view all profiles
+DROP POLICY IF EXISTS "Managers can view all profiles" ON public.profiles;
 CREATE POLICY "Managers can view all profiles" 
   ON public.profiles FOR SELECT 
   USING (
@@ -106,6 +110,7 @@ CREATE POLICY "Managers can view all profiles"
   );
 
 -- Questions: Everyone can read questions for their region
+DROP POLICY IF EXISTS "Users can view questions for their region" ON public.questions;
 CREATE POLICY "Users can view questions for their region" 
   ON public.questions FOR SELECT 
   USING (
@@ -117,6 +122,7 @@ CREATE POLICY "Users can view questions for their region"
   );
 
 -- Questions: Only admins can insert/update/delete questions
+DROP POLICY IF EXISTS "Admins can manage questions" ON public.questions;
 CREATE POLICY "Admins can manage questions" 
   ON public.questions FOR ALL 
   USING (
@@ -127,16 +133,19 @@ CREATE POLICY "Admins can manage questions"
   );
 
 -- Quiz Attempts: Users can insert their own attempts
+DROP POLICY IF EXISTS "Users can create own quiz attempts" ON public.quiz_attempts;
 CREATE POLICY "Users can create own quiz attempts" 
   ON public.quiz_attempts FOR INSERT 
   WITH CHECK (auth.uid() = user_id);
 
 -- Quiz Attempts: Users can view their own attempts
+DROP POLICY IF EXISTS "Users can view own quiz attempts" ON public.quiz_attempts;
 CREATE POLICY "Users can view own quiz attempts" 
   ON public.quiz_attempts FOR SELECT 
   USING (auth.uid() = user_id);
 
 -- Quiz Attempts: Managers can view all attempts
+DROP POLICY IF EXISTS "Managers can view all quiz attempts" ON public.quiz_attempts;
 CREATE POLICY "Managers can view all quiz attempts" 
   ON public.quiz_attempts FOR SELECT 
   USING (
@@ -147,16 +156,19 @@ CREATE POLICY "Managers can view all quiz attempts"
   );
 
 -- Compliance Logs: Users can insert their own logs
+DROP POLICY IF EXISTS "Users can create own compliance logs" ON public.compliance_logs;
 CREATE POLICY "Users can create own compliance logs" 
   ON public.compliance_logs FOR INSERT 
   WITH CHECK (auth.uid() = user_id);
 
 -- Compliance Logs: Users can view their own logs
+DROP POLICY IF EXISTS "Users can view own compliance logs" ON public.compliance_logs;
 CREATE POLICY "Users can view own compliance logs" 
   ON public.compliance_logs FOR SELECT 
   USING (auth.uid() = user_id);
 
 -- Compliance Logs: Managers can view all logs
+DROP POLICY IF EXISTS "Managers can view all compliance logs" ON public.compliance_logs;
 CREATE POLICY "Managers can view all compliance logs" 
   ON public.compliance_logs FOR SELECT 
   USING (
@@ -180,11 +192,13 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger for profiles
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at 
   BEFORE UPDATE ON public.profiles 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger for questions
+DROP TRIGGER IF EXISTS update_questions_updated_at ON public.questions;
 CREATE TRIGGER update_questions_updated_at 
   BEFORE UPDATE ON public.questions 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -206,12 +220,14 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to auto-create profile on signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
 -- 8. SEED DATA - Sample Questions
+-- (Uses ON CONFLICT to avoid duplicates)
 -- ============================================
 
 -- Malaysian Questions
@@ -249,7 +265,8 @@ INSERT INTO public.questions (text, options, correct_option_index, explanation, 
  1, 
  'The legal BAC limit in Malaysia was reduced to 0.05% (50mg/100ml blood) in 2020.', 
  ARRAY['MY'], 
- 'Safety');
+ 'Safety')
+ON CONFLICT DO NOTHING;
 
 -- Portuguese Questions
 INSERT INTO public.questions (text, options, correct_option_index, explanation, regions, category) VALUES
@@ -286,7 +303,8 @@ INSERT INTO public.questions (text, options, correct_option_index, explanation, 
  1, 
  'É obrigatório usar o colete refletor sempre que sair do veículo na autoestrada ou vias equiparadas, de dia ou de noite.', 
  ARRAY['PT'], 
- 'Segurança');
+ 'Segurança')
+ON CONFLICT DO NOTHING;
 
 -- ============================================
 -- SETUP COMPLETE!

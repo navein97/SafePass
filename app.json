@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "SafePass",
-    "slug": "SafePass",
+    "name": "Driver 360",
+    "slug": "driver-360",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -35,7 +35,7 @@
           }
         ]
     ],
-    "scheme": "safepass",
+    "scheme": "driver360",
     "web": {
       "favicon": "./assets/favicon.png"
     },

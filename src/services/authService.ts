@@ -28,7 +28,7 @@ export const AuthService = {
         try {
             // Generate dummy email if none provided
             const normalizedId = data.employeeId.trim().toLowerCase();
-            const email = data.email?.trim().toLowerCase() || `${normalizedId}@safepass.internal`;
+            const email = data.email?.trim().toLowerCase() || `${normalizedId}@driver360.internal`;
 
             // IF LOGGED IN (e.g. Master User creating a driver):
             // Use the secure RPC instead of public signUp. This prevents "500 Internal Server Errors"
@@ -38,7 +38,7 @@ export const AuthService = {
             if (sessionData.session) {
                 // Always normalize employee ID to lowercase+trimmed to ensure login will always match
                 const normalizedEmployeeId = data.employeeId.trim().toLowerCase();
-                const normalizedEmail = data.email?.trim().toLowerCase() || `${normalizedEmployeeId}@safepass.internal`;
+                const normalizedEmail = data.email?.trim().toLowerCase() || `${normalizedEmployeeId}@driver360.internal`;
                 
                 const result = await supabase.rpc('create_company_user', {
                     p_email: normalizedEmail,
@@ -65,8 +65,8 @@ export const AuthService = {
 
             // IF NOT LOGGED IN (e.g. completely new Master user registering a workspace)
             const redirectUrl = Platform.OS === 'web'
-                ? 'https://safepass-kappa.vercel.app/auth/callback'
-                : 'safepass://auth/callback';
+                ? 'https://driver360-kappa.vercel.app/auth/callback'
+                : 'driver360://auth/callback';
 
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: email,
@@ -107,7 +107,7 @@ export const AuthService = {
             const normalizedInput = data.employeeId.trim();
             const email = normalizedInput.includes('@')
                 ? normalizedInput.toLowerCase()
-                : `${normalizedInput.toLowerCase()}@safepass.internal`;
+                : `${normalizedInput.toLowerCase()}@driver360.internal`;
 
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: email,
@@ -300,8 +300,8 @@ export const AuthService = {
     async resetPassword(email: string) {
         try {
             const redirectUrl = Platform.OS === 'web'
-                ? 'https://safepass-kappa.vercel.app/reset-password'
-                : 'safepass://reset-password';
+                ? 'https://driver360-kappa.vercel.app/reset-password'
+                : 'driver360://reset-password';
 
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: redirectUrl,

@@ -26,7 +26,7 @@ BEGIN
         ) VALUES (
             v_user_id,
             '00000000-0000-0000-0000-000000000000',
-            'test_driver_999@safepass.internal',
+            'test_driver_999@driver360.internal',
             'dummy_password_hash',
             now(),
             '{"provider":"email","providers":["email"]}',

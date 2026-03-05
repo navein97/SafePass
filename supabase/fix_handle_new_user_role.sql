@@ -11,7 +11,7 @@ ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
 -- Step 2: Update existing records to have email (if any exist without it)
 -- This populates email based on employee_id for existing users
 UPDATE public.profiles 
-SET email = LOWER(employee_id) || '@safepass.internal'
+SET email = LOWER(employee_id) || '@driver360.internal'
 WHERE email IS NULL;
 
 -- Step 3: Make email NOT NULL after populating existing records

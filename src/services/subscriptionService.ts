@@ -96,7 +96,7 @@ export const SubscriptionService = {
     async createCheckoutSession(packageId: string, companyId: string, driverCount: number = 1) {
         const returnUrl = Platform.OS === 'web'
             ? `${window.location.origin}/billing`
-            : 'https://safepass.app/billing';
+            : 'https://driver360.app/billing';
 
         const { data, error } = await supabase.functions.invoke('create-checkout-session', {
             body: { packageId, companyId, driverCount, returnUrl }

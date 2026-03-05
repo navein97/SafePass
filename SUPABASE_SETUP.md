@@ -1,4 +1,4 @@
-# Supabase Setup Guide for SafePass
+# Supabase Setup Guide for Driver 360
 
 ## Step 1: Create Supabase Account
 
@@ -11,7 +11,7 @@
 
 1. Click "New Project"
 2. Fill in:
-   - **Name:** SafePass
+   - **Name:** Driver 360
    - **Database Password:** (choose a strong password - SAVE THIS!)
    - **Region:** Choose closest to your users (e.g., Southeast Asia)
    - **Pricing Plan:** Free (sufficient for development and small deployments)

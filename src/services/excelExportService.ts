@@ -16,7 +16,7 @@ export const ExcelExportService = {
 
             // Generate filename
             const timestamp = new Date().toISOString().split('T')[0];
-            const filename = `SafePass_Report_${timestamp}.xlsx`;
+            const filename = `Driver360_Report_${timestamp}.xlsx`;
 
             // Write file
             XLSX.writeFile(wb, filename);

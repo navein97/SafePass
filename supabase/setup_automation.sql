@@ -87,7 +87,7 @@ CREATE TRIGGER on_streak_update_automation
 
 -- Insert a "Welcome" notification for ALL users who don't have one yet
 INSERT INTO public.notifications (user_id, title, message, type)
-SELECT id, 'Welcome to SafePass', 'Welcome! Check your dashboard for the latest safety missions.', 'system'
+SELECT id, 'Welcome to Driver 360', 'Welcome! Check your dashboard for the latest safety missions.', 'system'
 FROM public.profiles
 WHERE NOT EXISTS (
     SELECT 1 FROM public.notifications WHERE user_id = public.profiles.id
@@ -96,7 +96,7 @@ WHERE NOT EXISTS (
 -- Insert a default "System" post from the first admin/manager (or random user if none)
 -- (We'll just map it to the first user found to ensure it shows up)
 INSERT INTO public.posts (user_id, content, likes_count, created_at)
-SELECT id, 'Welcome to the new SafePass Social Feed! 🚀 Share your safety achievements here.', 10, NOW()
+SELECT id, 'Welcome to the new Driver 360 Social Feed! 🚀 Share your safety achievements here.', 10, NOW()
 FROM public.profiles
 ORDER BY created_at ASC
 LIMIT 1

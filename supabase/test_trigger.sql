@@ -7,9 +7,9 @@ BEGIN
     id, email, full_name, employee_id, region, role, manager_level, company_id, age, vehicle_type, phone_number, designation, address
   ) VALUES (
     '00000000-0000-0000-0000-000000000000'::uuid,
-    'test@safepass.internal',
+    'test@driver360.internal',
     COALESCE(v_meta->>'full_name', 'New User'),
-    COALESCE(v_meta->>'employee_id', split_part('test@safepass.internal', '@', 1)),
+    COALESCE(v_meta->>'employee_id', split_part('test@driver360.internal', '@', 1)),
     COALESCE(v_meta->>'region', 'MY'),
     COALESCE(v_meta->>'role', 'driver'),
     CASE WHEN v_meta->>'manager_level' IS NOT NULL AND v_meta->>'manager_level' ~ '^\d+$' THEN (v_meta->>'manager_level')::int ELSE NULL END,
