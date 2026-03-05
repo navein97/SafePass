@@ -1,8 +1,11 @@
 {
   "expo": {
     "name": "Driver 360",
-    "slug": "driver-360",
+    "slug": "SafePass",
     "version": "1.0.0",
+    "cli": {
+      "appVersionSource": "version"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,19 +24,19 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-      "backgroundColor": "#FFFFFF"
-    },
-    "edgeToEdgeEnabled": true,
+        "backgroundColor": "#FFFFFF"
+      },
+      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
-        [
-          "expo-notifications",
-          {
-            "icon": "./assets/icon.png",
-            "color": "#6366f1"
-          }
-        ]
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6366f1"
+        }
+      ]
     ],
     "scheme": "driver360",
     "web": {
@@ -43,6 +46,7 @@
       "eas": {
         "projectId": "4fb9a327-8554-4cfb-9e27-4daa7855e8d9"
       }
-    }
+    },
+    "owner": "navein97"
   }
 }
