@@ -633,14 +633,14 @@ export const ProfileScreen = ({ navigation }: any) => {
                {/* Level 1 Specific: Company Settings */}
                {profile?.managerLevel === 1 && (
                   <TouchableOpacity style={styles.companySettingsButton} onPress={() => setShowCompanySettings(true)}>
-                     <Building size={24} color="#000000" />
+                     <Building size={24} color={colors.text.primary} />
                      <Text style={styles.companySettingsText}>{t('profile.companySettings')}</Text>
                   </TouchableOpacity>
                )}
 
                  {/* Manage Users Button - For all Managers */}
                  <TouchableOpacity style={styles.manageUsersButton} onPress={() => navigation.navigate('UserManagement')}>
-                    <UserPlus size={24} color="#FFFFFF" />
+                    <UserPlus size={24} color={colors.mode === 'light' ? '#FFFFFF' : '#000000'} />
                     <Text style={styles.manageUsersText}>{t('profile.teamManagement')}</Text>
                  </TouchableOpacity>
 
@@ -1163,13 +1163,13 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     marginBottom: 20,
-    backgroundColor: '#000000',
+    backgroundColor: colors.text.primary,
     borderRadius: 12,
   },
   manageUsersText: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: '#FFFFFF',
+    color: colors.mode === 'light' ? '#FFFFFF' : '#000000',
     marginLeft: 8,
   },
   companySettingsButton: {
@@ -1181,12 +1181,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#000000',
+    borderColor: colors.text.primary,
   },
   companySettingsText: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: '#000000',
+    color: colors.text.primary,
     marginLeft: 8,
   },
   sliderContainer: {

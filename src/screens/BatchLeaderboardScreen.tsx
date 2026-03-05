@@ -333,10 +333,10 @@ export function BatchLeaderboardScreen({ navigation }: any) {
               disabled={exportingExcel}
             >
               {exportingExcel ? (
-                <ActivityIndicator size="small" color="#FFF" />
+                <ActivityIndicator size="small" color={colors.mode === 'light' ? '#FFF' : '#000'} />
               ) : (
                 <>
-                  <Download size={18} color="#FFF" />
+                  <Download size={18} color={colors.mode === 'light' ? '#FFF' : '#000'} />
                   <Text style={styles.exportButtonText}>{t('leaderboard.export')}</Text>
                 </>
               )}
@@ -447,7 +447,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   exportButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: colors.text.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -456,7 +456,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   exportButtonText: {
     fontSize: 14,
     fontFamily: typography.fonts.bold,
-    color: '#FFF',
+    color: colors.mode === 'light' ? '#FFFFFF' : '#000000',
   },
   tabsContainer: {
     flexDirection: 'row',
