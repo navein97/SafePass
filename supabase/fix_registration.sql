@@ -15,7 +15,7 @@ DECLARE
 BEGIN
     -- Create the company
     INSERT INTO public.companies (name, quota_drivers, quota_managers, subscription_tier)
-    VALUES (p_company_name, 0, 1, 'basic')
+    VALUES (p_company_name, 3, 1, 'trial')
     RETURNING id INTO v_company_id;
 
     RETURN v_company_id;

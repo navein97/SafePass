@@ -6,9 +6,9 @@
 CREATE TABLE IF NOT EXISTS public.companies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
-  quota_managers INTEGER DEFAULT 0,
-  quota_drivers INTEGER DEFAULT 0,
-  subscription_tier TEXT DEFAULT 'basic', -- 'basic', 'pro', 'enterprise'
+  quota_managers INTEGER DEFAULT 1,
+  quota_drivers INTEGER DEFAULT 3,
+  subscription_tier TEXT DEFAULT 'trial', -- 'trial', 'standard', 'enterprise'
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -26,6 +26,7 @@ BEGIN
 END $$;
 
 -- Step 3: NOW create policies that reference profiles.company_id
+DROP POLICY IF EXISTS "Users can view own company" ON public.companies;
 CREATE POLICY "Users can view own company" 
   ON public.companies FOR SELECT 
   USING (
@@ -34,6 +35,7 @@ CREATE POLICY "Users can view own company"
     )
   );
 
+DROP POLICY IF EXISTS "Level 1 Managers can update own company" ON public.companies;
 CREATE POLICY "Level 1 Managers can update own company" 
   ON public.companies FOR UPDATE
   USING (
@@ -48,6 +50,7 @@ CREATE POLICY "Level 1 Managers can update own company"
 
 -- Step 4: Update profiles policies to support multi-tenancy
 DROP POLICY IF EXISTS "Managers can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Managers can view all profiles in company" ON public.profiles;
 CREATE POLICY "Managers can view all profiles in company" 
   ON public.profiles FOR SELECT 
   USING (

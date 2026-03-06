@@ -212,7 +212,7 @@ export const ProfileScreen = ({ navigation }: any) => {
         console.log('[ProfileScreen] Master User Stats:', stats);
         console.log('[ProfileScreen] Subscription Details:', subDetails);
 
-        if (stats && stats.quota_drivers === 0 && subDetails?.subscription_tier === 'trial') {
+        if (subDetails?.subscription_tier === 'trial') {
           setHasNoPlan(true);
         } else {
           setHasNoPlan(false);
