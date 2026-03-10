@@ -12,6 +12,7 @@ export interface SignUpData {
     vehicle_type?: string;
     phone_number?: string;
     companyId?: string;
+    isPublic?: boolean; // NEW: Flag to force public signup
     [key: string]: any;
 }
 
@@ -33,9 +34,10 @@ export const AuthService = {
             // IF LOGGED IN (e.g. Master User creating a driver):
             // Use the secure RPC instead of public signUp. This prevents "500 Internal Server Errors"
             // that happen when hitting Supabase's public rate limits or trying to sign up while already signed in.
+            // UNLESS it's explicitly a public register (isPublic: true)
             const { data: sessionData } = await supabase.auth.getSession();
 
-            if (sessionData.session) {
+            if (!data.isPublic && sessionData.session) {
                 // Always normalize employee ID to lowercase+trimmed to ensure login will always match
                 const normalizedEmployeeId = data.employeeId.trim().toLowerCase();
                 const normalizedEmail = data.email?.trim().toLowerCase() || `${normalizedEmployeeId}@driver360.internal`;

@@ -19,6 +19,7 @@ export const WorkspaceService = {
                 ...data,
                 role: 'manager',
                 manager_level: 1,
+                isPublic: true,
                 company_name: data.companyName, // Stored in metadata for later
             });
 
