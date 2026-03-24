@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar, KeyboardAvoidingView, ScrollView, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Mail, Lock, User, Building, ArrowLeft, CheckCircle, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, User, Building, ArrowLeft, CheckCircle, Eye, EyeOff, Phone } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -29,13 +30,13 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false); // SUCCESS state
-  const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirmPassword: '', companyName: '', general: '' });
+  const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirmPassword: '', companyName: '', phoneNumber: '', general: '' });
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
     let isValid = true;
-    const newErrors = { fullName: '', email: '', password: '', confirmPassword: '', companyName: '', general: '' };
+    const newErrors = { fullName: '', email: '', password: '', confirmPassword: '', companyName: '', phoneNumber: '', general: '' };
 
     if (!fullName.trim()) {
       newErrors.fullName = t('auth.fullNameRequired', 'Full Name is required');
@@ -55,6 +56,10 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
     }
     if (!companyName.trim()) {
       newErrors.companyName = t('auth.companyNameRequired', 'Company Name is required');
+      isValid = false;
+    }
+    if (!phoneNumber.trim()) {
+      newErrors.phoneNumber = t('auth.phoneRequired', 'Phone number is required');
       isValid = false;
     }
 
@@ -77,6 +82,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
         email,
         password,
         companyName,
+        phone_number: phoneNumber,
         employeeId: email.split('@')[0],
         region: 'MY',
         data_retention_agreed: agreedToRetention,
@@ -195,6 +201,16 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   keyboardType="email-address"
                   error={errors.email}
                   leftIcon={<Mail size={20} color={colors.text.secondary} />}
+                />
+
+                <GlassInput
+                  label={t('auth.phone', 'Phone Number')}
+                  placeholder="+1234567890"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                  error={errors.phoneNumber}
+                  leftIcon={<Phone size={20} color={colors.text.secondary} />}
                 />
 
                 <GlassInput

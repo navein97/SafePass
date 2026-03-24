@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -184,6 +184,18 @@ export const LoginScreen = ({ navigation }: any) => {
                       onPress={() => navigation.navigate('RegisterWorkspace')}
                     >
                       {t('auth.registerWorkspace', 'Register Your Company')}
+                    </Text>
+                  </Text>
+                </View>
+
+                <View style={[styles.linkButton, { marginTop: 12 }]}>
+                  <Text style={styles.linkText}>
+                    Need help?{' '}
+                    <Text 
+                      style={styles.linkTextBold}
+                      onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20am%20having%20trouble%20logging%20into%20SafePass.')}
+                    >
+                      Contact Support (WhatsApp)
                     </Text>
                   </Text>
                 </View>

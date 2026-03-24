@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Crown, UserCheck, Car, HelpCircle, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Crown, UserCheck, Car, HelpCircle, ChevronRight, MessageCircle } from 'lucide-react-native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
+import { GlassButton } from '../components/ui/GlassButton';
 import { AuthService } from '../services/authService';
 
 export const HelpCenterScreen = ({ navigation }: any) => {
@@ -140,6 +141,12 @@ export const HelpCenterScreen = ({ navigation }: any) => {
           ))}
 
           <View style={styles.footer}>
+            <GlassButton
+              title="Contact Support on WhatsApp"
+              onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20am%20from%20Driver%20360%20and%20need%20help.')}
+              icon={<MessageCircle size={20} color="#FFF" />}
+              style={{ width: '100%', marginBottom: 16 }}
+            />
             <Text style={styles.footerText}>
               {t('help.footer')}
             </Text>

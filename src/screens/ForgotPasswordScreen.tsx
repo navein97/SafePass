@@ -48,9 +48,13 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
     return isValid;
   };
 
+  const isRequesting = React.useRef(false);
+
   const handleResetPassword = async () => {
+    if (isRequesting.current) return;
     if (!validateForm()) return;
 
+    isRequesting.current = true;
     setLoading(true);
     setErrors({ email: '', general: '' });
 
@@ -71,6 +75,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
         general: t('auth.unexpectedError') 
       }));
     } finally {
+      isRequesting.current = false;
       setLoading(false);
     }
   };
