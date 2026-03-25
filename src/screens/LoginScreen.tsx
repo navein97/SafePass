@@ -193,7 +193,7 @@ export const LoginScreen = ({ navigation }: any) => {
                     Need help?{' '}
                     <Text 
                       style={styles.linkTextBold}
-                      onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20am%20having%20trouble%20logging%20into%20SafePass.')}
+                      onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20am%20having%20trouble%20logging%20into%20Driver%20360.')}
                     >
                       Contact Support (WhatsApp)
                     </Text>
