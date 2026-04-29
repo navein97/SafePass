@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { Shield, LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp, CreditCard, HelpCircle } from 'lucide-react-native';
+import { LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp, CreditCard, HelpCircle } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { BatchService } from '../services/batchService';
@@ -26,10 +26,7 @@ import { QuizAttempt } from '../types/models';
 import { SubscriptionService } from '../services/subscriptionService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SHIELD_SIZE = 120;
-const SHIELD_STROKE_WIDTH = 10;
-const SHIELD_RADIUS = (SHIELD_SIZE - SHIELD_STROKE_WIDTH) / 2;
-const SHIELD_CIRCUMFERENCE = 2 * Math.PI * SHIELD_RADIUS;
+
 
 interface ProfileData {
   id: string;
@@ -39,7 +36,7 @@ interface ProfileData {
   safety_index?: number;
   streak?: number;
   multiplier?: number;
-  shieldHealth?: number;
+
   role?: 'staff' | 'manager';
   age?: string;
   vehicleType?: string;
@@ -108,7 +105,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   const isManager = profile?.role === 'manager';
   const streakWeeks = profile?.streak || 0;
-  const shieldHealth = profile?.shieldHealth || 100; // Percentage
+
 
   useEffect(() => {
     // Load immediately on mount
@@ -147,7 +144,7 @@ export const ProfileScreen = ({ navigation }: any) => {
       setProfile({
         ...userProfile,
         streak: userProfile.streak || 0,
-        shieldHealth: userProfile.shield_health || 100,
+
         managerLevel: userProfile.manager_level,
         operationalEffectiveness: userProfile.component_scores?.operation || 0,
         operationalDiscipline: userProfile.component_scores?.discipline || 0,
@@ -365,8 +362,6 @@ export const ProfileScreen = ({ navigation }: any) => {
       );
     }
   };
-
-  const shieldProgress = (shieldHealth / 100) * SHIELD_CIRCUMFERENCE;
 
   if (loading) {
     return (
@@ -655,83 +650,6 @@ export const ProfileScreen = ({ navigation }: any) => {
                     </TouchableOpacity>
                  )}
 
-
-
-               {/* Team Quiz Settings - HIDDEN per user request */}
-               {/* <TouchableOpacity 
-                    style={{ 
-                        flexDirection: 'row', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between', 
-                        marginTop: 24,
-                        marginBottom: showTeamSettings ? 16 : 0, 
-                        padding: 16, 
-                        backgroundColor: colors.background.subtle, 
-                        borderRadius: 12,
-                    }}
-                    onPress={() => setShowTeamSettings(!showTeamSettings)}
-                 >
-                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <Settings size={20} color={colors.primary.DEFAULT} />
-                        <Text style={{ fontSize: 16, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
-                            {t('profile.settings')}
-                        </Text>
-                     </View>
-                     {showTeamSettings ? <ChevronUp size={20} color={colors.text.secondary} /> : <ChevronDown size={20} color={colors.text.secondary} />}
-                 </TouchableOpacity>
-
-                 {showTeamSettings && (
-                    <View>
-                        <View style={styles.sliderContainer}>
-                            <View style={styles.sliderLabelContainer}>
-                            <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>{t('profile.questionsCount')} (Fixed)</Text>
-                            <Text style={[styles.sliderValue, {color: colors.text.secondary}]}>30</Text>
-                            </View>
-                            <Slider
-                                style={styles.slider}
-                                minimumValue={30}
-                                maximumValue={30} 
-                                step={1}
-                                value={30}
-                                disabled={true}
-                                minimumTrackTintColor={colors.border}
-                                maximumTrackTintColor={colors.border}
-                                thumbTintColor={colors.text.tertiary}
-                            />
-                            <Text style={[styles.statLabel, {textAlign: 'left', marginTop: 4}]}>
-                                Standardized to 30 questions per batch for fair leaderboard ranking
-                            </Text>
-                        </View>
-
-                        <View style={{ marginTop: 24, marginBottom: 16 }}>
-                            <Text style={[styles.inputLabel, {color: colors.text.secondary}]}>Question Distribution (Pre-set per Batch)</Text>
-                            
-                            {['Easy', 'Intermediate', 'Hard'].map((level, idx) => (
-                                <View key={level} style={styles.sliderContainer}>
-                                <View style={styles.sliderLabelContainer}>
-                                    <Text style={[styles.inputLabel, { fontSize: 12, color: colors.text.secondary }]}>{level}</Text>
-                                    <Text style={[styles.sliderValue, { color: colors.text.secondary }]}>Mixed</Text>
-                                </View>
-                                <Slider
-                                    style={styles.slider}
-                                    value={50}
-                                    disabled={true}
-                                    minimumTrackTintColor={colors.border}
-                                    maximumTrackTintColor={colors.border}
-                                    thumbTintColor={colors.text.tertiary}
-                                />
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                 )} */}
-
-{/* Save Button - Hidden as settings are hidden */}
-               {/* <GlassButton
-                 title={t('common.save')}
-                 onPress={handleSaveSettings}
-                 style={{ marginTop: 8 }}
-               /> */}
             </GlassCard>
           ) : (
             <View>
@@ -1047,45 +965,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  shieldCard: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    marginBottom: 20,
-  },
-  shieldTitle: {
-    fontSize: 16,
-    fontFamily: typography.fonts.bold,
-    color: colors.text.primary,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  shieldContainer: {
-    position: 'relative',
-    width: SHIELD_SIZE,
-    height: SHIELD_SIZE,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-  },
-  shieldSvg: {
-    position: 'absolute',
-  },
-  shieldCenter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shieldPercent: {
-    fontSize: 20,
-    fontFamily: typography.fonts.bold,
-    color: colors.text.primary,
-    marginTop: 4,
-  },
-  shieldDescription: {
-    fontSize: 14,
-    fontFamily: typography.fonts.medium,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    marginTop: 16,
   },
   logoutButton: {
     marginTop: 8,

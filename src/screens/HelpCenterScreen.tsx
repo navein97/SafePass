@@ -149,7 +149,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         '1. Tap the **Mission** tab at the bottom of the screen.',
         '2. Select an unlocked **Batch**.',
         '3. Tap **Live Mode**. You will receive 3 questions for the day.',
-        '4. Answer carefully! Your first attempt is recorded and affects your Safety Index.',
+        '4. Answer carefully! Your first attempt is recorded and affects your Performance Scores.',
         '5. Once completed, your status for the day will change to "Compliant".'
       ]
     },
@@ -177,20 +177,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         'You can scroll through the results to see exactly which questions you got right and wrong, along with the correct answers.'
       ]
     },
-    {
-      id: 'q7',
-      category: 'Driver Training',
-      icon: getCategoryIcon('Driver Training'),
-      question: 'How is my Safety Index calculated?',
-      roles: ['driver', 'manager', 'master'],
-      answer: [
-        'Your Safety Index is a measure of your knowledge and consistency.',
-        '• It increases when you answer Live Mode questions correctly.',
-        '• Consecutive days of training build your **Streak**.',
-        '• Maintaining a good streak gives you a **Shield**, which protects your score from dropping heavily if you make a mistake.',
-        '• You can view your Safety Index on your **Profile** dashboard.'
-      ]
-    },
+
     {
       id: 'q8',
       category: 'Driver Training',
@@ -198,7 +185,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       question: 'How does the Leaderboard work?',
       roles: ['driver', 'manager', 'master'],
       answer: [
-        'The Leaderboard ranks everyone in your company based on their Safety Index.',
+        'The Leaderboard ranks everyone in your company based on their Total Score.',
         '1. Tap the **Leaderboard** tab.',
         '2. You can filter the rankings by specific **Batches** using the dropdown at the top.',
         '3. Top performers earn medals (Gold, Silver, Bronze) and the title of Safety Champion.'
@@ -303,18 +290,91 @@ export const HelpCenterScreen = ({ navigation }: any) => {
 
     // --- NOTIFICATIONS ---
     {
-      id: 'q15',
-      category: 'Notifications',
-      icon: getCategoryIcon('Notifications'),
-      question: 'Where can I find my alerts and messages?',
-      roles: ['driver', 'manager', 'master'],
-      answer: [
-        '1. Tap the **Notifications** tab (the Bell icon at the bottom of the main screen).',
-        '2. Here you will see system alerts (like earning a new Streak Shield) and direct messages from your managers.',
-        '3. Unread messages will have a highlight. Tap a message to mark it as read.'
-      ]
-    }
-  ];
+
+        id: 'q15',
+        category: 'Notifications',
+        icon: getCategoryIcon('Notifications'),
+        question: 'Where can I find my alerts and messages?',
+        roles: ['driver', 'manager', 'master'],
+        answer: [
+          '1. Tap the **Notifications** tab (the Bell icon at the bottom of the main screen).',
+          '2. Here you will see system alerts and direct messages from your managers.',
+          '3. Unread messages will have a highlight. Tap a message to mark it as read.'
+        ]
+      },
+      // --- ADDITIONAL TOPICS ---
+      {
+        id: 'q_theme',
+        category: 'Account & Setup',
+        icon: getCategoryIcon('Account & Setup'),
+        question: 'How do I toggle Dark/Light mode?',
+        roles: ['driver', 'manager', 'master'],
+        answer: [
+          '1. Open the **Profile** tab.',
+          '2. Tap the **Theme** toggle button (Sun/Moon icon) at the top right.',
+          '3. The app will instantly switch between Light and Dark themes.'
+        ]
+      },
+      {
+        id: 'q_language',
+        category: 'Account & Setup',
+        icon: getCategoryIcon('Account & Setup'),
+        question: 'How do I change the app language?',
+        roles: ['driver', 'manager', 'master'],
+        answer: [
+          '1. Open the **Profile** tab.',
+          '2. Tap the **Language** button.',
+          '3. Select **English** or **Malay**. The interface will update immediately.'
+        ]
+      },
+      {
+        id: 'q_logout',
+        category: 'Account & Setup',
+        icon: getCategoryIcon('Account & Setup'),
+        question: 'How do I log out of Driver 360?',
+        roles: ['driver', 'manager', 'master'],
+        answer: [
+          '1. Open the **Profile** tab.',
+          '2. Scroll down and tap the **Logout** button.',
+          '3. Confirm the logout prompt. You will be returned to the Login screen.'
+        ]
+      },
+
+      {
+        id: 'q_performance_chart',
+        category: 'Driver Training',
+        icon: getCategoryIcon('Driver Training'),
+        question: 'How do I view my performance chart?',
+        roles: ['driver', 'manager', 'master'],
+        answer: [
+          '1. Open the **Profile** tab.',
+          '2. Tap **Performance Chart** to see a visual representation of your daily XP and performance trends over the past weeks.'
+        ]
+      },
+      {
+        id: 'q_milestone_tracker',
+        category: 'Driver Training',
+        icon: getCategoryIcon('Driver Training'),
+        question: 'How do I see my milestone tracker?',
+        roles: ['driver', 'manager', 'master'],
+        answer: [
+          '1. Open the **Profile** tab.',
+          '2. Tap **Milestone Tracker** to view your earned milestones (e.g., number of quizzes completed, streak days).'
+        ]
+      },
+      {
+        id: 'q_quiz_history',
+        category: 'Driver Training',
+        icon: getCategoryIcon('Driver Training'),
+        question: 'How can I see my past quiz history?',
+        roles: ['driver', 'manager', 'master'],
+        answer: [
+          '1. Open the **Profile** tab.',
+          '2. Tap **Quiz History** (or **Daily Trends**) to view scores and dates of your completed quizzes.'
+        ]
+      }
+    ];
+
 
   // Formatting helper: Make text between ** ** bold
   const renderFormattedText = (text: string, index: number) => {
