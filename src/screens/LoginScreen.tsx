@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
+import { Eye, EyeOff, Mail, Lock, HelpCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import CountryFlag from 'react-native-country-flag';
 import { useTheme } from '../context/ThemeContext';
@@ -62,6 +62,11 @@ export const LoginScreen = ({ navigation }: any) => {
 
     setErrors(newErrors);
     return isValid;
+  };
+
+  const handleContactSupport = () => {
+    const whatsappUrl = 'https://wa.me/601120616323?text=Hi%20Driver%20360%20Support,%20I%20need%20help%20with%20logging%20in.';
+    Linking.openURL(whatsappUrl);
   };
 
   const handleLogin = async () => {
@@ -188,19 +193,27 @@ export const LoginScreen = ({ navigation }: any) => {
                   </Text>
                 </View>
 
-                <View style={[styles.linkButton, { marginTop: 12 }]}>
+                <View style={[styles.linkButton, { marginTop: 24, alignItems: 'center' }]}>
+                  <TouchableOpacity 
+                    style={styles.guideButton}
+                    onPress={() => navigation.navigate('HelpCenter')}
+                  >
+                    <HelpCircle size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
+                    <Text style={styles.guideButtonText}>New User? View App Guide</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.divider} />
+
                   <Text style={styles.linkText}>
-                    Need help?{' '}
+                    {t('auth.needHelp', 'Need help?')} {' '}
                     <Text 
                       style={styles.linkTextBold}
-                      onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20am%20having%20trouble%20logging%20into%20Driver%20360.')}
+                      onPress={handleContactSupport}
                     >
-                      Contact Support (WhatsApp)
+                      {t('auth.contactSupport', 'Contact Support')}
                     </Text>
                   </Text>
                 </View>
-
-
 
                 {/* Language Selector */}
                 <View style={styles.langToggleRow}>
@@ -267,13 +280,35 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    marginBottom: 40,
+    marginTop: 20,
     alignItems: 'center',
+    gap: 8,
   },
   logo: {
     width: 280,
     height: 100,
     marginBottom: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    width: '40%',
+    marginVertical: 12,
+    opacity: 0.5,
+  },
+  guideButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary.DEFAULT + '15',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 4,
+  },
+  guideButtonText: {
+    fontFamily: typography.fonts.bold,
+    fontSize: 14,
+    color: colors.primary.DEFAULT,
   },
   subtitle: {
     fontSize: typography.sizes.lg,
