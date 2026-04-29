@@ -965,7 +965,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  },
+
   logoutButton: {
     marginTop: 8,
   },
@@ -1004,7 +1004,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   vehicleOptionSelected: {
     borderColor: colors.primary.DEFAULT,
-    backgroundColor: colors.primary.light + '20',
+    backgroundColor: `${colors.primary.light}20`,
   },
   vehicleText: {
     fontSize: 14,
@@ -1048,7 +1048,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   manageUsersText: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: colors.mode === 'light' ? '#FFFFFF' : '#000000',
+    color: colors.text.primary,
     marginLeft: 8,
   },
   companySettingsButton: {
@@ -1187,7 +1187,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   barTrack: {
     flex: 1,
     height: 10,
-    backgroundColor: colors.background.subtle || 'rgba(0,0,0,0.1)',
+    backgroundColor: colors.background.subtle,
     borderRadius: 5,
     overflow: 'hidden',
   },
@@ -1219,7 +1219,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primary.light + '20',
+    backgroundColor: `${colors.primary.light}20`,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1257,7 +1257,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   scoreBarTrack: {
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.background.subtle || 'rgba(0,0,0,0.08)',
+    backgroundColor: colors.background.subtle,
     overflow: 'hidden',
   },
   scoreBarFill: {
@@ -1300,7 +1300,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: '60%',
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.background.subtle || 'rgba(0,0,0,0.08)',
+    backgroundColor: colors.background.subtle,
     overflow: 'hidden',
     marginTop: 10,
   },
