@@ -1048,7 +1048,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   manageUsersText: {
     fontSize: 16,
     fontFamily: typography.fonts.bold,
-    color: colors.text.primary,
+    color: colors.background.default,
     marginLeft: 8,
   },
   companySettingsButton: {

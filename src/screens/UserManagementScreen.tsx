@@ -162,14 +162,16 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 <View style={{flex: 1, minWidth: 0}}>
                     <Text style={styles.userName} numberOfLines={1}>{item.full_name}</Text>
                     <Text style={styles.userSubtext} numberOfLines={1}>{item.employee_id}</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
-                        <Text style={styles.resultText}>
-                            📊 {item.safety_index ? `${Math.round(item.safety_index)}%` : 'N/A'}
-                        </Text>
-                        <Text style={styles.resultText}>
-                            📚 {item.total_batches_completed || 0}/4
-                        </Text>
-                    </View>
+                    {item.role !== 'manager' && (
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
+                            <Text style={styles.resultText}>
+                                📊 {item.safety_index ? `${Math.round(item.safety_index)}%` : 'N/A'}
+                            </Text>
+                            <Text style={styles.resultText}>
+                                📚 {item.total_batches_completed || 0}/4
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </View>
 
