@@ -238,35 +238,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.secondary,
     lineHeight: 24,
   },
-  methodSelector: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  methodButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: colors.background.card,
-    borderWidth: 2,
-    borderColor: colors.border,
-    gap: 8,
-  },
-  methodButtonActive: {
-    backgroundColor: colors.primary.DEFAULT,
-    borderColor: colors.primary.DEFAULT,
-  },
-  methodButtonText: {
-    fontFamily: typography.fonts.medium,
-    fontSize: 15,
-    color: colors.text.secondary,
-  },
-  methodButtonTextActive: {
-    color: colors.text.inverse,
-  },
   formCard: {
     width: '100%',
   },
