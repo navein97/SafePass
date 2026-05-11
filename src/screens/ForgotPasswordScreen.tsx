@@ -21,6 +21,7 @@ import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
+import { Toast } from '../components/Toast';
 
 export const ForgotPasswordScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -29,6 +30,11 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [errors, setErrors] = useState({ email: '', general: '' });
+
+  // Toast state
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -66,7 +72,13 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
         setErrors(prev => ({ ...prev, general: friendlyMsg }));
         Alert.alert(t('common.error'), friendlyMsg);
       } else {
-        setEmailSent(true);
+        if (emailSent) {
+          setToastType('success');
+          setToastMessage(t('auth.emailResent'));
+          setToastVisible(true);
+        } else {
+          setEmailSent(true);
+        }
       }
     } catch (error) {
       console.error('Password reset error:', error);
@@ -85,6 +97,12 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
       <GradientBackground>
         <SafeAreaView style={styles.safeArea}>
           <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+          <Toast
+            visible={toastVisible}
+            message={toastMessage}
+            type={toastType}
+            onHide={() => setToastVisible(false)}
+          />
           <View style={styles.successContainer}>
             <View style={styles.successIconContainer}>
               <CheckCircle size={80} color={colors.status.success} />
@@ -125,6 +143,12 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+        <Toast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+          onHide={() => setToastVisible(false)}
+        />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

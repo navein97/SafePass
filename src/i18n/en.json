@@ -83,6 +83,7 @@
     "backToLogin": "Back to Login",
     "notReceivedEmail": "Didn't receive the email?",
     "resend": "Resend",
+    "emailResent": "Email resent successfully!",
     "back": "Back",
     "forgotPasswordSubtitle": "Don't worry! It happens. Enter your email address to reset your password.",
     "rememberPassword": "Remember your password?",
