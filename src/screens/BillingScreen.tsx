@@ -8,7 +8,8 @@ import { typography } from '../theme/typography';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
-import { SubscriptionService, PACKAGES, calculateAnnualCost } from '../services/subscriptionService';
+import { GlassInput } from '../components/ui/GlassInput';
+import { SubscriptionService, PACKAGES, calculateAnnualCost, calculateFreeManagers } from '../services/subscriptionService';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -170,6 +171,7 @@ export const BillingScreen = ({ navigation }: any) => {
     
     // Check if this package is the one recommended for the input count
     const isRecommended = calculatedTier.id === pkg.id && inputCount > 0;
+    const isStandard = pkg.id.toLowerCase() === 'standard';
     
     return (
       <GlassCard 
