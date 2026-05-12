@@ -21,7 +21,6 @@ export const BillingScreen = ({ navigation }: any) => {
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [driverCountInput, setDriverCountInput] = useState('10'); // Default to 10 for better UX
-  const [billingYears, setBillingYears] = useState<1 | 2>(1); // 1 or 2 year billing cycle (for test)
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -96,7 +95,7 @@ export const BillingScreen = ({ navigation }: any) => {
         driverCount = 100;
       }
 
-      const { url, error } = await SubscriptionService.createCheckoutSession(packageId, companyId, driverCount, billingYears);
+      const { url, error } = await SubscriptionService.createCheckoutSession(packageId, companyId, driverCount);
       if (error) {
         if (Platform.OS === 'web') {
           window.alert(error);
@@ -405,38 +404,10 @@ export const BillingScreen = ({ navigation }: any) => {
                   </Text>
                 </View>
                 <Text style={{ fontSize: 12, color: colors.text.secondary, fontFamily: typography.fonts.regular, marginBottom: 16 }}>
-                  RM1 test charge — {billingYears === 2 ? '2-year' : '1-year'} billing.{' '}
-                  Remove this section before going to production.
+                  RM1/year test charge. Remove this section before going to production.
                 </Text>
-                {/* 1-year vs 2-year toggle */}
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-                  <TouchableOpacity
-                    onPress={() => setBillingYears(1)}
-                    style={[
-                      { flex: 1, padding: 10, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
-                      billingYears === 1
-                        ? { backgroundColor: colors.primary.DEFAULT + '20', borderColor: colors.primary.DEFAULT }
-                        : { borderColor: colors.border },
-                    ]}
-                  >
-                    <Text style={{ fontFamily: typography.fonts.bold, fontSize: 13, color: billingYears === 1 ? colors.primary.DEFAULT : colors.text.secondary }}>1 Year</Text>
-                    <Text style={{ fontSize: 11, color: colors.text.tertiary, fontFamily: typography.fonts.regular }}>RM1 once</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setBillingYears(2)}
-                    style={[
-                      { flex: 1, padding: 10, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
-                      billingYears === 2
-                        ? { backgroundColor: colors.primary.DEFAULT + '20', borderColor: colors.primary.DEFAULT }
-                        : { borderColor: colors.border },
-                    ]}
-                  >
-                    <Text style={{ fontFamily: typography.fonts.bold, fontSize: 13, color: billingYears === 2 ? colors.primary.DEFAULT : colors.text.secondary }}>2 Years</Text>
-                    <Text style={{ fontSize: 11, color: colors.text.tertiary, fontFamily: typography.fonts.regular }}>RM2 once</Text>
-                  </TouchableOpacity>
-                </View>
                 <GlassButton
-                  title={`Pay RM${billingYears} — ${billingYears}-Year Test`}
+                  title="Pay RM1 — Test Subscription"
                   onPress={() => handleUpgrade('test')}
                   style={{ backgroundColor: '#FF6B35' }}
                 />
