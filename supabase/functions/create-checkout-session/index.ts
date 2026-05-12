@@ -19,7 +19,7 @@ serve(async (req) => {
   }
 
   try {
-    const { packageId, companyId, returnUrl, driverCount = 1 } = await req.json()
+    const { packageId, companyId, returnUrl, driverCount = 1, billingYears = 1 } = await req.json()
 
     if (!packageId || !companyId || !returnUrl) {
       return new Response(
@@ -28,16 +28,32 @@ serve(async (req) => {
       )
     }
 
-    const priceMap: Record<string, string> = {
-      standard: Deno.env.get('STRIPE_PRICE_STANDARD') || '',
-      enterprise: Deno.env.get('STRIPE_PRICE_ENTERPRISE') || '',
+    // Price map: for each package we check for a 2-year variant first, then fall back to 1-year.
+    // To use 2-year billing, create a separate Stripe Price with interval=year, interval_count=2
+    // and set STRIPE_PRICE_STANDARD_2YEAR / STRIPE_PRICE_ENTERPRISE_2YEAR / STRIPE_PRICE_TEST_2YEAR.
+    const priceMap: Record<string, { oneYear: string; twoYear: string }> = {
+      standard:   { oneYear: Deno.env.get('STRIPE_PRICE_STANDARD')      || '', twoYear: Deno.env.get('STRIPE_PRICE_STANDARD_2YEAR')   || '' },
+      enterprise: { oneYear: Deno.env.get('STRIPE_PRICE_ENTERPRISE')    || '', twoYear: Deno.env.get('STRIPE_PRICE_ENTERPRISE_2YEAR') || '' },
+      test:       { oneYear: Deno.env.get('STRIPE_PRICE_TEST')          || '', twoYear: Deno.env.get('STRIPE_PRICE_TEST_2YEAR')       || '' },
     }
 
-    const priceId = priceMap[packageId]
+    const priceVariants = priceMap[packageId]
+
+    if (!priceVariants) {
+       return new Response(
+        JSON.stringify({ error: `No Stripe Price ID configured for package ${packageId}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )     
+    }
+
+    // Prefer 2-year price ID if billingYears=2 and a dedicated 2-year price is configured
+    const priceId = (billingYears === 2 && priceVariants.twoYear)
+      ? priceVariants.twoYear
+      : priceVariants.oneYear
 
     if (!priceId) {
        return new Response(
-        JSON.stringify({ error: `No Stripe Price ID configured for package ${packageId}` }),
+        JSON.stringify({ error: `No Stripe Price ID configured for package ${packageId} (${billingYears}-year)` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )     
     }
@@ -58,7 +74,8 @@ serve(async (req) => {
       metadata: {
         package_id: packageId,
         company_id: companyId,
-        driver_count: driverCount.toString()
+        driver_count: driverCount.toString(),
+        billing_years: billingYears.toString(),
       }
     })
 

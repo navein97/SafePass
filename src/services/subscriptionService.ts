@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Platform } from 'react-native';
 
-export type SubscriptionTier = 'trial' | 'standard' | 'enterprise';
+export type SubscriptionTier = 'trial' | 'standard' | 'enterprise' | 'test';
 
 export interface PackageDetails {
     id: SubscriptionTier;
@@ -38,6 +38,18 @@ export const PACKAGES: PackageDetails[] = [
         maxBatches: 4,
     }
 ];
+
+// RM1/year test package — hidden from normal UI, only shown via __DEV__ flag
+export const TEST_PACKAGE: PackageDetails = {
+    id: 'test',
+    name: 'Test (RM1/year)',
+    fleetRange: '1',
+    pricePerUser: 1,
+    freeManagerRatio: 1,
+    price: 'RM 1/year',
+    priceId: 'price_test_annual',
+    maxBatches: 4,
+};
 
 // Helper to calculate free managers from driver count
 export const calculateFreeManagers = (driverCount: number, ratio: number = 25): number => {
@@ -93,13 +105,13 @@ export const SubscriptionService = {
         }
     },
 
-    async createCheckoutSession(packageId: string, companyId: string, driverCount: number = 1) {
+    async createCheckoutSession(packageId: string, companyId: string, driverCount: number = 1, billingYears: 1 | 2 = 1) {
         const returnUrl = Platform.OS === 'web'
             ? `${window.location.origin}/billing`
             : 'https://qhnnyrpcnlddqoyewwkb.supabase.co/storage/v1/object/public/assets/success.html';
 
         const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-            body: { packageId, companyId, driverCount, returnUrl }
+            body: { packageId, companyId, driverCount, returnUrl, billingYears }
         });
 
         if (error || !data) {
