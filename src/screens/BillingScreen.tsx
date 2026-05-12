@@ -173,6 +173,14 @@ export const BillingScreen = ({ navigation }: any) => {
     const isRecommended = calculatedTier.id === pkg.id && inputCount > 0;
     const isStandard = pkg.id.toLowerCase() === 'standard';
     
+    // Calculate the valid number of drivers for this specific tier based on user input
+    let displayCount = inputCount > 0 ? inputCount : 1;
+    if (!isStandard && displayCount < 101) {
+      displayCount = 101; // Enterprise requires at least 101 drivers
+    } else if (isStandard && displayCount > 100) {
+      displayCount = 100; // Standard is capped at 100 drivers
+    }
+    
     return (
       <GlassCard 
         key={pkg.id} 
@@ -233,10 +241,10 @@ export const BillingScreen = ({ navigation }: any) => {
         <View style={styles.exampleBox}>
           <Text style={styles.exampleTitle}>{t('billing.totalCost')}</Text>
           <Text style={styles.exampleText}>
-            {inputCount} {t('billing.drivers')} × RM {pkg.pricePerUser} = <Text style={{ fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT }}>RM {(inputCount * pkg.pricePerUser).toLocaleString()}</Text>{t('billing.perYear')}
+            {displayCount} {t('billing.drivers')} × RM {pkg.pricePerUser} = <Text style={{ fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT }}>RM {(displayCount * pkg.pricePerUser).toLocaleString()}</Text>{t('billing.perYear')}
           </Text>
           <Text style={styles.exampleSubtext}>
-            + {calculateFreeManagers(inputCount, pkg.freeManagerRatio)} {t('billing.freeManagers')}
+            + {calculateFreeManagers(displayCount, pkg.freeManagerRatio)} {t('billing.freeManagers')}
           </Text>
         </View>
 
