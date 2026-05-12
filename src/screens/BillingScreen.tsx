@@ -167,6 +167,26 @@ export const BillingScreen = ({ navigation }: any) => {
     proceedToCheckout(packageId, userProfile.company_id);
   };
 
+  const handleManageSubscription = async () => {
+    if (!userProfile?.company_id) return;
+    setLoading(true);
+    const { url, error } = await SubscriptionService.createPortalSession(userProfile.company_id);
+    setLoading(false);
+    
+    if (error) {
+      if (Platform.OS === 'web') {
+        window.alert(error);
+      } else {
+        Alert.alert(t('common.error'), error);
+      }
+      return;
+    }
+    
+    if (url) {
+      Linking.openURL(url);
+    }
+  };
+
   const renderPackage = (pkg: typeof PACKAGES[0], index: number) => {
     const tier = currentSubscription?.subscription_tier?.toLowerCase();
     const isCurrent = tier === pkg.id.toLowerCase() || 
@@ -335,6 +355,17 @@ export const BillingScreen = ({ navigation }: any) => {
                 </View>
               </View>
             </GlassCard>
+
+            {/* Manage Subscription Button (Only if subscribed) */}
+            {!isOnTrial && (
+              <GlassButton
+                title={t('billing.manageSubscription') || 'Manage Subscription'}
+                onPress={handleManageSubscription}
+                variant="outline"
+                style={{ marginBottom: 24 }}
+                icon={<CreditCard size={20} color={colors.primary.DEFAULT} />}
+              />
+            )}
 
             {/* Driver Count Input */}
             <GlassCard style={styles.inputCard}>

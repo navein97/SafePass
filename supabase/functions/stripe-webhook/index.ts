@@ -42,9 +42,19 @@ serve(async (req) => {
                          || session.client_reference_id
       const packageId = session.metadata?.package_id
       const driverCount = parseInt(session.metadata?.driver_count || '1', 10)
+      const stripeCustomerId = session.customer as string
 
       if (companyId && packageId) {
         console.log(`Updating company ${companyId} to package ${packageId} with ${driverCount} drivers`)
+
+        // Save stripe_customer_id so we can open the Customer Portal later
+        if (stripeCustomerId) {
+          await supabase
+            .from('companies')
+            .update({ stripe_customer_id: stripeCustomerId })
+            .eq('id', companyId)
+        }
+
         // Call our postgres function to handle quota assignment
         const { error } = await supabase.rpc('handle_stripe_success', {
           p_company_id: companyId,

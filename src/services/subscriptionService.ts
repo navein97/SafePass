@@ -108,5 +108,22 @@ export const SubscriptionService = {
         }
 
         return { url: data.url, error: null };
+    },
+
+    async createPortalSession(companyId: string) {
+        const returnUrl = Platform.OS === 'web'
+            ? `${window.location.origin}/billing`
+            : 'https://qhnnyrpcnlddqoyewwkb.supabase.co/storage/v1/object/public/assets/success.html';
+
+        const { data, error } = await supabase.functions.invoke('create-portal-session', {
+            body: { companyId, returnUrl }
+        });
+
+        if (error || !data) {
+            console.error('Error creating portal session', error);
+            return { url: null, error: error?.message || 'Failed to open portal' };
+        }
+
+        return { url: data.url, error: null };
     }
 };
