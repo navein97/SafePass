@@ -86,7 +86,15 @@ export const BillingScreen = ({ navigation }: any) => {
 
   const doCheckout = async (packageId: string, companyId: string) => {
     try {
-      const driverCount = parseInt(driverCountInput) || 1;
+      let driverCount = parseInt(driverCountInput) || 1;
+      
+      // Enforce package boundaries so checkout matches the UI example box
+      if (packageId.toLowerCase() === 'enterprise' && driverCount < 101) {
+        driverCount = 101;
+      } else if (packageId.toLowerCase() === 'standard' && driverCount > 100) {
+        driverCount = 100;
+      }
+
       const { url, error } = await SubscriptionService.createCheckoutSession(packageId, companyId, driverCount);
       if (error) {
         if (Platform.OS === 'web') {
@@ -173,6 +181,9 @@ export const BillingScreen = ({ navigation }: any) => {
     const isRecommended = calculatedTier.id === pkg.id && inputCount > 0;
     const isStandard = pkg.id.toLowerCase() === 'standard';
     
+    // Determine if the package is invalid for the current input
+    const isInvalid = (!isStandard && inputCount < 101 && inputCount > 0) || (isStandard && inputCount > 100);
+    
     // Calculate the valid number of drivers for this specific tier based on user input
     let displayCount = inputCount > 0 ? inputCount : 1;
     if (!isStandard && displayCount < 101) {
@@ -187,7 +198,8 @@ export const BillingScreen = ({ navigation }: any) => {
         style={[
           styles.packageCard, 
           isCurrent && styles.currentPackageCard,
-          isRecommended && !isCurrent && styles.recommendedCard
+          isRecommended && !isCurrent && styles.recommendedCard,
+          isInvalid && { opacity: 0.4 }
         ]}
         contentStyle={styles.packageCardContent}
       >
@@ -251,9 +263,12 @@ export const BillingScreen = ({ navigation }: any) => {
         {/* CTA Button */}
         {!isCurrent && (
           <GlassButton 
-            title={isOnTrial ? t('billing.upgradeToPlan', { plan: pkg.name }) : t('billing.switchToPlan', { plan: pkg.name })}
+            title={isInvalid 
+               ? (isStandard ? t('billing.maxDrivers', { max: 100 }) || 'Max 100 drivers' : t('billing.minDrivers', { min: 101 }) || 'Requires 101+ drivers')
+               : (isOnTrial ? t('billing.upgradeToPlan', { plan: pkg.name }) : t('billing.switchToPlan', { plan: pkg.name }))}
             onPress={() => handleUpgrade(pkg.id)}
-            style={styles.selectButton}
+            disabled={isInvalid}
+            style={[styles.selectButton, isInvalid && { backgroundColor: 'transparent', opacity: 0.8 }]}
           />
         )}
       </GlassCard>
