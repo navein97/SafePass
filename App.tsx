@@ -9,6 +9,8 @@ import './src/i18n'; // Initialize i18n
 
 // Navigation
 import { MainTabNavigator } from './src/navigation/MainTabNavigator';
+import { navigationRef } from './src/navigation/navigationRef';
+import { supabase } from './src/lib/supabase';
 
 // Auth Screens
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -67,11 +69,34 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 function AppContent() {
   const { colors, theme } = useTheme();
 
+  useEffect(() => {
+    // Listen for auth state changes globally
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔔 Auth Event:', event);
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('✅ PASSWORD_RECOVERY detected - navigating to ResetPassword');
+        // Wait a small bit for navigation to be ready
+        setTimeout(() => {
+          if (navigationRef.isReady()) {
+            navigationRef.navigate('ResetPassword');
+          }
+        }, 500);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
         <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background.default} />
-        <NavigationContainer linking={linking} theme={{
+        <NavigationContainer 
+          ref={navigationRef}
+          linking={linking} 
+          theme={{
           dark: theme === 'dark',
           colors: {
             primary: colors.primary.DEFAULT,

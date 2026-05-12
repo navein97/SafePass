@@ -19,6 +19,7 @@ export const BillingScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [driverCountInput, setDriverCountInput] = useState('10'); // Default to 10 for better UX
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -84,7 +85,7 @@ export const BillingScreen = ({ navigation }: any) => {
 
   const doCheckout = async (packageId: string, companyId: string) => {
     try {
-      const driverCount = currentSubscription?.quota_drivers || 1;
+      const driverCount = parseInt(driverCountInput) || 1;
       const { url, error } = await SubscriptionService.createCheckoutSession(packageId, companyId, driverCount);
       if (error) {
         if (Platform.OS === 'web') {
@@ -162,14 +163,22 @@ export const BillingScreen = ({ navigation }: any) => {
     const isCurrent = tier === pkg.id.toLowerCase() || 
                      (pkg.id === 'standard' && tier === 'starter') ||
                      (pkg.id === 'enterprise' && (tier === 'growth' || tier === 'pro'));
-    const isStandard = pkg.id === 'standard';
-    const exampleDrivers = isStandard ? 50 : 150;
-    const { total, freeManagers } = calculateAnnualCost(exampleDrivers);
+    
+    // Use the user's input for the calculation
+    const inputCount = parseInt(driverCountInput) || 0;
+    const { total, freeManagers, tier: calculatedTier } = calculateAnnualCost(inputCount);
+    
+    // Check if this package is the one recommended for the input count
+    const isRecommended = calculatedTier.id === pkg.id && inputCount > 0;
     
     return (
       <GlassCard 
         key={pkg.id} 
-        style={[styles.packageCard, isCurrent && styles.currentPackageCard]}
+        style={[
+          styles.packageCard, 
+          isCurrent && styles.currentPackageCard,
+          isRecommended && !isCurrent && styles.recommendedCard
+        ]}
         contentStyle={styles.packageCardContent}
       >
         {/* Header */}
@@ -220,12 +229,12 @@ export const BillingScreen = ({ navigation }: any) => {
 
         {/* Example calculation */}
         <View style={styles.exampleBox}>
-          <Text style={styles.exampleTitle}>{t('billing.exampleCalc')}</Text>
+          <Text style={styles.exampleTitle}>{t('billing.totalCost')}</Text>
           <Text style={styles.exampleText}>
-            {exampleDrivers} {t('billing.drivers')} × RM {pkg.pricePerUser} = <Text style={{ fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT }}>RM {total.toLocaleString()}</Text>{t('billing.perYear')}
+            {inputCount} {t('billing.drivers')} × RM {pkg.pricePerUser} = <Text style={{ fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT }}>RM {(inputCount * pkg.pricePerUser).toLocaleString()}</Text>{t('billing.perYear')}
           </Text>
           <Text style={styles.exampleSubtext}>
-            + {freeManagers} {t('billing.freeManagers')}
+            + {calculateFreeManagers(inputCount, pkg.freeManagerRatio)} {t('billing.freeManagers')}
           </Text>
         </View>
 
@@ -298,6 +307,23 @@ export const BillingScreen = ({ navigation }: any) => {
                 <View style={styles.statusItem}>
                   <Text style={styles.statusLabel}>{t('billing.batchAccess')}</Text>
                   <Text style={styles.statusValue}>{isOnTrial ? '1/4' : '4/4'}</Text>
+                </View>
+              </View>
+            </GlassCard>
+
+            {/* Driver Count Input */}
+            <GlassCard style={styles.inputCard}>
+              <Text style={styles.inputLabel}>{t('billing.howManyDrivers') || 'How many driver slots do you need?'}</Text>
+              <View style={styles.inputRow}>
+                <GlassInput
+                  value={driverCountInput}
+                  onChangeText={setDriverCountInput}
+                  placeholder="e.g. 50"
+                  keyboardType="numeric"
+                  containerStyle={styles.driverInputContainer}
+                />
+                <View style={styles.inputHint}>
+                  <Text style={styles.hintText}>{t('billing.priceAdjusts') || 'Price adjusts automatically'}</Text>
                 </View>
               </View>
             </GlassCard>
@@ -451,6 +477,40 @@ const createStyles = (colors: any) => StyleSheet.create({
   // CTA
   selectButton: { marginTop: 4 },
   
+  // Input Card
+  inputCard: {
+    marginBottom: 24,
+    padding: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    marginBottom: 12,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  driverInputContainer: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  inputHint: {
+    flex: 1,
+  },
+  hintText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontFamily: typography.fonts.regular,
+  },
+  recommendedCard: {
+    borderColor: colors.primary.DEFAULT,
+    borderWidth: 2,
+    backgroundColor: colors.primary.DEFAULT + '05',
+  },
+
   // Stripe Notice
   stripeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, opacity: 0.6 },
   stripeNoticeText: { fontSize: 12, color: colors.text.tertiary },

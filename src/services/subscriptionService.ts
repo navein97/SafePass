@@ -96,7 +96,7 @@ export const SubscriptionService = {
     async createCheckoutSession(packageId: string, companyId: string, driverCount: number = 1) {
         const returnUrl = Platform.OS === 'web'
             ? `${window.location.origin}/billing`
-            : 'https://driver360.app/billing';
+            : 'https://qhnnyrpcnlddqoyewwkb.supabase.co/storage/v1/object/public/assets/success.html';
 
         const { data, error } = await supabase.functions.invoke('create-checkout-session', {
             body: { packageId, companyId, driverCount, returnUrl }

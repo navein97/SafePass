@@ -78,10 +78,10 @@
     "invalidPhone": "Please enter a valid phone number",
     "unexpectedError": "An unexpected error occurred. Please try again.",
     "checkYourEmail": "Check Your Email",
-    "emailSentInstructions": "We've sent password reset instructions to:",
+    "emailSentInstructions": "We've sent password reset instructions to your email (Please check your Spam/Junk folder if not found):",
     "resetLinkExpiry": "Click the link in the email to reset your password. The link will expire in 1 hour.",
     "backToLogin": "Back to Login",
-    "notReceivedEmail": "Didn't receive the email?",
+    "notReceivedEmail": "Still didn't receive the email? (Check spam folder first)",
     "resend": "Resend",
     "emailResent": "Email resent successfully!",
     "back": "Back",
@@ -454,6 +454,9 @@
     "upgradeToUnlock": "Upgrade to Unlock",
     "tierTrial": "Trial",
     "tierStandard": "Standard",
-    "tierEnterprise": "Enterprise"
+    "tierEnterprise": "Enterprise",
+    "howManyDrivers": "How many driver slots do you need?",
+    "priceAdjusts": "Price adjusts automatically",
+    "totalCost": "Total Cost"
   }
 }

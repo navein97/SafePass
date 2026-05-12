@@ -214,6 +214,22 @@ export const AuthService = {
         }
     },
 
+    /**
+     * Update user password (for Forgot Password flow)
+     */
+    async updatePassword(newPassword: string) {
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+            if (error) throw error;
+            return { error: null };
+        } catch (error: any) {
+            console.error('Update password error:', error);
+            return { error: error.message };
+        }
+    },
+
     onAuthStateChange(callback: (event: string, session: any) => void) {
         return supabase.auth.onAuthStateChange(callback);
     },
@@ -301,9 +317,11 @@ export const AuthService = {
      */
     async resetPassword(email: string) {
         try {
-            const redirectUrl = Platform.OS === 'web'
-                ? 'https://driver360-kappa.vercel.app/reset-password'
-                : 'driver360://reset-password';
+            const origin = (Platform.OS === 'web' && typeof window !== 'undefined')
+                ? window.location.origin
+                : 'https://safepass-kappa.vercel.app';
+
+            const redirectUrl = `${origin}/auth/callback`;
 
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: redirectUrl,

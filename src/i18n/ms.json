@@ -78,10 +78,10 @@
     "invalidPhone": "Sila masukkan nombor telefon yang sah",
     "unexpectedError": "Ralat tidak dijangka berlaku. Sila cuba lagi.",
     "checkYourEmail": "Semak E-mel Anda",
-    "emailSentInstructions": "Kami telah menghantar arahan penetapan semula kata laluan ke:",
+    "emailSentInstructions": "Kami telah menghantar arahan penetapan semula kata laluan ke e-mel anda (Sila semak folder Spam/Junk jika tidak ditemui):",
     "resetLinkExpiry": "Klik pautan dalam e-mel untuk menetapkan semula kata laluan anda. Pautan akan tamat tempoh dalam masa 1 jam.",
     "backToLogin": "Kembali ke Log Masuk",
-    "notReceivedEmail": "Tidak menerima e-mel?",
+    "notReceivedEmail": "Masih tidak menerima e-mel? (Semak folder spam dahulu)",
     "resend": "Hantar semula",
     "emailResent": "E-mel telah dihantar semula!",
     "back": "Kembali",
@@ -454,6 +454,9 @@
     "upgradeToUnlock": "Naik Taraf untuk Buka",
     "tierTrial": "Percubaan",
     "tierStandard": "Standard",
-    "tierEnterprise": "Enterprise"
+    "tierEnterprise": "Enterprise",
+    "howManyDrivers": "Berapa banyak slot pemandu yang anda perlukan?",
+    "priceAdjusts": "Harga diselaraskan secara automatik",
+    "totalCost": "Jumlah Kos"
   }
 }
