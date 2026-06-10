@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Platform } from 'react-native';
 
-export type SubscriptionTier = 'trial' | 'standard' | 'enterprise' | 'test';
+export type SubscriptionTier = 'trial' | 'standard' | 'enterprise' | 'test' | string;
 
 export interface PackageDetails {
     id: SubscriptionTier;
@@ -12,59 +12,62 @@ export interface PackageDetails {
     price: string;
     priceId: string;
     maxBatches: number;
+    minDrivers: number;
+    maxDrivers: number | null;
 }
-
-// Trial tier is not a purchasable package — it's the default state.
-// Only Standard and Enterprise are shown on the billing page.
-export const PACKAGES: PackageDetails[] = [
-    {
-        id: 'standard',
-        name: 'Standard',
-        fleetRange: '1–100',
-        pricePerUser: 250,
-        freeManagerRatio: 25,
-        price: 'RM 250/driver/year',
-        priceId: 'price_standard_annual',
-        maxBatches: 4,
-    },
-    {
-        id: 'enterprise',
-        name: 'Enterprise',
-        fleetRange: '101+',
-        pricePerUser: 200,
-        freeManagerRatio: 25,
-        price: 'RM 200/driver/year',
-        priceId: 'price_enterprise_annual',
-        maxBatches: 4,
-    }
-];
-
-// RM1/year test package — hidden from normal UI, only shown via __DEV__ flag
-export const TEST_PACKAGE: PackageDetails = {
-    id: 'test',
-    name: 'Test (RM1/year)',
-    fleetRange: '1',
-    pricePerUser: 1,
-    freeManagerRatio: 1,
-    price: 'RM 1/year',
-    priceId: 'price_test_annual',
-    maxBatches: 4,
-};
 
 // Helper to calculate free managers from driver count
 export const calculateFreeManagers = (driverCount: number, ratio: number = 25): number => {
     return Math.max(1, Math.ceil(driverCount / ratio));
 };
 
-// Helper to calculate total annual cost
-export const calculateAnnualCost = (driverCount: number): { tier: PackageDetails; total: number; freeManagers: number } => {
-    const tier = driverCount > 100 ? PACKAGES[1] : PACKAGES[0];
+// Helper to calculate total annual cost dynamically
+export const calculateAnnualCost = (driverCount: number, packages: PackageDetails[]): { tier: PackageDetails | null; total: number; freeManagers: number } => {
+    if (!packages || packages.length === 0) return { tier: null, total: 0, freeManagers: 0 };
+    
+    // Find matching tier based on min and max drivers
+    let tier = packages.find(p => driverCount >= p.minDrivers && (p.maxDrivers === null || driverCount <= p.maxDrivers));
+    
+    // Fallback: if no tier matches, use the highest tier (last one assuming sorted)
+    if (!tier) {
+        tier = packages[packages.length - 1];
+    }
+
     const total = driverCount * tier.pricePerUser;
     const freeManagers = calculateFreeManagers(driverCount, tier.freeManagerRatio);
     return { tier, total, freeManagers };
 };
 
 export const SubscriptionService = {
+    /**
+     * Get active packages from Supabase
+     */
+    async getPackages(): Promise<PackageDetails[]> {
+        const { data, error } = await supabase
+            .from('subscription_packages')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true });
+
+        if (error || !data) {
+            console.error('Error fetching packages', error);
+            return [];
+        }
+
+        return data.map(d => ({
+            id: d.id,
+            name: d.name,
+            fleetRange: d.fleet_range,
+            pricePerUser: d.price_per_user,
+            freeManagerRatio: d.free_manager_ratio,
+            price: d.price_display,
+            priceId: d.stripe_price_id,
+            maxBatches: d.max_batches,
+            minDrivers: d.min_drivers,
+            maxDrivers: d.max_drivers
+        }));
+    },
+
     /**
      * Get current company subscription details
      */

@@ -9,7 +9,7 @@ import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassInput } from '../components/ui/GlassInput';
-import { SubscriptionService, PACKAGES, calculateAnnualCost, calculateFreeManagers, TEST_PACKAGE } from '../services/subscriptionService';
+import { SubscriptionService, calculateAnnualCost, calculateFreeManagers, PackageDetails } from '../services/subscriptionService';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +21,7 @@ export const BillingScreen = ({ navigation }: any) => {
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [driverCountInput, setDriverCountInput] = useState('10'); // Default to 10 for better UX
+  const [packages, setPackages] = useState<PackageDetails[]>([]);
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -77,6 +78,9 @@ export const BillingScreen = ({ navigation }: any) => {
         const sub = await SubscriptionService.getSubscriptionDetails(profile.company_id);
         setCurrentSubscription(sub);
       }
+
+      const pkgs = await SubscriptionService.getPackages();
+      setPackages(pkgs);
     } catch (error) {
       console.error('Error loading billing data:', error);
     } finally {
@@ -88,11 +92,10 @@ export const BillingScreen = ({ navigation }: any) => {
     try {
       let driverCount = parseInt(driverCountInput) || 1;
       
-      // Enforce package boundaries so checkout matches the UI example box
-      if (packageId.toLowerCase() === 'enterprise' && driverCount < 101) {
-        driverCount = 101;
-      } else if (packageId.toLowerCase() === 'standard' && driverCount > 100) {
-        driverCount = 100;
+      const pkg = packages.find(p => p.id === packageId);
+      if (pkg) {
+         if (pkg.minDrivers && driverCount < pkg.minDrivers) driverCount = pkg.minDrivers;
+         if (pkg.maxDrivers && driverCount > pkg.maxDrivers) driverCount = pkg.maxDrivers;
       }
 
       const { url, error } = await SubscriptionService.createCheckoutSession(packageId, companyId, driverCount);
@@ -187,7 +190,7 @@ export const BillingScreen = ({ navigation }: any) => {
     }
   };
 
-  const renderPackage = (pkg: typeof PACKAGES[0], index: number) => {
+  const renderPackage = (pkg: PackageDetails, index: number) => {
     const tier = currentSubscription?.subscription_tier?.toLowerCase();
     const isCurrent = tier === pkg.id.toLowerCase() || 
                      (pkg.id === 'standard' && tier === 'starter') ||
@@ -195,21 +198,21 @@ export const BillingScreen = ({ navigation }: any) => {
     
     // Use the user's input for the calculation
     const inputCount = parseInt(driverCountInput) || 0;
-    const { total, freeManagers, tier: calculatedTier } = calculateAnnualCost(inputCount);
+    const { total, freeManagers, tier: calculatedTier } = calculateAnnualCost(inputCount, packages);
     
     // Check if this package is the one recommended for the input count
-    const isRecommended = calculatedTier.id === pkg.id && inputCount > 0;
+    const isRecommended = calculatedTier?.id === pkg.id && inputCount > 0;
     const isStandard = pkg.id.toLowerCase() === 'standard';
     
     // Determine if the package is invalid for the current input
-    const isInvalid = (!isStandard && inputCount < 101 && inputCount > 0) || (isStandard && inputCount > 100);
+    const isInvalid = (inputCount > 0) && ((pkg.maxDrivers !== null && inputCount > pkg.maxDrivers) || (pkg.minDrivers > 1 && inputCount < pkg.minDrivers));
     
     // Calculate the valid number of drivers for this specific tier based on user input
     let displayCount = inputCount > 0 ? inputCount : 1;
-    if (!isStandard && displayCount < 101) {
-      displayCount = 101; // Enterprise requires at least 101 drivers
-    } else if (isStandard && displayCount > 100) {
-      displayCount = 100; // Standard is capped at 100 drivers
+    if (pkg.minDrivers && displayCount < pkg.minDrivers) {
+      displayCount = pkg.minDrivers;
+    } else if (pkg.maxDrivers !== null && displayCount > pkg.maxDrivers) {
+      displayCount = pkg.maxDrivers;
     }
     
     return (
@@ -284,7 +287,9 @@ export const BillingScreen = ({ navigation }: any) => {
         {!isCurrent && (
           <GlassButton 
             title={isInvalid 
-               ? (isStandard ? t('billing.maxDrivers', { max: 100 }) || 'Max 100 drivers' : t('billing.minDrivers', { min: 101 }) || 'Requires 101+ drivers')
+               ? (pkg.maxDrivers !== null && inputCount > pkg.maxDrivers 
+                   ? t('billing.maxDrivers', { max: pkg.maxDrivers }) || `Max ${pkg.maxDrivers} drivers` 
+                   : t('billing.minDrivers', { min: pkg.minDrivers }) || `Requires ${pkg.minDrivers}+ drivers`)
                : (isOnTrial ? t('billing.upgradeToPlan', { plan: pkg.name }) : t('billing.switchToPlan', { plan: pkg.name }))}
             onPress={() => handleUpgrade(pkg.id)}
             disabled={isInvalid}
@@ -386,7 +391,7 @@ export const BillingScreen = ({ navigation }: any) => {
 
             {/* Pricing Plans */}
             <Text style={styles.sectionTitle}>{t('billing.availablePlans')}</Text>
-            {PACKAGES.map((pkg, index) => renderPackage(pkg, index))}
+            {packages.map((pkg, index) => renderPackage(pkg, index))}
             
             {/* Secure payments notice */}
             <View style={styles.stripeNotice}>
