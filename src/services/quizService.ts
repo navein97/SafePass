@@ -4,7 +4,6 @@ import { getWeek, getYear, startOfWeek, addDays, format, isSameDay } from 'date-
 import * as Crypto from 'expo-crypto';
 import { ScoringService } from './scoringService';
 
-import questionsMY from '../data/questionsMY.json';
 
 export const QuizService = {
     /**
@@ -14,21 +13,29 @@ export const QuizService = {
         try {
             console.log('🔍 Fetching questions for region:', region);
 
-            // Use local JSON instead of Supabase to ensure new Intermediate questions are used
-            let data: any[] = [];
-            if (region === 'MY') {
-                data = questionsMY;
+            // Fetch questions directly from Supabase
+            const { data: dbData, error } = await supabase
+                .from('questions')
+                .select('*')
+                .contains('regions', [region]);
+
+            if (error) {
+                console.error('Error fetching questions from Supabase:', error);
+                throw error;
             }
 
+            const data = dbData || [];
+
             // Fallback to empty if no data
-            if (!data) return [];
+            if (!data || data.length === 0) return [];
 
             console.log('✅ Data from Local JSON:', data?.length, 'questions');
 
             const questions = data.map(q => {
                 // Shuffle options
-                const originalOptions = [...q.options];
-                const correctOptionText = originalOptions[q.correctOptionIndex];
+                const originalOptions = [...(q.options || [])];
+                const correctIdx = q.correct_option_index !== undefined ? q.correct_option_index : q.correctOptionIndex;
+                const correctOptionText = originalOptions[correctIdx];
 
                 // create an array of indices [0, 1, 2, ...]
                 const indices = originalOptions.map((_, i) => i);

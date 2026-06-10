@@ -3,18 +3,6 @@ import { Question } from '../types/models';
 import { getWeek, getYear } from 'date-fns';
 import * as Crypto from 'expo-crypto';
 
-// Import batch question data
-import batch1Questions from '../data/batches/batch1.json';
-import batch2Questions from '../data/batches/batch2.json';
-import batch3Questions from '../data/batches/batch3.json';
-import batch4Questions from '../data/batches/batch4.json';
-
-const BATCH_QUESTIONS = {
-    1: batch1Questions,
-    2: batch2Questions,
-    3: batch3Questions,
-    4: batch4Questions,
-};
 
 export interface BatchProgress {
     id: string;
@@ -50,7 +38,17 @@ export const BatchService = {
             throw new Error(`Invalid batch number: ${batchNumber}`);
         }
 
-        const batchData = BATCH_QUESTIONS[batchNumber as keyof typeof BATCH_QUESTIONS];
+        const { data: dbData, error } = await supabase
+            .from('questions')
+            .select('*')
+            .eq('batch_number', batchNumber);
+
+        if (error) {
+            console.error('Error fetching batch questions from Supabase:', error);
+            throw error;
+        }
+
+        const batchData = dbData || [];
 
         // We need to fetch the past attempts for THIS user and THIS batch
         const attempts = await this.getBatchAttempts(userId, batchNumber);
@@ -103,8 +101,9 @@ export const BatchService = {
 
         // Map and format options for the prioritized list
         const questions = prioritizedData.map(q => {
-            const originalOptions = [...q.options];
-            const correctOptionText = originalOptions[q.correctOptionIndex];
+            const originalOptions = [...(q.options || [])];
+            const correctIdx = q.correct_option_index !== undefined ? q.correct_option_index : q.correctOptionIndex;
+            const correctOptionText = originalOptions[correctIdx];
 
             // Create shuffled indices
             const indices = originalOptions.map((_, i) => i);

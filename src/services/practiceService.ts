@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase';
 import { Question, Region } from '../types/models';
-import questionsMY from '../data/questionsMY.json';
 
 export const PracticeService = {
     /**
@@ -11,8 +10,13 @@ export const PracticeService = {
         try {
             console.log('🎯 Generating Smart Practice Session for:', userId);
 
-            // 1. Fetch All Questions (from all regions)
-            const allQuestions: any[] = [...questionsMY];
+            // 1. Fetch All Questions (from all regions) from Supabase
+            const { data: dbData, error: dbError } = await supabase
+                .from('questions')
+                .select('*');
+
+            if (dbError) throw dbError;
+            const allQuestions: any[] = dbData || [];
 
             if (!allQuestions || allQuestions.length === 0) return [];
 
@@ -84,8 +88,13 @@ export const PracticeService = {
      * Fallback random questions
      */
     async getRandomQuestions(region: Region, limit: number): Promise<Question[]> {
-        // Load all questions from all regions
-        const allQuestions: any[] = [...questionsMY];
+        // Load all questions from all regions from Supabase
+        const { data: dbData, error: dbError } = await supabase
+            .from('questions')
+            .select('*');
+
+        if (dbError) throw dbError;
+        const allQuestions: any[] = dbData || [];
 
         this.shuffleArray(allQuestions);
         return allQuestions.slice(0, limit).map(q => this.mapToQuestionModel(q));
@@ -103,8 +112,9 @@ export const PracticeService = {
 
     mapToQuestionModel(q: any): Question {
         // Shuffle options for practice mode too!
-        const originalOptions = [...q.options];
-        const correctOptionText = originalOptions[q.correctOptionIndex];
+        const originalOptions = [...(q.options || [])];
+        const correctIdx = q.correct_option_index !== undefined ? q.correct_option_index : q.correctOptionIndex;
+        const correctOptionText = originalOptions[correctIdx];
         const indices = originalOptions.map((_, i) => i);
 
         // Shuffle indices
