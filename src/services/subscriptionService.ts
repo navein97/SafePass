@@ -74,7 +74,7 @@ export const SubscriptionService = {
     async getSubscriptionDetails(companyId: string) {
         const { data, error } = await supabase
             .from('companies')
-            .select('subscription_tier, quota_drivers, quota_managers')
+            .select('subscription_tier, quota_drivers, quota_managers, trial_end_date')
             .eq('id', companyId)
             .single();
 

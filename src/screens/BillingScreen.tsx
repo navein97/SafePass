@@ -26,7 +26,11 @@ export const BillingScreen = ({ navigation }: any) => {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const isOnTrial = !currentSubscription?.subscription_tier || currentSubscription?.subscription_tier === 'trial';
-
+  
+  const isStandardFreeTrial = currentSubscription?.trial_end_date && new Date(currentSubscription.trial_end_date) > new Date();
+  const trialDaysLeft = isStandardFreeTrial 
+    ? Math.ceil((new Date(currentSubscription.trial_end_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
+    : 0;
   useEffect(() => {
     loadData();
   }, []);
@@ -244,6 +248,12 @@ export const BillingScreen = ({ navigation }: any) => {
               <Text style={styles.currentBadgeText}>{t('billing.currentPlan')}</Text>
             </View>
           )}
+          {isStandard && !isCurrent && (
+            <View style={[styles.currentBadge, { backgroundColor: '#F59E0B20' }]}>
+              <Zap size={14} color="#F59E0B" />
+              <Text style={[styles.currentBadgeText, { color: '#F59E0B' }]}>3 Months Free</Text>
+            </View>
+          )}
         </View>
 
         {/* Price */}
@@ -251,6 +261,12 @@ export const BillingScreen = ({ navigation }: any) => {
           <Text style={styles.priceAmount}>RM {pkg.pricePerUser}</Text>
           <Text style={styles.pricePer}>/ {t('billing.perDriverYear')}</Text>
         </View>
+        
+        {isStandard && (
+          <Text style={{ fontSize: 13, color: colors.text.secondary, fontFamily: typography.fonts.regular, marginBottom: 16 }}>
+             Start free for 3 months, no card required, then RM 250/driver/year
+          </Text>
+        )}
 
         {/* Features */}
         <View style={styles.featuresContainer}>
@@ -281,6 +297,11 @@ export const BillingScreen = ({ navigation }: any) => {
           <Text style={styles.exampleSubtext}>
             + {calculateFreeManagers(displayCount, pkg.freeManagerRatio)} {t('billing.freeManagers')}
           </Text>
+          {isStandard && (
+            <Text style={{ fontSize: 12, fontFamily: typography.fonts.medium, color: '#F59E0B', marginTop: 8 }}>
+              First 3 months free, no card required
+            </Text>
+          )}
         </View>
 
         {/* CTA Button */}
@@ -317,6 +338,22 @@ export const BillingScreen = ({ navigation }: any) => {
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
+            {/* Standard Trial Status Banner */}
+            {isStandardFreeTrial && (
+               <LinearGradient
+                colors={['#F59E0B', '#D97706'] as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.trialBanner}
+              >
+                <AlertCircle size={24} color="#FFFFFF" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.trialBannerTitle}>3-Month Free Standard Plan</Text>
+                  <Text style={styles.trialBannerText}>You have {trialDaysLeft} days left in your free trial. Subscribe now to avoid interruption.</Text>
+                </View>
+              </LinearGradient>
+            )}
+
             {/* Trial Banner */}
             {isOnTrial && (
               <LinearGradient
@@ -361,8 +398,8 @@ export const BillingScreen = ({ navigation }: any) => {
               </View>
             </GlassCard>
 
-            {/* Manage Subscription Button (Only if subscribed) */}
-            {!isOnTrial && (
+            {/* Manage Subscription Button (Only if fully subscribed and NOT on free trial) */}
+            {!isOnTrial && !isStandardFreeTrial && (
               <GlassButton
                 title={t('billing.manageSubscription') || 'Manage Subscription'}
                 onPress={handleManageSubscription}
