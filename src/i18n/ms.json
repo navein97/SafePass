@@ -457,6 +457,9 @@
     "tierEnterprise": "Enterprise",
     "howManyDrivers": "Berapa banyak slot pemandu yang anda perlukan?",
     "priceAdjusts": "Harga diselaraskan secara automatik",
-    "totalCost": "Jumlah Kos"
+    "totalCost": "Jumlah Kos",
+    "activateTrialTitle": "Aktifkan Percubaan Percuma 3 Bulan",
+    "activateTrialPrompt": "Aktifkan percubaan percuma 3 bulan anda? Anda tidak akan dicaj hari ini.",
+    "activateTrialButton": "Aktifkan"
   }
 }

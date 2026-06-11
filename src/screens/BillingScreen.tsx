@@ -180,7 +180,7 @@ export const BillingScreen = ({ navigation }: any) => {
 
     if (packageId === 'standard' && !currentSubscription?.has_used_free_trial) {
       if (Platform.OS === 'web') {
-        const confirmed = window.confirm(t('billing.activateTrialPrompt') || 'Activate your 3 months free trial? You won\'t be charged today.');
+        const confirmed = window.confirm(t('billing.activateTrialPrompt'));
         if (confirmed) {
            setLoading(true);
            await SubscriptionService.activateFreeTrial(userProfile.company_id);
@@ -188,12 +188,12 @@ export const BillingScreen = ({ navigation }: any) => {
         }
       } else {
         Alert.alert(
-          'Activate 3 Months Free Trial',
-          'You won\'t be charged today.',
+          t('billing.activateTrialTitle'),
+          t('billing.activateTrialPrompt'),
           [
             { text: t('common.cancel'), style: 'cancel' },
             { 
-              text: 'Activate',
+              text: t('billing.activateTrialButton') || 'Activate',
               onPress: async () => {
                  setLoading(true);
                  await SubscriptionService.activateFreeTrial(userProfile.company_id);

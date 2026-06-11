@@ -457,6 +457,9 @@
     "tierEnterprise": "Enterprise",
     "howManyDrivers": "How many driver slots do you need?",
     "priceAdjusts": "Price adjusts automatically",
-    "totalCost": "Total Cost"
+    "totalCost": "Total Cost",
+    "activateTrialTitle": "Activate 3 Months Free Trial",
+    "activateTrialPrompt": "Activate your 3 months free trial? You won't be charged today.",
+    "activateTrialButton": "Activate"
   }
 }
