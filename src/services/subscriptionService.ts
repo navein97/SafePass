@@ -74,7 +74,7 @@ export const SubscriptionService = {
     async getSubscriptionDetails(companyId: string) {
         const { data, error } = await supabase
             .from('companies')
-            .select('subscription_tier, quota_drivers, quota_managers, trial_end_date')
+            .select('subscription_tier, quota_drivers, quota_managers, trial_end_date, has_used_free_trial')
             .eq('id', companyId)
             .single();
 
@@ -140,5 +140,17 @@ export const SubscriptionService = {
         }
 
         return { url: data.url, error: null };
+    },
+
+    async activateFreeTrial(companyId: string) {
+        const { error } = await supabase.rpc('activate_free_trial', {
+            p_company_id: companyId
+        });
+        
+        if (error) {
+            console.error('Error activating free trial', error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
     }
 };

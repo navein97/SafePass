@@ -159,6 +159,13 @@ export const BillingScreen = ({ navigation }: any) => {
       if (newCompanyId) {
         const updatedProfile = { ...userProfile, company_id: newCompanyId };
         setUserProfile(updatedProfile);
+        
+        if (packageId === 'standard' && !currentSubscription?.has_used_free_trial) {
+           await SubscriptionService.activateFreeTrial(newCompanyId);
+           await loadData();
+           return;
+        }
+        
         proceedToCheckout(packageId, newCompanyId);
         return;
       }
@@ -167,6 +174,34 @@ export const BillingScreen = ({ navigation }: any) => {
         window.alert(msg);
       } else {
         Alert.alert(t('common.error'), msg);
+      }
+      return;
+    }
+
+    if (packageId === 'standard' && !currentSubscription?.has_used_free_trial) {
+      if (Platform.OS === 'web') {
+        const confirmed = window.confirm(t('billing.activateTrialPrompt') || 'Activate your 3 months free trial? You won\'t be charged today.');
+        if (confirmed) {
+           setLoading(true);
+           await SubscriptionService.activateFreeTrial(userProfile.company_id);
+           await loadData();
+        }
+      } else {
+        Alert.alert(
+          'Activate 3 Months Free Trial',
+          'You won\'t be charged today.',
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            { 
+              text: 'Activate',
+              onPress: async () => {
+                 setLoading(true);
+                 await SubscriptionService.activateFreeTrial(userProfile.company_id);
+                 await loadData();
+              }
+            }
+          ]
+        );
       }
       return;
     }
@@ -264,7 +299,7 @@ export const BillingScreen = ({ navigation }: any) => {
         
         {isStandard && (
           <Text style={{ fontSize: 13, color: colors.text.secondary, fontFamily: typography.fonts.regular, marginBottom: 16 }}>
-             Start free for 3 months, no card required, then RM 250/driver/year
+             Start free for 3 months, no payment required, then RM 250/driver/year
           </Text>
         )}
 
@@ -298,9 +333,11 @@ export const BillingScreen = ({ navigation }: any) => {
             + {calculateFreeManagers(displayCount, pkg.freeManagerRatio)} {t('billing.freeManagers')}
           </Text>
           {isStandard && (
-            <Text style={{ fontSize: 12, fontFamily: typography.fonts.medium, color: '#F59E0B', marginTop: 8 }}>
-              First 3 months free, no card required
-            </Text>
+            <View style={{ marginTop: 12, backgroundColor: '#F59E0B15', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B50' }}>
+              <Text style={{ fontSize: 13, fontFamily: typography.fonts.bold, color: '#F59E0B', textAlign: 'center' }}>
+                First 3 months free, no payment required!
+              </Text>
+            </View>
           )}
         </View>
 

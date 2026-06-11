@@ -2,8 +2,9 @@
 -- 3-MONTHS FREE STANDARD PLAN UPDATE
 -- ==========================================================
 
--- 1. Add trial_end_date to companies table
+-- 1. Add trial_end_date and has_used_free_trial to companies table
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS trial_end_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS has_used_free_trial BOOLEAN DEFAULT false;
 
 -- 2. Update register_workspace to grant 3-months free standard plan
 CREATE OR REPLACE FUNCTION public.register_workspace(
@@ -20,14 +21,16 @@ BEGIN
         quota_drivers, 
         quota_managers, 
         subscription_tier,
-        trial_end_date
+        trial_end_date,
+        has_used_free_trial
     )
     VALUES (
         p_company_name, 
         100, 
         4, 
         'standard',
-        NOW() + INTERVAL '3 months'
+        NOW() + INTERVAL '3 months',
+        true
     )
     RETURNING id INTO v_company_id;
 
@@ -108,5 +111,25 @@ SELECT cron.schedule(
     '0 0 * * *', -- Every day at 00:00
     $$ SELECT public.downgrade_expired_trials(); $$
 );
+
+-- 5. Function to manually activate free trial for existing companies that haven't used it
+CREATE OR REPLACE FUNCTION public.activate_free_trial(
+    p_company_id UUID
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE public.companies
+    SET 
+        subscription_tier = 'standard',
+        quota_drivers = 100,
+        quota_managers = 4,
+        trial_end_date = NOW() + INTERVAL '3 months',
+        has_used_free_trial = true,
+        updated_at = NOW()
+    WHERE 
+        id = p_company_id 
+        AND has_used_free_trial = false;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ==========================================================
