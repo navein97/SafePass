@@ -20,13 +20,14 @@ import pandas as pd
 import uuid
 import json
 import sys
+import os
 
 # ── CONFIG ──────────────────────────────────────────────────────────────────
 EXCEL_FILE = r'c:\Users\ACER\SafePass\quiz_question_template_V1106.2026_NAV_no_yellow_rows.xlsx'
 SUPABASE_URL = 'https://qhnnyrpcnlddqoyewwkb.supabase.co'
 # Use the SERVICE ROLE key (not anon) so we can bypass RLS for import.
 # Get it from: Supabase Dashboard -> Project Settings -> API -> service_role secret
-SUPABASE_SERVICE_KEY = 'PASTE_YOUR_SERVICE_ROLE_KEY_HERE'
+SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
 
 # Sheet name → vehicle_type label (must match exactly what's stored in profiles.vehicle_type)
 SHEET_TO_CATEGORY = {
@@ -187,9 +188,9 @@ def upload_via_supabase_api(all_questions: list[dict]):
         print("   Falling back to SQL file only.\n")
         return False
 
-    if 'PASTE_YOUR_SERVICE_ROLE_KEY_HERE' in SUPABASE_SERVICE_KEY:
-        print("\n⚠️  SUPABASE_SERVICE_KEY not set in script.")
-        print("   Open import_questions.py and paste your service_role key.")
+    if not SUPABASE_SERVICE_KEY:
+        print("\n⚠️  SUPABASE_SERVICE_KEY not set in environment.")
+        print("   Please set the SUPABASE_SERVICE_KEY environment variable.")
         print("   Get it from: Supabase Dashboard → Project Settings → API\n")
         return False
 

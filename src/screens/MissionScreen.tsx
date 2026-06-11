@@ -125,7 +125,19 @@ export function MissionScreen() {
           ]) as [BatchStatus[]];
 
           if (isActive) {
-            setBatchStatuses(resultStatuses);
+            // Append Coming Soon batches 5-8
+            const finalStatuses = [...resultStatuses];
+            for (let i = 5; i <= 8; i++) {
+              finalStatuses.push({
+                batchNumber: i,
+                canAccess: false,
+                averageScore: 0,
+                attemptCount: 0,
+                passed: false,
+                dailyCount: 0,
+              });
+            }
+            setBatchStatuses(finalStatuses);
             lastLoadTime.current = Date.now();
             isFirstLoadRef.current = false; // Mark first load as complete
           }
@@ -336,6 +348,11 @@ export function MissionScreen() {
                       </>
                     ) : (batch.canAccess || selectedMode === 'practice') && batch.batchNumber <= maxBatches ? (
                       <Text style={styles.notStartedText}>{t('mission.tapToStart')}</Text>
+                    ) : batch.batchNumber > 4 ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        <Lock size={16} color="#999" />
+                        <Text style={styles.lockedText}>{t('mission.comingSoon', 'Coming Soon')}</Text>
+                      </View>
                     ) : batch.batchNumber > maxBatches ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                         <Lock size={16} color={colors.primary.DEFAULT} />
