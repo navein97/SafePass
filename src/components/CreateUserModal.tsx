@@ -47,10 +47,9 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
   const vehicleOptions = [
-    { label: t('profile.vehicles.containerHaulage'), value: 'Container Haulage' },
-    { label: t('profile.vehicles.curtainSide'), value: 'Curtain Side' },
-    { label: t('profile.vehicles.openCargo'), value: 'Open Cargo' },
-    { label: t('profile.vehicles.smallTruck'), value: 'Small Truck' }
+    { label: t('profile.vehicles.generalCargo', 'General Cargo'), value: 'General Cargo' },
+    { label: t('profile.vehicles.containerHaulage', 'Container Haulage'), value: 'Container Haulage' },
+    { label: t('profile.vehicles.boxVan', 'Box Van'), value: 'Box Van' }
   ];
 
   const regionOptions = [

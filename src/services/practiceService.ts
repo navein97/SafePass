@@ -11,9 +11,21 @@ export const PracticeService = {
             console.log('🎯 Generating Smart Practice Session for:', userId);
 
             // 1. Fetch All Questions (from all regions) from Supabase
-            const { data: dbData, error: dbError } = await supabase
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('vehicle_type')
+                .eq('id', userId)
+                .single();
+
+            let query = supabase
                 .from('questions')
                 .select('*');
+
+            if (profile?.vehicle_type) {
+                query = query.contains('driver_categories', [profile.vehicle_type]);
+            }
+
+            const { data: dbData, error: dbError } = await query;
 
             if (dbError) throw dbError;
             const allQuestions: any[] = dbData || [];
@@ -80,18 +92,30 @@ export const PracticeService = {
         } catch (error) {
             console.error('Error generating practice session:', error);
             // Fallback to random
-            return this.getRandomQuestions(region, limit);
+            return this.getRandomQuestions(userId, region, limit);
         }
     },
 
     /**
      * Fallback random questions
      */
-    async getRandomQuestions(region: Region, limit: number): Promise<Question[]> {
+    async getRandomQuestions(userId: string, region: Region, limit: number): Promise<Question[]> {
         // Load all questions from all regions from Supabase
-        const { data: dbData, error: dbError } = await supabase
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('vehicle_type')
+            .eq('id', userId)
+            .single();
+
+        let query = supabase
             .from('questions')
             .select('*');
+
+        if (profile?.vehicle_type) {
+            query = query.contains('driver_categories', [profile.vehicle_type]);
+        }
+
+        const { data: dbData, error: dbError } = await query;
 
         if (dbError) throw dbError;
         const allQuestions: any[] = dbData || [];

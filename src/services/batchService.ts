@@ -38,10 +38,22 @@ export const BatchService = {
             throw new Error(`Invalid batch number: ${batchNumber}`);
         }
 
-        const { data: dbData, error } = await supabase
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('vehicle_type')
+            .eq('id', userId)
+            .single();
+
+        let query = supabase
             .from('questions')
             .select('*')
             .eq('batch_number', batchNumber);
+
+        if (profile?.vehicle_type) {
+            query = query.contains('driver_categories', [profile.vehicle_type]);
+        }
+
+        const { data: dbData, error } = await query;
 
         if (error) {
             console.error('Error fetching batch questions from Supabase:', error);

@@ -26,7 +26,7 @@ export interface Driver {
     totalScore?: number;
     age?: number;
     companyId?: string;
-    vehicleType?: 'Container Haulage' | 'Curtain Side' | 'Open Cargo' | 'Small Truck' | 'Tanker' | string;
+    vehicleType?: 'General Cargo' | 'Container Haulage' | 'Box Van';
     // Master User Fields
     managerLevel?: 1 | 2;
     department?: string;
@@ -46,6 +46,7 @@ export interface Question {
     explanation_ms?: string; // Malay explanation
     region: Region[]; // Applicable regions
     category: string;
+    driverCategories?: string[]; // E.g. ['General Cargo', 'Box Van']
     imageUrl?: string; // Optional image URL for visual questions
     difficulty: 'easy' | 'intermediate' | 'hard';
     componentWeights?: {
