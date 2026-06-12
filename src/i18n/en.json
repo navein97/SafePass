@@ -44,7 +44,12 @@
     "confirmPlaceholder": "confirm",
     "deleting": "Deleting...",
     "compliant": "Compliant",
-    "overdue": "Overdue"
+    "overdue": "Overdue",
+    "noData": "No data available yet",
+    "delete": "Delete",
+    "ok": "OK",
+    "wait": "Wait...",
+    "noUsers": "No users found"
   },
   "auth": {
     "login": "Login",
@@ -118,7 +123,15 @@
     "successfullyVerified": "✅ Successfully verified!",
     "emailVerifiedLogin": "✅ Email verified! Please log in to continue.",
     "verificationFailed": "❌ Verification failed. Please try again.",
-    "waitVerifying": "Please wait while we verify your email..."
+    "waitVerifying": "Please wait while we verify your email...",
+    "passwordPlaceholder": "Enter password",
+    "confirmPasswordPlaceholder": "Re-enter password",
+    "phone": "Phone Number",
+    "permanentlyDeleteNote": "This will permanently delete the user account.",
+    "employeeIdOrEmail": "Email / Employee ID",
+    "needHelp": "Need help?",
+    "contactSupport": "Contact Support",
+    "companyName": "Company Name"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -178,7 +191,9 @@
     "passed": "Passed",
     "needMoreToPass": "Need {{percent}}% more to pass",
     "tapToStart": "Tap to start →",
-    "lockMessage": "🔒 Complete Batch {{number}} with ≥60% average to unlock"
+    "lockMessage": "🔒 Complete Batch {{number}} with ≥60% average to unlock",
+    "comingSoon": "Coming Soon",
+    "howItWorks": "How it works:"
   },
   "manager": {
     "dashboardTitle": "Management Dashboard",
@@ -279,7 +294,9 @@
       "curtainSide": "Curtain Side",
       "openCargo": "Open Cargo",
       "smallTruck": "Small Trucks and Vans",
-      "tanker": "Tankers"
+      "tanker": "Tankers",
+      "generalCargo": "General Cargo",
+      "boxVan": "Box Van"
     },
     "companySettings": "Company Settings",
     "teamManagement": "Team Management",
@@ -364,7 +381,14 @@
     "changing": "Changing...",
     "errorQuotaExceeded": "Driver quota exceeded. Upgrade your plan to add more drivers.",
     "errorQuotaExceededManager": "Manager quota exceeded. Upgrade your plan to add more managers.",
-    "errorDuplicate": "A user with this Employee ID already exists."
+    "errorDuplicate": "A user with this Employee ID already exists.",
+    "errorChangePassword": "Failed to change password",
+    "manager": "Manager",
+    "deleteConfirmError": "Employee ID does not match",
+    "deleteSuccess": "User deleted successfully",
+    "deleteTitle": "Delete Driver Account",
+    "deleteConfirmText": "Are you sure? This action cannot be undone. All quiz history and compliance logs for this user will be permanently deleted.",
+    "deleteVerifyLabel": "To confirm, type \"{{username}}\" in the box below"
   },
   "company": {
     "settings": "Company Settings",
@@ -460,6 +484,13 @@
     "totalCost": "Total Cost",
     "activateTrialTitle": "Activate 3 Months Free Trial",
     "activateTrialPrompt": "Activate your 3 months free trial? You won't be charged today.",
-    "activateTrialButton": "Activate"
+    "activateTrialButton": "Activate",
+    "maxDrivers": "Max {{max}} drivers",
+    "minDrivers": "Requires {{min}}+ drivers",
+    "manageSubscription": "Manage Subscription"
+  },
+  "notification": {
+    "sendMessage": "Send Message",
+    "messagePlaceholder": "Type your message here..."
   }
 }

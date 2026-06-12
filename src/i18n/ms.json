@@ -44,7 +44,12 @@
     "confirmPlaceholder": "sahkan",
     "deleting": "Memadam...",
     "compliant": "Patuh",
-    "overdue": "Tunggakan"
+    "overdue": "Tunggakan",
+    "noData": "Tiada data tersedia lagi",
+    "delete": "Padam",
+    "ok": "OK",
+    "wait": "Tunggu...",
+    "noUsers": "Tiada pengguna ditemui"
   },
   "auth": {
     "login": "Log Masuk",
@@ -118,7 +123,15 @@
     "successfullyVerified": "✅ Berjaya disahkan!",
     "emailVerifiedLogin": "✅ E-mel disahkan! Sila log masuk untuk meneruskan.",
     "verificationFailed": "❌ Pengesahan gagal. Sila cuba lagi.",
-    "waitVerifying": "Sila tunggu sementara kami mengesahkan e-mel anda..."
+    "waitVerifying": "Sila tunggu sementara kami mengesahkan e-mel anda...",
+    "passwordPlaceholder": "Masukkan kata laluan",
+    "confirmPasswordPlaceholder": "Masukkan semula kata laluan",
+    "phone": "Nombor Telefon",
+    "permanentlyDeleteNote": "Ini akan memadamkan akaun pengguna secara kekal.",
+    "employeeIdOrEmail": "E-mel / ID Pekerja",
+    "needHelp": "Perlukan bantuan?",
+    "contactSupport": "Hubungi Sokongan",
+    "companyName": "Nama Syarikat"
   },
   "leaderboard": {
     "title": "Papan Pendahulu",
@@ -178,7 +191,9 @@
     "passed": "Lulus",
     "needMoreToPass": "Perlu {{percent}}% lagi untuk lulus",
     "tapToStart": "Ketik untuk mula →",
-    "lockMessage": "🔒 Lengkapkan Kelompok {{number}} dengan purata ≥60% untuk buka"
+    "lockMessage": "🔒 Lengkapkan Kelompok {{number}} dengan purata ≥60% untuk buka",
+    "comingSoon": "Akan Datang",
+    "howItWorks": "Cara ia berfungsi:"
   },
   "manager": {
     "dashboardTitle": "Papan Pemuka Pengurusan",
@@ -279,7 +294,9 @@
       "curtainSide": "Trak Curtain Sider",
       "openCargo": "Kargo Terbuka",
       "smallTruck": "Lori Kecil dan Van",
-      "tanker": "Lori Tangki"
+      "tanker": "Lori Tangki",
+      "generalCargo": "Kargo Am",
+      "boxVan": "Van Kotak"
     },
     "companySettings": "Tetapan Syarikat",
     "teamManagement": "Pengurusan Pasukan",
@@ -364,7 +381,14 @@
     "changing": "Menukar...",
     "errorQuotaExceeded": "Kuota pemandu telah penuh. Naik taraf pelan anda untuk menambah lebih ramai pemandu.",
     "errorQuotaExceededManager": "Kuota pengurus telah penuh. Naik taraf pelan anda untuk menambah lebih ramai pengurus.",
-    "errorDuplicate": "Pengguna dengan ID Pekerja ini sudah wujud."
+    "errorDuplicate": "Pengguna dengan ID Pekerja ini sudah wujud.",
+    "errorChangePassword": "Gagal menukar kata laluan",
+    "manager": "Pengurus",
+    "deleteConfirmError": "ID Pekerja tidak sepadan",
+    "deleteSuccess": "Pengguna berjaya dipadamkan",
+    "deleteTitle": "Padam Akaun Pemandu",
+    "deleteConfirmText": "Adakah anda pasti? Tindakan ini tidak boleh diundurkan. Semua sejarah kuiz dan log pematuhan untuk pengguna ini akan dipadamkan secara kekal.",
+    "deleteVerifyLabel": "Untuk mengesahkan, taip \"{{username}}\" dalam kotak di bawah"
   },
   "company": {
     "settings": "Tetapan Syarikat",
@@ -460,6 +484,13 @@
     "totalCost": "Jumlah Kos",
     "activateTrialTitle": "Aktifkan Percubaan Percuma 3 Bulan",
     "activateTrialPrompt": "Aktifkan percubaan percuma 3 bulan anda? Anda tidak akan dicaj hari ini.",
-    "activateTrialButton": "Aktifkan"
+    "activateTrialButton": "Aktifkan",
+    "maxDrivers": "Maksimum {{max}} pemandu",
+    "minDrivers": "Memerlukan {{min}}+ pemandu",
+    "manageSubscription": "Urus Langganan"
+  },
+  "notification": {
+    "sendMessage": "Hantar Mesej",
+    "messagePlaceholder": "Taip mesej anda di sini..."
   }
 }
