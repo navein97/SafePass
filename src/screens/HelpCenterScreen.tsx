@@ -102,9 +102,9 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       roles: ['driver'],
       answer: [
         '1. Tap the **Profile** tab at the bottom of the screen.',
-        '2. Under "Personal Details", you can update your **Age** and **Vehicle Type**.',
+        '2. Tap **Profile Details** to update your **Age** and **Vehicle Type**.',
         '3. Keeping this accurate helps the system tailor your training data.',
-        '4. Tap **Save Details** when you are done.'
+        '4. Tap **Save** when you are done.'
       ]
     },
     {
@@ -114,10 +114,10 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       question: 'How do I edit my Company Name and Address?',
       roles: ['master'],
       answer: [
-        '1. Tap the **Profile** tab at the bottom of the screen.',
-        '2. Tap to expand the **Master User Details** section.',
-        '3. You can edit your Designation, Company Name, Address, and Contact Number here.',
-        '4. Tap **Save Details** when you are done.'
+        '1. Go to the **Profile** tab.',
+        '2. Expand the **Profile Details** section.',
+        '3. Here you can edit your Designation, Company Name, Address, and Contact Number.',
+        '4. Tap **Save** to apply the changes.'
       ]
     },
     {
@@ -201,10 +201,9 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       roles: ['manager', 'master'],
       answer: [
         '1. Go to the **Profile** tab and tap **Team Management**.',
-        '2. Tap the **Add User** button at the bottom of the screen.',
-        '3. Enter the new user\'s Full Name, assign an Employee ID, and set a starting Password.',
-        '4. Ensure you select the correct Role (Driver or Manager).',
-        '5. Give the Employee ID and Password to the user so they can log in.'
+        '2. Tap the **Add User** button at the bottom.',
+        '3. Fill in the required details (Full Name, Employee ID, Password, Age, Vehicle Type, etc.).',
+        '4. Tap **Create User**. They can now log in using the Employee ID and password you set.'
       ]
     },
     {
@@ -227,10 +226,9 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       question: 'How do I track if my drivers completed their training?',
       roles: ['manager', 'master'],
       answer: [
-        '1. Go to the **Profile** tab and tap **Manager Quick View**.',
-        '2. This dashboard shows a weekly overview of your entire team.',
-        '3. You can instantly see who is **COMPLIANT** (finished their quizzes) and who is **OVERDUE**.',
-        '4. You can also view their current scores for the week.'
+        'The Manager Quick View is a dashboard that gives you an immediate overview of your team’s weekly compliance.',
+        'It shows which drivers are **COMPLIANT** (finished their daily quotas) and which are **OVERDUE**.',
+        'You can access it by tapping the **Team** tab at the bottom of the screen.'
       ]
     },
     {
@@ -240,10 +238,9 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       question: 'How do I export training reports to Excel?',
       roles: ['manager', 'master'],
       answer: [
-        'You can export data for HR or insurance compliance purposes.',
-        '1. Go to the **Manager Quick View** screen via your Profile.',
-        '2. Tap the **Download Icon** in the top right corner.',
-        '3. The app will securely generate an Excel (.xlsx) file containing all current rankings, scores, and compliance statuses.'
+        '1. Open the **Team** tab (Manager Quick View).',
+        '2. Tap the **Download** icon in the top right corner.',
+        '3. A comprehensive Excel file (.xlsx) will be generated and saved to your device, containing scores, accuracy, and status.'
       ]
     },
     {
@@ -348,7 +345,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         roles: ['driver', 'manager', 'master'],
         answer: [
           '1. Open the **Profile** tab.',
-          '2. Tap **Performance Chart** to see a visual representation of your daily XP and performance trends over the past weeks.'
+          '2. Scroll down to the **Performance Chart** section to see a visual representation of your daily XP and performance trends over the past weeks.'
         ]
       },
       {
@@ -359,18 +356,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         roles: ['driver', 'manager', 'master'],
         answer: [
           '1. Open the **Profile** tab.',
-          '2. Tap **Milestone Tracker** to view your earned milestones (e.g., number of quizzes completed, streak days).'
-        ]
-      },
-      {
-        id: 'q_quiz_history',
-        category: 'Driver Training',
-        icon: getCategoryIcon('Driver Training'),
-        question: 'How can I see my past quiz history?',
-        roles: ['driver', 'manager', 'master'],
-        answer: [
-          '1. Open the **Profile** tab.',
-          '2. Tap **Quiz History** (or **Daily Trends**) to view scores and dates of your completed quizzes.'
+          '2. Scroll down to the **Milestone Tracker** section to view your earned milestones (e.g., number of quizzes completed, streak days).'
         ]
       }
     ];

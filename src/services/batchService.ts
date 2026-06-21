@@ -452,14 +452,14 @@ export const BatchService = {
             const avgScore = await this.getBatchAverageScore(userId, batchNumber);
             console.log(`[BatchService] New Average Score: ${avgScore}`);
 
-            if (avgScore >= 60 && batchNumber < 4) {
+            if (avgScore >= 60) {
                 const currentBatch = await this.getCurrentBatch(userId);
                 if (batchNumber === currentBatch) {
                     console.log(`[BatchService] Upgrading user to Batch ${batchNumber + 1}`);
                     const { error: updateError } = await supabase
                         .from('profiles')
                         .update({
-                            current_batch: batchNumber + 1,
+                            current_batch: batchNumber < 4 ? batchNumber + 1 : 4,
                             total_batches_completed: batchNumber,
                         })
                         .eq('id', userId);
@@ -737,6 +737,13 @@ export const BatchService = {
                 professionalism: count > 0 ? Math.round(profTotal / count) : 0,
             };
 
+            let passedBatchesCount = 0;
+            for (const score of batchBestScores.values()) {
+                if (score >= 60) {
+                    passedBatchesCount++;
+                }
+            }
+
             // 4. Update Profile
             console.log(`[BatchService] Synced: Safety Index ${avgSafetyIndex}, Components:`, componentScores);
             await supabase
@@ -745,7 +752,7 @@ export const BatchService = {
                     safety_index: avgSafetyIndex,
                     component_scores: componentScores,
                     total_score: avgSafetyIndex,
-                    total_batches_completed: batchBestScores.size
+                    total_batches_completed: passedBatchesCount
                 })
                 .eq('id', userId);
 

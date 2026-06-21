@@ -665,14 +665,30 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 <TouchableOpacity
                   style={[styles.resumeButton, styles.resumeButtonPrimary]}
                   onPress={() => navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 })}
+                  activeOpacity={0.8}
                 >
+                  <LinearGradient
+                    colors={colors.gradients.primary as any}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+                  />
                   <Text style={styles.resumeButtonTextPrimary}>{t('quiz.practiceAgain')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={[styles.resumeButton, isPracticeResult ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } })}
+                activeOpacity={0.8}
               >
+                  {!isPracticeResult && (
+                    <LinearGradient
+                      colors={colors.gradients.primary as any}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+                    />
+                  )}
                   <Text style={isPracticeResult ? styles.resumeButtonTextSecondary : styles.resumeButtonTextPrimary}>
                     {t('quiz.backToMenu')}
                   </Text>
@@ -974,7 +990,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderColor: '#FF3D00',
   },
   optionDimmed: {
-    opacity: 0.5,
+    opacity: 0.7,
   },
   optionLetter: {
     width: 32,
