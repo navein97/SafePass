@@ -34,7 +34,7 @@ export const BatchService = {
      * 3. Random pool (Reshuffle all) if all were answered correctly
      */
     async getBatchQuestions(batchNumber: number, userId: string): Promise<Question[]> {
-        if (batchNumber < 1 || batchNumber > 4) {
+        if (batchNumber < 1 || batchNumber > 8) {
             throw new Error(`Invalid batch number: ${batchNumber}`);
         }
 
@@ -49,8 +49,16 @@ export const BatchService = {
             .select('*')
             .eq('batch_number', batchNumber);
 
-        if (profile?.vehicle_type) {
-            query = query.contains('driver_categories', [profile.vehicle_type]);
+        let vType = profile?.vehicle_type;
+        const validTypes = ['Box Van', 'Container Haulage', 'General Cargo'];
+        
+        // Failsafe: If they have an old/invalid vehicle type, default to General Cargo so the app doesn't break
+        if (vType && !validTypes.includes(vType)) {
+            vType = 'General Cargo';
+        }
+
+        if (vType) {
+            query = query.contains('driver_categories', [vType]);
         }
 
         const { data: dbData, error } = await query;
@@ -459,7 +467,7 @@ export const BatchService = {
                     const { error: updateError } = await supabase
                         .from('profiles')
                         .update({
-                            current_batch: batchNumber < 4 ? batchNumber + 1 : 4,
+                            current_batch: batchNumber < 8 ? batchNumber + 1 : 8,
                             total_batches_completed: batchNumber,
                         })
                         .eq('id', userId);
@@ -629,7 +637,7 @@ export const BatchService = {
 
             // 4. Build statistics
             const stats = (users || []).map(user => {
-                const batches = [1, 2, 3, 4].map(batchNum => {
+                const batches = [1, 2, 3, 4, 5, 6, 7, 8].map(batchNum => {
                     const attempts = progressMap.get(`${user.id}_${batchNum}`) || [];
 
                     if (attempts.length === 0) {

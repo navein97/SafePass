@@ -299,7 +299,7 @@ export const BillingScreen = ({ navigation }: any) => {
         
         {isStandard && (
           <Text style={{ fontSize: 13, color: colors.text.secondary, fontFamily: typography.fonts.regular, marginBottom: 16 }}>
-             Start free for 3 months, no payment required, then RM 250/driver/year
+             Start free for 3 months, no payment required, then RM 120/driver/year
           </Text>
         )}
 

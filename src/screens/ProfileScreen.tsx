@@ -781,11 +781,11 @@ export const ProfileScreen = ({ navigation }: any) => {
                  </LinearGradient>
                </View>
                <Text style={styles.statValue}>
-                 {profile?.total_batches_completed === 4 ? 'Complete' : `Batch ${profile?.current_batch || 1}`}
+                 {profile?.total_batches_completed === 8 ? 'Complete' : `Batch ${profile?.current_batch || 1}`}
                </Text>
                <Text style={styles.statLabel}>Current Progress</Text>
                <Text style={[styles.statLabel, { marginTop: 8, color: colors.status.success }]}>
-                 {profile?.total_batches_completed || 0} / 4 Batches Completed
+                 {profile?.total_batches_completed || 0} / 8 Batches Completed
                </Text>
              </GlassCard>
              

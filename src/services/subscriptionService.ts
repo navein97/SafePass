@@ -96,13 +96,13 @@ export const SubscriptionService = {
 
     /**
      * Get the maximum batches a company can access
-     * Trial = 1 batch, Subscribed = 4 batches
+     * Trial = 1 batch, Subscribed = 8 batches
      */
     async getMaxBatches(companyId: string | null): Promise<number> {
         if (!companyId) return 1; // No company = trial
         try {
             const subscribed = await this.isSubscribed(companyId);
-            return subscribed ? 4 : 1;
+            return subscribed ? 8 : 1;
         } catch {
             return 1;
         }

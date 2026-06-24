@@ -168,7 +168,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                                 📊 {item.safety_index ? `${Math.round(item.safety_index)}%` : 'N/A'}
                             </Text>
                             <Text style={styles.resultText}>
-                                📚 {item.total_batches_completed || 0}/4
+                                📚 {item.total_batches_completed || 0}/8
                             </Text>
                         </View>
                     )}

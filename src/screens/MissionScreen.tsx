@@ -41,7 +41,7 @@ export function MissionScreen() {
   const [loading, setLoading] = useState(true);
   const [batchStatuses, setBatchStatuses] = useState<BatchStatus[]>([]);
   const [selectedMode, setSelectedMode] = useState<'live' | 'practice' | null>(null);
-  const [maxBatches, setMaxBatches] = useState(4); // 1 = trial, 4 = subscribed
+  const [maxBatches, setMaxBatches] = useState(8); // 1 = trial, 8 = subscribed
   
   // Ref to track if it's the very first load to avoid spinner on subsequent visits
   const isFirstLoadRef = useRef(true);
@@ -91,7 +91,7 @@ export function MissionScreen() {
 
           // 2. Fetch Batch Data Sequentially to prevent network hang
           // (Fetching 12 requests at once can freeze the network layer on mobile)
-          const batchNumbers = [1, 2, 3, 4];
+          const batchNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
           const statuses: BatchStatus[] = [];
 
           // Create a promise with a timeout to prevent infinite loading

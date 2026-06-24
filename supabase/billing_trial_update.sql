@@ -55,7 +55,7 @@ BEGIN
         v_managers := 1;
     ELSIF p_package_id IN ('standard', 'enterprise', 'test') THEN
         -- Dynamic allocation based on driver count
-        -- Standard: RM 250/driver. Free manager ratio: 25 drivers = 1 manager
+        -- Standard: RM 120/driver. Free manager ratio: 25 drivers = 1 manager
         v_drivers := p_driver_count;
         v_managers := GREATEST(1, CEIL(p_driver_count / 25.0));
     ELSE

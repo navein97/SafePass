@@ -41,7 +41,7 @@ interface LeaderboardEntry {
   };
 }
 
-type BatchTab = 1 | 2 | 3 | 4;
+type BatchTab = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export function BatchLeaderboardScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -170,7 +170,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
 
   const renderBatchTabs = () => (
     <View style={styles.tabsContainer}>
-      {([1, 2, 3, 4] as BatchTab[]).map((batch) => (
+      {([1, 2, 3, 4, 5, 6, 7, 8] as BatchTab[]).map((batch) => (
         <TouchableOpacity
           key={batch}
           activeOpacity={0.8}

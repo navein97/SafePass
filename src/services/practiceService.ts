@@ -21,8 +21,16 @@ export const PracticeService = {
                 .from('questions')
                 .select('*');
 
-            if (profile?.vehicle_type) {
-                query = query.contains('driver_categories', [profile.vehicle_type]);
+            let vType = profile?.vehicle_type;
+            const validTypes = ['Box Van', 'Container Haulage', 'General Cargo'];
+            
+            // Failsafe: Default to General Cargo if their vehicle type is old/invalid
+            if (vType && !validTypes.includes(vType)) {
+                vType = 'General Cargo';
+            }
+
+            if (vType) {
+                query = query.contains('driver_categories', [vType]);
             }
 
             const { data: dbData, error: dbError } = await query;
@@ -111,8 +119,16 @@ export const PracticeService = {
             .from('questions')
             .select('*');
 
-        if (profile?.vehicle_type) {
-            query = query.contains('driver_categories', [profile.vehicle_type]);
+        let vType = profile?.vehicle_type;
+        const validTypes = ['Box Van', 'Container Haulage', 'General Cargo'];
+        
+        // Failsafe: Default to General Cargo if their vehicle type is old/invalid
+        if (vType && !validTypes.includes(vType)) {
+            vType = 'General Cargo';
+        }
+
+        if (vType) {
+            query = query.contains('driver_categories', [vType]);
         }
 
         const { data: dbData, error: dbError } = await query;

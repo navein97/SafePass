@@ -29,8 +29,8 @@ USING (true);
 INSERT INTO public.subscription_packages (
     id, name, fleet_range, price_per_user, free_manager_ratio, price_display, stripe_price_id, max_batches, min_drivers, max_drivers, is_active, sort_order
 ) VALUES 
-('standard', 'Standard', '1–100', 250, 25, 'RM 250/driver/year', 'price_standard_annual', 4, 1, 100, true, 1),
-('enterprise', 'Enterprise', '101+', 200, 25, 'RM 200/driver/year', 'price_enterprise_annual', 4, 101, null, true, 2),
+('standard', 'Standard', '1–100', 120, 25, 'RM 120/driver/year', 'price_1TlrmnLzh6eCIr6DJDYkulBN', 4, 1, 100, true, 1),
+('enterprise', 'Enterprise', '101+', 98, 25, 'RM 98/driver/year', 'price_1TlrnULzh6eCIr6DRkCilK3F', 4, 101, null, true, 2),
 ('test', 'Test (RM1/year)', '1', 1, 1, 'RM 1/year', 'price_test_annual', 4, 1, null, false, 99)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
