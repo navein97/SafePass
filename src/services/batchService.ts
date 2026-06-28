@@ -373,8 +373,6 @@ export const BatchService = {
 
             // Every attempt is saved — average reflects genuine daily performance
             // (Previously only saved if score beat previous best; removed for daily 3Q limit flow)
-            console.log(`[BatchService] Fetching existing attempts for User: ${userId}, Batch: ${batchNumber}`);
-            const existingAttempts = await this.getBatchAttempts(userId, batchNumber);
             console.log(`[BatchService] Found ${existingAttempts.length} existing attempts`);
 
             const attemptNumber = existingAttempts.length + 1;
