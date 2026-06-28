@@ -15,6 +15,8 @@ import { ConfirmationModal } from '../components/ConfirmationModal';
 import { DeleteUserModal } from '../components/DeleteUserModal';
 import { AuthService } from '../services/authService';
 import { CompanySettingsService, CompanyStats } from '../services/companySettingsService';
+import { ExcelExportService } from '../services/excelExportService';
+import { Download } from 'lucide-react-native';
 
 interface UserProfile {
     id: string;
@@ -52,6 +54,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [companyStats, setCompanyStats] = useState<CompanyStats | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [exportingExcel, setExportingExcel] = useState(false);
 
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -148,6 +151,24 @@ export const UserManagementScreen = ({ navigation }: any) => {
         }
     };
 
+    const handleExportExcel = async () => {
+        try {
+            setExportingExcel(true);
+            const { success, message } = await ExcelExportService.exportLeaderboard();
+            
+            if (success) {
+                Alert.alert(t('common.success'), t('leaderboard.exportSuccess'));
+            } else {
+                Alert.alert(t('common.error'), message || t('leaderboard.exportFailed'));
+            }
+        } catch (error: any) {
+            console.error('Error exporting Excel:', error);
+            Alert.alert(t('common.error'), error.message || t('leaderboard.exportFailed'));
+        } finally {
+            setExportingExcel(false);
+        }
+    };
+
     const handleChangePasswordPress = (user: UserProfile) => {
         setSelectedUserForPassword(user);
         setShowChangePasswordModal(true);
@@ -204,15 +225,28 @@ export const UserManagementScreen = ({ navigation }: any) => {
                         <ChevronLeft color={colors.text.primary} size={24} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{t('profile.teamManagement')}</Text>
-                    <TouchableOpacity 
-                        onPress={() => {
-                            setSelectedUserForNotification(null);
-                            setShowNotificationModal(true);
-                        }} 
-                        style={styles.broadcastButton}
-                    >
-                        <Text style={{fontSize: 20}}>📢</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity 
+                            onPress={handleExportExcel} 
+                            style={styles.broadcastButton}
+                            disabled={exportingExcel}
+                        >
+                            {exportingExcel ? (
+                                <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                            ) : (
+                                <Download size={20} color={colors.primary.DEFAULT} />
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setSelectedUserForNotification(null);
+                                setShowNotificationModal(true);
+                            }} 
+                            style={styles.broadcastButton}
+                        >
+                            <Text style={{fontSize: 20}}>📢</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Quota Stats Indicator */}

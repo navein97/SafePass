@@ -313,8 +313,13 @@ export const BatchService = {
             const score = this.calculateScoreWithAttempts(answers);
             const { accuracy, completion } = this.calculatePercentages(answers, questions.length);
 
-            // Calculate component scores
-            const componentScores = this.calculateComponentScores(questions, answers);
+            // Fetch past attempts to calculate cumulative component scores for the batch
+            const existingAttempts = await this.getBatchAttempts(userId, batchNumber);
+            const allAnswers = existingAttempts.flatMap(a => a.answers || []);
+            allAnswers.push(...answers);
+
+            // Calculate component scores cumulatively across all unique questions answered in this batch
+            const componentScores = this.calculateComponentScores(questions, allAnswers);
             console.log(`[BatchService] Scores calculated for User ${userId}: ${score}%, Accuracy: ${accuracy}%, Completion: ${completion}%`);
 
             // --- ADDED FOR MANAGER VISIBILITY ---
@@ -511,12 +516,19 @@ export const BatchService = {
         let disciplineMax = 0;
         let professionalismMax = 0;
 
-        answers.forEach(answer => {
-            const question = questions.find(q => q.id === answer.questionId);
+        // Group answers by questionId, taking the BEST result (true overrides false)
+        const bestAnswers = new Map<string, boolean>();
+        answers.forEach(a => {
+            if (a.isCorrect) bestAnswers.set(a.questionId, true);
+            else if (!bestAnswers.has(a.questionId)) bestAnswers.set(a.questionId, false);
+        });
+
+        bestAnswers.forEach((isCorrect, questionId) => {
+            const question = questions.find(q => q.id === questionId);
             if (!question || !question.componentWeights) return;
 
             const weights = question.componentWeights;
-            const score = this.getAttemptScore(answer.attempts, answer.isCorrect);
+            const score = isCorrect ? 1.0 : 0;
 
             // Accumulate weighted scores
             operationTotal += (weights.operation || 0) * score;

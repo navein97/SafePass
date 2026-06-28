@@ -133,10 +133,16 @@ export function BatchLeaderboardScreen({ navigation }: any) {
   const handleExportExcel = async () => {
     try {
       setExportingExcel(true);
-      alert(t('leaderboard.exportSuccess'));
-    } catch (error) {
+      const { success, message } = await ExcelExportService.exportLeaderboard();
+      
+      if (success) {
+        Alert.alert(t('common.success'), t('leaderboard.exportSuccess'));
+      } else {
+        Alert.alert(t('common.error'), message || t('leaderboard.exportFailed'));
+      }
+    } catch (error: any) {
       console.error('Error exporting Excel:', error);
-      alert(t('leaderboard.exportFailed'));
+      Alert.alert(t('common.error'), error.message || t('leaderboard.exportFailed'));
     } finally {
       setExportingExcel(false);
     }
@@ -169,27 +175,33 @@ export function BatchLeaderboardScreen({ navigation }: any) {
   };
 
   const renderBatchTabs = () => (
-    <View style={styles.tabsContainer}>
-      {([1, 2, 3, 4, 5, 6, 7, 8] as BatchTab[]).map((batch) => (
-        <TouchableOpacity
-          key={batch}
-          activeOpacity={0.8}
-          style={[styles.tab]}
-          onPress={() => setSelectedBatch(batch)}
-        >
-          {selectedBatch === batch ? (
-            <LinearGradient
-              colors={colors.gradients.primary as any}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
-            />
-          ) : null}
-          <Text style={[styles.tabText, selectedBatch === batch && styles.tabTextActive]}>
-            {t('quiz.batchTitle', { number: batch })}
-          </Text>
-        </TouchableOpacity>
-      ))}
+    <View>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={styles.tabsContainer}
+      >
+        {([1, 2, 3, 4, 5, 6, 7, 8] as BatchTab[]).map((batch) => (
+          <TouchableOpacity
+            key={batch}
+            activeOpacity={0.8}
+            style={[styles.tab]}
+            onPress={() => setSelectedBatch(batch)}
+          >
+            {selectedBatch === batch ? (
+              <LinearGradient
+                colors={colors.gradients.primary as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+              />
+            ) : null}
+            <Text style={[styles.tabText, selectedBatch === batch && styles.tabTextActive]}>
+              {t('quiz.batchTitle', { number: batch })}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 
@@ -465,7 +477,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: 8,
   },
   tab: {
-    flex: 1,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12, // slightly larger rounds for premium view
     backgroundColor: colors.background.card,

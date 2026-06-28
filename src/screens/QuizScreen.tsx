@@ -644,15 +644,20 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 </>
               ) : (
                 <>
-                  <Text style={styles.resultScoreText}>{t('quiz.scoreLabel')} {resultData.score.toFixed(1)}%</Text>
-                  <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.avgScore.toFixed(1)}%</Text>
-                  <Text style={styles.resultSubLabel}>{t('quiz.averageScore')}</Text>
+                  <Text style={styles.resultSubLabel}>{t('quiz.scoreLabel').replace(':', '')}</Text>
+                  <Text style={[styles.resultScoreValue, { color: accentColor, marginTop: -4 }]}>{resultData.score.toFixed(1)}%</Text>
+                  
+                  <View style={{ backgroundColor: 'rgba(0,0,0,0.04)', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '80%', alignSelf: 'center' }}>
+                    <Text style={{ fontSize: 12, fontFamily: typography.fonts.medium, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('quiz.averageScore')}</Text>
+                    <Text style={{ fontSize: 22, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{resultData.avgScore.toFixed(1)}%</Text>
+                  </View>
+
                   {resultData.passed ? (
-                    <Text style={[styles.resultMessage, { color: '#00C853' }]}>
+                    <Text style={[styles.resultMessage, { color: '#00C853', marginTop: 8 }]}>
                       ✅ {batchNumber < 4 ? t('quiz.nextBatchUnlocked', { number: batchNumber + 1 }) : t('quiz.allBatchesComplete')}
                     </Text>
                   ) : (
-                    <Text style={[styles.resultMessage, { color: colors.text.secondary }]}>
+                    <Text style={[styles.resultMessage, { color: colors.text.secondary, marginTop: 8 }]}>
                       {t('mission.needMoreToPass', { percent: (60 - resultData.avgScore).toFixed(1) })}
                     </Text>
                   )}

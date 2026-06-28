@@ -265,7 +265,7 @@
     "correctCount": "{{correct}}/{{total}} Correct",
     "accuracy": "Accuracy",
     "scoreLabel": "Score:",
-    "nextBatchUnlocked": "Batch {{number}} Unlocked!",
+    "nextBatchUnlocked": "Next Batch Unlocked!",
     "allBatchesComplete": "All Batches Complete!",
     "practiceAgain": "Practice Again",
     "backToMenu": "Back to Menu",

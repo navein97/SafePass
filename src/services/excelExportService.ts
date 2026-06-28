@@ -1,11 +1,14 @@
 import * as XLSX from 'xlsx';
 import { BatchService } from './batchService';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 
 export const ExcelExportService = {
     /**
      * Export leaderboard to Excel format matching client template
      */
-    async exportLeaderboard(): Promise<void> {
+    async exportLeaderboard(): Promise<{ success: boolean; message?: string }> {
         try {
             const stats = await BatchService.getAllUsersBatchStats();
             const ws = this.createMasterUserWorksheet(stats);
@@ -18,12 +21,32 @@ export const ExcelExportService = {
             const timestamp = new Date().toISOString().split('T')[0];
             const filename = `Driver360_Report_${timestamp}.xlsx`;
 
-            // Write file
-            XLSX.writeFile(wb, filename);
-            console.log(`✅ Excel file exported: ${filename}`);
-        } catch (error) {
+            if (Platform.OS === 'web') {
+                XLSX.writeFile(wb, filename);
+                return { success: true };
+            } else {
+                const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+                const fileUri = `${FileSystem.documentDirectory}${filename}`;
+                
+                await FileSystem.writeAsStringAsync(fileUri, base64, {
+                    encoding: FileSystem.EncodingType.Base64
+                });
+
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                    await Sharing.shareAsync(fileUri, {
+                        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        dialogTitle: 'Export Report',
+                        UTI: 'com.microsoft.excel.xls'
+                    });
+                    return { success: true };
+                } else {
+                    return { success: false, message: 'Sharing is not available on this device' };
+                }
+            }
+        } catch (error: any) {
             console.error('Error exporting to Excel:', error);
-            throw error;
+            return { success: false, message: error?.message || 'Failed to export' };
         }
     },
 

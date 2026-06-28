@@ -265,7 +265,7 @@
     "correctCount": "{{correct}}/{{total}} Betul",
     "accuracy": "Ketepatan",
     "scoreLabel": "Markah:",
-    "nextBatchUnlocked": "Kelompok {{number}} Dibuka!",
+    "nextBatchUnlocked": "Kelompok Seterusnya Dibuka!",
     "allBatchesComplete": "Semua Kelompok Selesai!",
     "practiceAgain": "Latihan Lagi",
     "backToMenu": "Kembali ke Menu",

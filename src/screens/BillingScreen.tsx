@@ -289,6 +289,11 @@ export const BillingScreen = ({ navigation }: any) => {
               <Text style={[styles.currentBadgeText, { color: '#F59E0B' }]}>3 Months Free</Text>
             </View>
           )}
+          {!isStandard && packages.length > 0 && (
+            <View style={[styles.currentBadge, { backgroundColor: '#00C85320' }]}>
+              <Text style={[styles.currentBadgeText, { color: '#00C853' }]}>Save {Math.round(((packages[0].pricePerUser - pkg.pricePerUser) / packages[0].pricePerUser) * 100)}%</Text>
+            </View>
+          )}
         </View>
 
         {/* Price */}
