@@ -318,8 +318,19 @@ export const BatchService = {
             const allAnswers = existingAttempts.flatMap(a => a.answers || []);
             allAnswers.push(...answers);
 
+            // Fetch all questions for this batch to ensure previous answers find their weights correctly
+            const { data: batchQuestions } = await supabase
+                .from('questions')
+                .select('id, component_weights')
+                .eq('batch_number', batchNumber);
+            
+            const allBatchQuestions = (batchQuestions || []).map(q => ({
+                id: q.id,
+                componentWeights: q.component_weights || (q as any).componentWeights
+            })) as Question[];
+
             // Calculate component scores cumulatively across all unique questions answered in this batch
-            const componentScores = this.calculateComponentScores(questions, allAnswers);
+            const componentScores = this.calculateComponentScores(allBatchQuestions, allAnswers);
             console.log(`[BatchService] Scores calculated for User ${userId}: ${score}%, Accuracy: ${accuracy}%, Completion: ${completion}%`);
 
             // --- ADDED FOR MANAGER VISIBILITY ---

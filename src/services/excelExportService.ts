@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { BatchService } from './batchService';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
