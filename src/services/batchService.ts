@@ -311,12 +311,24 @@ export const BatchService = {
 
             // Calculate scores
             const score = this.calculateScoreWithAttempts(answers);
-            const { accuracy, completion } = this.calculatePercentages(answers, questions.length);
 
-            // Fetch past attempts to calculate cumulative component scores for the batch
+            // Fetch past attempts to aggregate all answers
             const existingAttempts = await this.getBatchAttempts(userId, batchNumber);
             const allAnswers = existingAttempts.flatMap(a => a.answers || []);
             allAnswers.push(...answers);
+
+            // Deduplicate all answers to find unique questions and best correctness
+            const uniqueAnswersMap = new Map<string, { questionId: string, attempts: number, isCorrect: boolean }>();
+            allAnswers.forEach(a => {
+                const existing = uniqueAnswersMap.get(a.questionId);
+                if (!existing || a.isCorrect) {
+                    uniqueAnswersMap.set(a.questionId, a);
+                }
+            });
+            const uniqueAnswers = Array.from(uniqueAnswersMap.values());
+
+            // Calculate cumulative stats
+            const { accuracy, completion } = this.calculatePercentages(uniqueAnswers, questions.length);
 
             // Fetch all questions for this batch to ensure previous answers find their weights correctly
             const { data: batchQuestions } = await supabase
