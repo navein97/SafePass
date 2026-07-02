@@ -52,7 +52,7 @@ export const BatchService = {
         let vType = profile?.vehicle_type;
         const validTypes = ['Box Van', 'Container Haulage', 'General Cargo'];
         
-        // Failsafe: If they have an old/invalid vehicle type, default to General Cargo so the app doesn't break
+        // Failsafe: Default to General Cargo so the app doesn't break
         if (vType && !validTypes.includes(vType)) {
             vType = 'General Cargo';
         }
@@ -70,57 +70,43 @@ export const BatchService = {
 
         const batchData = dbData || [];
 
-        // We need to fetch the past attempts for THIS user and THIS batch
-        const attempts = await this.getBatchAttempts(userId, batchNumber);
+        // Fetch question progress for this user & batch
+        const { data: progressData, error: progressError } = await supabase
+            .from('user_question_progress')
+            .select('question_id, attempts, is_correct')
+            .eq('user_id', userId)
+            .eq('batch_number', batchNumber);
 
-        // Track user's success on each question
-        const questionStatus = new Map<string, boolean>();
-        
-        attempts.forEach(attempt => {
-            attempt.answers?.forEach(answer => {
-                // If they ever got it right, mark as true.
-                if (answer.isCorrect) {
-                    questionStatus.set(answer.questionId, true);
-                } else if (!questionStatus.has(answer.questionId)) {
-                    // Start as false if they got it wrong and it's not already true
-                    questionStatus.set(answer.questionId, false);
-                }
+        if (progressError) {
+            console.error('Error fetching question progress:', progressError);
+        }
+
+        const progressMap = new Map<string, { attempts: number; is_correct: boolean }>();
+        if (progressData) {
+            progressData.forEach(p => {
+                progressMap.set(p.question_id, {
+                    attempts: p.attempts,
+                    is_correct: p.is_correct
+                });
             });
+        }
+
+        // Filter out completed questions (correct or 2 wrong attempts)
+        const uncompletedData = batchData.filter(q => {
+            const prog = progressMap.get(q.id);
+            if (!prog) return true;
+            return !prog.is_correct && prog.attempts < 2;
         });
 
-        // Sort the source pool based on learning priority
-        const unseenPool: typeof batchData = [];
-        const incorrectPool: typeof batchData = [];
-        const masteredPool: typeof batchData = [];
+        // Shuffle remaining uncompleted questions
+        const shuffledData = [...uncompletedData];
+        for (let i = shuffledData.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledData[i], shuffledData[j]] = [shuffledData[j], shuffledData[i]];
+        }
 
-        batchData.forEach(q => {
-            if (!questionStatus.has(q.id)) {
-                unseenPool.push(q);
-            } else if (questionStatus.get(q.id) === false) {
-                incorrectPool.push(q);
-            } else {
-                masteredPool.push(q);
-            }
-        });
-
-        const shufflePool = (pool: typeof batchData) => {
-            const shuffled = [...pool];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return shuffled;
-        };
-
-        // Combine pools in priority order: Unseen -> Incorrect -> Mastered
-        const prioritizedData = [
-            ...shufflePool(unseenPool),
-            ...shufflePool(incorrectPool),
-            ...shufflePool(masteredPool)
-        ];
-
-        // Map and format options for the prioritized list
-        const questions = prioritizedData.map(q => {
+        // Map and format options
+        const questions = shuffledData.map(q => {
             const originalOptions = [...(q.options || [])];
             const correctIdx = q.correct_option_index !== undefined ? q.correct_option_index : q.correctOptionIndex;
             const correctOptionText = originalOptions[correctIdx];
@@ -158,31 +144,31 @@ export const BatchService = {
             } as Question;
         });
 
-        // CRITICAL: Return exactly 30 questions
-        // For Live Mode, the QuizScreen will only show the first 3
-        return questions.slice(0, 30);
+        return questions;
     },
 
     /**
      * Check if user can access a specific batch
      */
     async canAccessBatch(userId: string, batchNumber: number): Promise<boolean> {
-        // Batch 1 is always accessible
         if (batchNumber === 1) return true;
 
-        // Permanent unlock: if the user has already started this batch, always allow access
-        // (prevents re-locking when previous batch average drops after new all-attempts logic)
-        const thisAttempts = await this.getBatchAttempts(userId, batchNumber);
-        if (thisAttempts.length > 0) return true;
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('batch_lock_override, current_batch')
+            .eq('id', userId)
+            .single();
 
-        // First-time access: check if the user has EVER scored >= 60% in a single session
-        // on the previous batch (best score, not running average)
-        const prevBatchNumber = batchNumber - 1;
-        const prevAttempts = await this.getBatchAttempts(userId, prevBatchNumber);
-        if (prevAttempts.length === 0) return false;
+        if (profileError) {
+            console.error('Error fetching profile overrides for canAccessBatch:', profileError);
+        }
 
-        const bestScore = Math.max(...prevAttempts.map(a => a.score));
-        return bestScore >= 60;
+        if (profile?.batch_lock_override) {
+            return true;
+        }
+
+        const currentBatch = profile?.current_batch || 1;
+        return batchNumber <= currentBatch;
     },
 
     /**
@@ -265,16 +251,18 @@ export const BatchService = {
 
         answers.forEach(a => {
             if (a.isCorrect) {
-                totalScore += 1.0;
-            } else {
-                totalScore += 0;
+                if (a.attempts === 1) {
+                    totalScore += 1.0;
+                } else if (a.attempts === 2) {
+                    totalScore += 0.5;
+                }
             }
         });
 
         const maxScore = answers.length;
         const percentage = (totalScore / maxScore) * 100;
 
-        return Math.max(0, Math.round(percentage * 100) / 100); // Round to 2 decimals
+        return Math.max(0, Math.round(percentage));
     },
 
     /**
@@ -871,4 +859,426 @@ export const BatchService = {
             return 0;
         }
     },
+
+    /**
+     * Record progress of an individual question attempt in Live Mode
+     */
+    async recordQuestionProgress(
+        userId: string,
+        questionId: string,
+        batchNumber: number,
+        attempts: number,
+        isCorrect: boolean,
+        score: number
+    ): Promise<void> {
+        try {
+            console.log(`[BatchService] Recording question progress: Q:${questionId}, User:${userId}, Attempts:${attempts}, Correct:${isCorrect}, Score:${score}`);
+            const { error } = await supabase
+                .from('user_question_progress')
+                .upsert({
+                    user_id: userId,
+                    question_id: questionId,
+                    batch_number: batchNumber,
+                    attempts,
+                    is_correct: isCorrect,
+                    score,
+                    completed_at: new Date().toISOString()
+                }, {
+                    onConflict: 'user_id,question_id'
+                });
+
+            if (error) throw error;
+        } catch (error) {
+            console.error('[BatchService] Error recording question progress:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Check if a batch is passed and locked for a driver
+     */
+    async isBatchLocked(userId: string, batchNumber: number): Promise<boolean> {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('current_batch, batch_lock_override')
+            .eq('id', userId)
+            .single();
+
+        if (!profile) return false;
+        if (profile.batch_lock_override) return false;
+
+        if (batchNumber < profile.current_batch) {
+            return true;
+        }
+
+        if (batchNumber === 8) {
+            const { data } = await supabase
+                .from('user_batch_progress')
+                .select('score')
+                .eq('user_id', userId)
+                .eq('batch_number', 8)
+                .gte('score', 70)
+                .limit(1);
+
+            return !!(data && data.length > 0);
+        }
+
+        return false;
+    },
+
+    /**
+     * Get daily completion status and overrides for a driver (midnight UTC+8 refresh)
+     */
+    async getDailyLimitStatus(userId: string, batchNumber: number): Promise<{
+        completedToday: number;
+        limit: number;
+        isWaived: boolean;
+        isOverridden: boolean;
+        isAccessGranted: boolean;
+    }> {
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('daily_limit_override, daily_limit_waived_batch')
+            .eq('id', userId)
+            .single();
+
+        if (profileError) {
+            console.error('Error fetching overrides:', profileError);
+        }
+
+        const isOverridden = profile?.daily_limit_override || false;
+        const isWaived = profile?.daily_limit_waived_batch === batchNumber;
+
+        // Calculate start of today in UTC+8 (KL/Singapore timezone)
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const serverTime = new Date(utc + (3600000 * 8)); 
+        serverTime.setHours(0, 0, 0, 0);
+        const startOfTodayUtc8 = new Date(serverTime.getTime() - (3600000 * 8));
+
+        const { count, error: countError } = await supabase
+            .from('user_question_progress')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('completed_at', startOfTodayUtc8.toISOString());
+
+        if (countError) {
+            console.error('Error querying completed count:', countError);
+        }
+
+        const completedToday = count || 0;
+        const limit = 3;
+        const isAccessGranted = isOverridden || isWaived || completedToday < limit;
+
+        return {
+            completedToday,
+            limit,
+            isWaived,
+            isOverridden,
+            isAccessGranted
+        };
+    },
+
+    /**
+     * Evaluate batch after all 30 questions are resolved
+     */
+    async evaluateBatch(
+        userId: string,
+        batchNumber: number,
+        timeSpentSeconds: number
+    ): Promise<{ success: boolean; passed: boolean; score: number; attemptNumber: number }> {
+        try {
+            console.log(`[BatchService] Evaluating batch ${batchNumber} for user ${userId}`);
+
+            // Fetch question progress
+            const { data: progressRows, error: progressError } = await supabase
+                .from('user_question_progress')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('batch_number', batchNumber);
+
+            if (progressError) throw progressError;
+
+            const answers = progressRows || [];
+            
+            // Calculate score based on attempts
+            let totalScore = 0;
+            answers.forEach(a => {
+                totalScore += parseFloat(String(a.score));
+            });
+
+            const maxScore = 30; // 30 questions
+            const score = Math.max(0, Math.round((totalScore / maxScore) * 100));
+            const passed = score >= 70;
+
+            const { data: pastAttempts } = await supabase
+                .from('user_batch_progress')
+                .select('attempt_number')
+                .eq('user_id', userId)
+                .eq('batch_number', batchNumber);
+
+            const attemptNumber = (pastAttempts?.length || 0) + 1;
+
+            const { data: questionsData } = await supabase
+                .from('questions')
+                .select('id, component_weights')
+                .eq('batch_number', batchNumber);
+
+            const questions = (questionsData || []).map(q => ({
+                id: q.id,
+                componentWeights: q.component_weights || (q as any).componentWeights
+            })) as Question[];
+
+            const mappedAnswers = answers.map(a => ({
+                questionId: a.question_id,
+                attempts: a.attempts,
+                isCorrect: a.is_correct
+            }));
+
+            const componentScores = this.calculateComponentScores(questions, mappedAnswers);
+
+            // Record batch attempt
+            const { error: insertError } = await supabase
+                .from('user_batch_progress')
+                .insert({
+                    user_id: userId,
+                    batch_number: batchNumber,
+                    attempt_number: attemptNumber,
+                    score,
+                    accuracy_percentage: Math.round((answers.filter(a => a.is_correct).length / maxScore) * 100),
+                    completion_percentage: 100,
+                    component_scores: componentScores,
+                    answers: mappedAnswers,
+                    time_spent_seconds: timeSpentSeconds,
+                });
+
+            if (insertError) throw insertError;
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('current_batch, consecutive_resets, company_id')
+                .eq('id', userId)
+                .single();
+
+            const resetsMap = profile?.consecutive_resets || {};
+            const companyId = profile?.company_id;
+
+            if (passed) {
+                resetsMap[String(batchNumber)] = 0;
+
+                const nextBatch = batchNumber < 8 ? batchNumber + 1 : 8;
+                await supabase
+                    .from('profiles')
+                    .update({
+                        current_batch: nextBatch,
+                        total_batches_completed: batchNumber,
+                        daily_limit_waived_batch: null,
+                        consecutive_resets: resetsMap
+                    })
+                    .eq('id', userId);
+
+                try {
+                    await supabase.from('notifications').insert({
+                        user_id: userId,
+                        type: 'shield',
+                        title: 'Batch Passed! 🏆',
+                        message: `Congratulations! You passed Batch ${batchNumber} with ${score}%.`,
+                        is_read: false
+                    });
+                } catch (notifErr) {
+                    console.warn('Failed to send passed notification:', notifErr);
+                }
+            } else {
+                const currentResets = (resetsMap[String(batchNumber)] || 0) + 1;
+                resetsMap[String(batchNumber)] = currentResets;
+
+                await supabase
+                    .from('profiles')
+                    .update({
+                        daily_limit_waived_batch: batchNumber,
+                        consecutive_resets: resetsMap
+                    })
+                    .eq('id', userId);
+
+                // Notify MU if consecutive resets reaches 3
+                if (currentResets >= 3) {
+                    try {
+                        const { data: managers } = await supabase
+                            .from('profiles')
+                            .select('id')
+                            .eq('company_id', companyId)
+                            .eq('role', 'manager');
+
+                        if (managers && managers.length > 0) {
+                            const notifications = managers.map(m => ({
+                                user_id: m.id,
+                                type: 'alert',
+                                title: 'Driver Requires Assistance ⚠️',
+                                message: `Driver has failed Batch ${batchNumber} ${currentResets} consecutive times.`,
+                                is_read: false
+                            }));
+                            await supabase.from('notifications').insert(notifications);
+                        }
+                    } catch (notifErr) {
+                        console.warn('Failed to notify manager:', notifErr);
+                    }
+                }
+
+                // Delete question progress so they start fresh on retake
+                await supabase
+                    .from('user_question_progress')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq('batch_number', batchNumber);
+            }
+
+            await this.syncProfileStats(userId);
+
+            return { success: true, passed, score, attemptNumber };
+        } catch (error) {
+            console.error('[BatchService] Error evaluating batch:', error);
+            return { success: false, passed: false, score: 0, attemptNumber: 1 };
+        }
+    },
+
+    /**
+     * Reset a single MCQ for a driver (Master User control)
+     */
+    async resetIndividualQuestion(userId: string, questionId: string): Promise<boolean> {
+        try {
+            console.log(`[BatchService] MU resetting question ${questionId} for user ${userId}`);
+            const { error } = await supabase
+                .from('user_question_progress')
+                .delete()
+                .eq('user_id', userId)
+                .eq('question_id', questionId);
+
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error('Error resetting individual question:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Reset an entire batch for a driver (Master User control)
+     */
+    async resetEntireBatch(userId: string, batchNumber: number): Promise<boolean> {
+        try {
+            console.log(`[BatchService] MU resetting batch ${batchNumber} for user ${userId}`);
+            
+            // Delete all question progress
+            const { error: qProgressError } = await supabase
+                .from('user_question_progress')
+                .delete()
+                .eq('user_id', userId)
+                .eq('batch_number', batchNumber);
+
+            if (qProgressError) throw qProgressError;
+
+            // Reset consecutive resets count for this batch
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('current_batch, consecutive_resets')
+                .eq('id', userId)
+                .single();
+
+            const resetsMap = profile?.consecutive_resets || {};
+            resetsMap[String(batchNumber)] = 0;
+
+            // Revert current_batch if they had unlocked a higher batch
+            let nextBatch = profile?.current_batch || 1;
+            if (batchNumber < nextBatch) {
+                nextBatch = batchNumber;
+            }
+
+            await supabase
+                .from('profiles')
+                .update({
+                    current_batch: nextBatch,
+                    consecutive_resets: resetsMap,
+                    daily_limit_waived_batch: null
+                })
+                .eq('id', userId);
+
+            // Sync metrics to profile
+            await this.syncProfileStats(userId);
+
+            return true;
+        } catch (error) {
+            console.error('Error resetting entire batch:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Reset all batches for a driver (Master User control)
+     */
+    async resetAllBatches(userId: string): Promise<boolean> {
+        try {
+            console.log(`[BatchService] MU resetting all batches for user ${userId}`);
+            
+            // Delete all question progress
+            const { error: qProgressError } = await supabase
+                .from('user_question_progress')
+                .delete()
+                .eq('user_id', userId);
+
+            if (qProgressError) throw qProgressError;
+
+            // Delete all batch attempts
+            const { error: batchProgressError } = await supabase
+                .from('user_batch_progress')
+                .delete()
+                .eq('user_id', userId);
+
+            if (batchProgressError) throw batchProgressError;
+
+            // Reset profile batch attributes
+            await supabase
+                .from('profiles')
+                .update({
+                    current_batch: 1,
+                    total_batches_completed: 0,
+                    daily_limit_waived_batch: null,
+                    consecutive_resets: {},
+                    safety_index: 0,
+                    total_score: 0,
+                    component_scores: { operation: 0, discipline: 0, professionalism: 0 }
+                })
+                .eq('id', userId);
+
+            return true;
+        } catch (error) {
+            console.error('Error resetting all batches:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Update driver overrides (Master User control)
+     */
+    async updateOverrides(
+        userId: string,
+        dailyLimitOverride: boolean,
+        batchLockOverride: boolean
+    ): Promise<boolean> {
+        try {
+            console.log(`[BatchService] MU updating overrides for user ${userId}: daily=${dailyLimitOverride}, lock=${batchLockOverride}`);
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    daily_limit_override: dailyLimitOverride,
+                    batch_lock_override: batchLockOverride
+                })
+                .eq('id', userId);
+
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error('Error updating overrides:', error);
+            return false;
+        }
+    }
 };

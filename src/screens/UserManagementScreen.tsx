@@ -176,7 +176,15 @@ export const UserManagementScreen = ({ navigation }: any) => {
 
     const renderUserItem = ({ item }: { item: UserProfile }) => (
         <View style={styles.userCard}>
-            <View style={styles.userInfo}>
+            <TouchableOpacity 
+                onPress={() => {
+                    if (item.role === 'driver') {
+                        navigation.navigate('DriverDetail', { userId: item.id });
+                    }
+                }}
+                disabled={item.role !== 'driver'}
+                style={styles.userInfo}
+            >
                 <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>{item.full_name?.charAt(0).toUpperCase()}</Text>
                 </View>
@@ -194,7 +202,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                         </View>
                     )}
                 </View>
-            </View>
+            </TouchableOpacity>
 
             <View style={styles.actions}>
                 <TouchableOpacity onPress={() => {

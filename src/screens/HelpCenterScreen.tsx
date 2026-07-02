@@ -145,25 +145,54 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       question: 'How do I take my daily quizzes (Live Mode)?',
       roles: ['driver', 'manager', 'master'],
       answer: [
-        'Live Mode is your official daily training.',
+        'Live Mode is your official safety training and certification path.',
         '1. Tap the **Mission** tab at the bottom of the screen.',
-        '2. Select an unlocked **Batch**.',
-        '3. Tap **Live Mode**. You will receive 3 questions for the day.',
-        '4. Answer carefully! Your first attempt is recorded and affects your Performance Scores.',
-        '5. Once completed, your status for the day will change to "Compliant".'
+        '2. Select an unlocked **Batch** (each batch has exactly 30 questions).',
+        '3. Tap **Live Mode**. By system default, you can answer up to **3 questions per day**.',
+        '4. The limit resets at **12 midnight** server time each day so you can continue your batch.',
+        '5. Once you answer your daily questions, your status changes to "Compliant".'
+      ]
+    },
+    {
+      id: 'q_live_scoring',
+      category: 'Driver Training',
+      icon: getCategoryIcon('Driver Training'),
+      question: 'How is my Live Mode score calculated?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        'Each question in Live Mode allows a maximum of **two attempts**:',
+        '- Correct on **1st attempt** = **1.0 mark**.',
+        '- Correct on **2nd attempt** = **0.5 marks**.',
+        '- Both attempts wrong = **0 marks**.',
+        'Once correct or after 2 failed attempts, the question is completed.',
+        'Your batch is passing if your overall score is **70%** (minimum 21.0 marks out of 30).'
+      ]
+    },
+    {
+      id: 'q_batch_reset',
+      category: 'Driver Training',
+      icon: getCategoryIcon('Driver Training'),
+      question: 'What happens if I fail a Batch (score below 70%)?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        'If you complete a batch and score below 70%:',
+        '1. The system **automatically resets** the entire batch for a new attempt.',
+        '2. You will see a detailed **Incorrect Answers Review** screen first so you can study your mistakes.',
+        '3. The daily limit is **automatically waived** for the retake—meaning you can answer all 30 questions immediately without waiting!',
+        '4. On retaking, the questions and choice positions are **shuffled** to ensure you learn the safety principles rather than memorizing the order.'
       ]
     },
     {
       id: 'q6',
       category: 'Driver Training',
       icon: getCategoryIcon('Driver Training'),
-      question: 'What is Practice Mode?',
+      question: 'What is Practice Mode (Trial Mode)?',
       roles: ['driver', 'manager', 'master'],
       answer: [
-        'Practice Mode allows you to study without affecting your score.',
+        'Practice Mode (Trial Mode) allows you to study without affecting your score.',
         '1. In the **Mission** tab, select a Batch and tap **Practice Mode**.',
-        '2. You can take Practice quizzes as many times as you want.',
-        '3. Use this to learn the material before taking the official Live Mode quiz.'
+        '2. You have **unlimited attempts** per question and no marks are recorded.',
+        '3. Questions are drawn from the same pool as Live Mode but do not affect your official progress.'
       ]
     },
     {
@@ -173,8 +202,8 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       question: 'Can I review my past mistakes?',
       roles: ['driver', 'manager', 'master'],
       answer: [
-        'Yes! After completing a quiz, the system will show you your final score.',
-        'You can scroll through the results to see exactly which questions you got right and wrong, along with the correct answers.'
+        'Yes! After completing a batch, you can see your final score and progress details.',
+        'If you fail the batch, the app will present a scrollable **Review screen** highlighting all questions you missed, the correct answers, and detailed explanations.'
       ]
     },
 

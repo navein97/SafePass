@@ -12,6 +12,7 @@ import { Check, X, AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { SubscriptionService } from '../services/subscriptionService';
+import { supabase } from '../lib/supabase';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
@@ -52,6 +53,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     total?: number;
   } | null>(null);
   const [nextTimer, setNextTimer] = useState(0);
+  const [showFailedReview, setShowFailedReview] = useState(false);
 
   useEffect(() => {
     if (nextTimer > 0) {
@@ -126,31 +128,44 @@ export const QuizScreen = ({ navigation, route }: any) => {
         }
       }
 
-      // [TESTING] Daily limit disabled — re-enable for production
-      // if (!isPractice) {
-      //   const dailyCount = await QuizStorageService.getDailyCount(profile.id, batchNumber);
-      //   if (dailyCount >= 3) {
-      //     setLoading(false);
-      //     const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
-      //     const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your limit of 3 questions for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
-      //     if (Platform.OS === 'web') {
-      //       window.alert(`${title}\n\n${message}`);
-      //       navigation.goBack();
-      //     } else {
-      //       Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
-      //     }
-      //     return;
-      //   }
-      // }
-
-      // Check access - Bypassed for Practice Mode
       if (!isPractice) {
+        const isLocked = await BatchService.isBatchLocked(profile.id, batchNumber);
+        if (isLocked) {
+          setLoading(false);
+          const lockTitle = t('quiz.batchLockedTitle') || 'Batch Locked';
+          const lockMessage = t('quiz.batchLockedMessage') || 'This batch has been passed and is locked. You cannot retake it unless reset by the Master User.';
+          if (Platform.OS === 'web') {
+            window.alert(`${lockTitle}\n\n${lockMessage}`);
+            navigation.goBack();
+          } else {
+            Alert.alert(lockTitle, lockMessage, [{ text: 'OK', onPress: () => navigation.goBack() }]);
+          }
+          return;
+        }
+
         const canAccess = await BatchService.canAccessBatch(profile.id, batchNumber);
         if (!canAccess) {
           setLoading(false);
           const title = t('quiz.batchLocked') || 'Batch Locked';
-          const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`;
+          const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 70% average score to unlock this batch.`;
           
+          if (Platform.OS === 'web') {
+            window.alert(`${title}\n\n${message}`);
+            navigation.goBack();
+          } else {
+            Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
+          }
+          return;
+        }
+      }
+
+      let dailyStatus;
+      if (!isPractice) {
+        dailyStatus = await BatchService.getDailyLimitStatus(profile.id, batchNumber);
+        if (!dailyStatus.isAccessGranted) {
+          setLoading(false);
+          const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
+          const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your limit of 3 questions for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
           if (Platform.OS === 'web') {
             window.alert(`${title}\n\n${message}`);
             navigation.goBack();
@@ -183,6 +198,13 @@ export const QuizScreen = ({ navigation, route }: any) => {
         }
 
         setQuestions(loadedQuestions);
+        
+        let sLimit = 30;
+        if (!isPractice && dailyStatus) {
+          const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? 30 : Math.max(0, 3 - dailyStatus.completedToday);
+          sLimit = Math.min(quota, loadedQuestions.length);
+        }
+        setSessionLimit(sLimit);
         
         // Wait for next tick to ensure questions state is accessible if needed
         // then check for saved progress
@@ -342,11 +364,6 @@ export const QuizScreen = ({ navigation, route }: any) => {
       [currentIndex]: currentAttempts
     }));
 
-    // Increment Daily Count if Live Mode - Every answer (Correct or Incorrect) counts towards the quota
-    if (!isPractice) {
-      await QuizStorageService.incrementDailyCount(userId, batchNumber);
-    }
-
     if (isCorrect) {
       // Record correct answer
       setAnswers(prev => [...prev, {
@@ -355,6 +372,20 @@ export const QuizScreen = ({ navigation, route }: any) => {
         isCorrect: true
       }]);
       setShowFeedback(false);
+
+      if (!isPractice) {
+        const score = currentAttempts === 1 ? 1.0 : 0.5;
+        await BatchService.recordQuestionProgress(
+          userId,
+          currentBatchQuestion.id,
+          batchNumber,
+          currentAttempts,
+          true,
+          score
+        );
+      }
+
+      setNextTimer(2);
     } else {
       // Record failed attempt and Show feedback
       setAnswers(prev => [...prev, {
@@ -363,10 +394,25 @@ export const QuizScreen = ({ navigation, route }: any) => {
         isCorrect: false
       }]);
       setShowFeedback(true);
+
+      if (isPractice) {
+        setNextTimer(4);
+      } else {
+        if (currentAttempts === 1) {
+          setNextTimer(0);
+        } else {
+          await BatchService.recordQuestionProgress(
+            userId,
+            currentBatchQuestion.id,
+            batchNumber,
+            2,
+            false,
+            0.0
+          );
+          setNextTimer(4);
+        }
+      }
     }
-    
-    // Start 4s delay timer before user can continue
-    setNextTimer(4);
     
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -374,6 +420,17 @@ export const QuizScreen = ({ navigation, route }: any) => {
   };
 
   const handleRetry = () => {
+    const currentAttempts = attemptCounts[currentIndex] || 0;
+    
+    if (!isPractice && currentAttempts === 1) {
+      // Live Mode 1st attempt failure: Clear state to allow 2nd attempt
+      setSelectedOption(null);
+      setIsAnswered(false);
+      setShowFeedback(false);
+      setNextTimer(0);
+      return;
+    }
+
     if (isPractice) {
       // Requeue the question to the end of the session (Practice Mode only)
       const currentQ = { ...questions[currentIndex] };
@@ -447,35 +504,41 @@ export const QuizScreen = ({ navigation, route }: any) => {
       }
 
       const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`Submitting attempt for User: ${userId}, Batch: ${batchNumber}, Time: ${timeSpentSeconds}s`);
       
-      const result = await BatchService.submitBatchAttempt(
-        userId,
-        batchNumber,
-        answers,
-        questions,
-        timeSpentSeconds
-      );
+      const { count } = await supabase
+        .from('user_question_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('batch_number', batchNumber);
 
-      console.log('Submission result:', result);
+      const completedCount = count || 0;
+      console.log(`[QuizScreen] Completed questions count in DB: ${completedCount}`);
 
-      if (result.success) {
-        // Clear saved progress since quiz is complete
-        await QuizStorageService.clearProgress(userId, batchNumber);
-        
-        // result.progress might be null if current score didn't beat high score
-        const score = result.progress ? result.progress.score : BatchService.calculateScoreWithAttempts(answers);
-        const avgScore = await BatchService.getBatchAverageScore(userId, batchNumber);
-        const passed = avgScore >= 60;
-        
-        const title = passed ? t('quiz.batchCompleted') : t('quiz.batchAttemptRecorded');
+      // Clear local progress since this daily session is resolved
+      await QuizStorageService.clearProgress(userId, batchNumber, mode);
 
-        // Always show full-screen celebration card (works on both web and native)
-        setResultData({ title, score, avgScore, passed, isPractice: false });
+      if (completedCount >= 30) {
+        // Evaluated at exactly 30 questions
+        const evalResult = await BatchService.evaluateBatch(userId, batchNumber, timeSpentSeconds);
+        if (evalResult.success) {
+          const title = evalResult.passed ? (t('quiz.batchCompleted') || 'Batch Passed! 🏆') : (t('quiz.batchAttemptRecorded') || 'Batch Failed');
+          setResultData({
+            title,
+            score: evalResult.score,
+            avgScore: evalResult.score,
+            passed: evalResult.passed,
+            isPractice: false
+          });
+        } else {
+          Alert.alert('Error', 'Failed to evaluate batch. Please check your connection.');
+        }
       } else {
-        console.error('Submission returned failure');
-        Alert.alert('Error', 'Failed to submit batch attempt. Please try again.');
-        // Don't auto navigate on error
+        setLoading(false);
+        Alert.alert(
+          t('quiz.dailySessionCompleteTitle') || 'Session Complete!',
+          t('quiz.dailySessionCompleteMessage', { count: completedCount }) || `You have answered today's questions. Current progress: ${completedCount}/30 completed. Come back tomorrow!`,
+          [{ text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } }) }]
+        );
       }
     } catch (error) {
       console.error('Error finishing quiz:', error);
@@ -681,12 +744,29 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   <Text style={styles.resumeButtonTextPrimary}>{t('quiz.practiceAgain')}</Text>
                 </TouchableOpacity>
               )}
+
+              {!isPracticeResult && !resultData.passed && (
+                <TouchableOpacity
+                  style={[styles.resumeButton, styles.resumeButtonPrimary]}
+                  onPress={() => setShowFailedReview(true)}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={colors.gradients.primary as any}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+                  />
+                  <Text style={styles.resumeButtonTextPrimary}>{t('quiz.reviewIncorrect', 'Review Incorrect Answers')}</Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
-                style={[styles.resumeButton, isPracticeResult ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
+                style={[styles.resumeButton, (isPracticeResult || (!isPracticeResult && !resultData.passed)) ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } })}
                 activeOpacity={0.8}
               >
-                  {!isPracticeResult && (
+                  {!isPracticeResult && resultData.passed && (
                     <LinearGradient
                       colors={colors.gradients.primary as any}
                       start={{ x: 0, y: 0 }}
@@ -694,12 +774,79 @@ export const QuizScreen = ({ navigation, route }: any) => {
                       style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
                     />
                   )}
-                  <Text style={isPracticeResult ? styles.resumeButtonTextSecondary : styles.resumeButtonTextPrimary}>
+                  <Text style={(isPracticeResult || (!isPracticeResult && !resultData.passed)) ? styles.resumeButtonTextSecondary : styles.resumeButtonTextPrimary}>
                     {t('quiz.backToMenu')}
                   </Text>
               </TouchableOpacity>
             </View>
           </View>
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
+  if (showFailedReview) {
+    const incorrectQuestions = questions.filter((q) => {
+      const qAnswers = answers.filter(a => a.questionId === q.id);
+      const lastAns = qAnswers[qAnswers.length - 1];
+      return lastAns ? !lastAns.isCorrect : true;
+    });
+
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} />
+          <View style={styles.header}>
+            <Text style={[styles.batchTitle, { fontSize: 18, textAlign: 'center' }]}>{t('quiz.failedReviewTitle', 'Incorrect Answers Review')}</Text>
+          </View>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <Text style={{ fontSize: 14, color: colors.text.secondary, marginBottom: 16, textAlign: 'center', fontFamily: typography.fonts.regular }}>
+              {t('quiz.failedReviewDesc', 'Please review the explanations below before retaking this batch.')}
+            </Text>
+            {incorrectQuestions.map((q, index) => {
+              const correctOptionText = q.options[q.correctOptionIndex];
+              const isMalay = i18n.language === 'ms';
+              const text = (isMalay && q.text_ms) ? q.text_ms : q.text;
+              const options = (isMalay && q.options_ms) ? q.options_ms : q.options;
+              const explanation = (isMalay && q.explanation_ms) ? q.explanation_ms : q.explanation;
+              const localizedCorrectOptionText = options[q.correctOptionIndex];
+
+              return (
+                <View key={q.id} style={[styles.questionCard, { borderLeftWidth: 4, borderLeftColor: '#FF3D00', marginBottom: 16 }]}>
+                  <Text style={{ fontSize: 13, color: colors.text.secondary, fontFamily: typography.fonts.bold, marginBottom: 4 }}>
+                    {t('quiz.questionNumber', { number: index + 1 }) || `Question ${index + 1}`}
+                  </Text>
+                  <Text style={[styles.questionText, { fontSize: 15, lineHeight: 22, marginBottom: 8 }]}>{text}</Text>
+                  
+                  <View style={{ backgroundColor: 'rgba(0, 200, 83, 0.08)', padding: 10, borderRadius: 8, marginVertical: 6 }}>
+                    <Text style={{ fontSize: 13, color: '#00C853', fontFamily: typography.fonts.bold }}>✓ {t('quiz.correctAnswer', 'Correct Answer')}:</Text>
+                    <Text style={{ fontSize: 14, color: '#00C853', marginTop: 2, fontFamily: typography.fonts.medium }}>{localizedCorrectOptionText}</Text>
+                  </View>
+
+                  {explanation ? (
+                    <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' }}>
+                      <Text style={{ fontSize: 12, color: colors.text.secondary, fontFamily: typography.fonts.bold }}>💡 {t('quiz.explanation')}:</Text>
+                      <Text style={{ fontSize: 14, color: colors.text.primary, marginTop: 2, lineHeight: 20, fontFamily: typography.fonts.regular }}>{explanation}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+            
+            <TouchableOpacity 
+              style={styles.nextButton}
+              onPress={() => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } })}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={colors.gradients.primary as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+              />
+              <Text style={styles.nextButtonText}>{t('quiz.restartBatch', 'Return & Restart Batch')}</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </SafeAreaView>
       </GradientBackground>
     );
@@ -832,11 +979,13 @@ export const QuizScreen = ({ navigation, route }: any) => {
             >
               <Text style={styles.retryButtonText}>
                 {nextTimer > 0 ? `${t('common.wait', 'Wait...')} (${nextTimer}s)` :
-                 isPractice
-                  ? (t('common.continue') || 'Continue')
-                  : currentIndex === sessionLimit - 1
-                    ? (t('quiz.finish') || 'Finish ✓')
-                    : t('quiz.nextQuestion')}
+                 (!isPractice && (attemptCounts[currentIndex] || 0) === 1)
+                  ? (t('quiz.tryAgain', 'Try Again') || 'Try Again')
+                  : isPractice
+                    ? (t('common.continue') || 'Continue')
+                    : currentIndex === sessionLimit - 1
+                      ? (t('quiz.finish') || 'Finish ✓')
+                      : t('quiz.nextQuestion')}
               </Text>
             </TouchableOpacity>
           ) : isAnswered && (

@@ -21,6 +21,7 @@ import { GradientBackground } from '../components/ui/GradientBackground';
 import { typography } from '../theme/typography';
 import { Lock, CheckCircle, PlayCircle, AlertCircle, Target } from 'lucide-react-native';
 import { SubscriptionService } from '../services/subscriptionService';
+import { supabase } from '../lib/supabase';
 
 interface BatchStatus {
   batchNumber: number;
@@ -29,6 +30,7 @@ interface BatchStatus {
   attemptCount: number;
   passed: boolean;
   dailyCount: number;
+  completedCount: number;
 }
 
 export function MissionScreen() {
@@ -94,25 +96,38 @@ export function MissionScreen() {
           const batchNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
           const statuses: BatchStatus[] = [];
 
-          // Create a promise with a timeout to prevent infinite loading
           const fetchPromise = async () => {
-            // we use a simple loop or Promise.all on smaller chunks
             const accessResults = await Promise.all(batchNumbers.map(i => BatchService.canAccessBatch(profile.id, i)));
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(profile.id, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(profile.id, i)));
-            const dailyCounts = await Promise.all(batchNumbers.map(i => QuizStorageService.getDailyCount(profile.id, i)));
+            const dailyStatuses = await Promise.all(batchNumbers.map(i => BatchService.getDailyLimitStatus(profile.id, i)));
             
-            return batchNumbers.map((batchNum, index) => ({
-              batchNumber: batchNum,
-              canAccess: accessResults[index],
-              averageScore: scoreResults[index],
-              attemptCount: attemptResults[index].length,
-              passed: scoreResults[index] >= 60,
-              dailyCount: dailyCounts[index],
-            }));
-          };
+            const { data: qProgress } = await supabase
+              .from('user_question_progress')
+              .select('batch_number')
+              .eq('user_id', profile.id);
 
-          const quotaPromise = QuizStorageService.getDailyCount(profile.id);
+            const completedCounts = new Array(9).fill(0);
+            if (qProgress) {
+              qProgress.forEach(p => {
+                completedCounts[p.batch_number] = (completedCounts[p.batch_number] || 0) + 1;
+              });
+            }
+
+            return batchNumbers.map((batchNum, index) => {
+              const score = scoreResults[index];
+              const passed = score >= 70 || batchNum < profile.current_batch;
+              return {
+                batchNumber: batchNum,
+                canAccess: accessResults[index],
+                averageScore: score,
+                attemptCount: attemptResults[index].length,
+                passed,
+                dailyCount: dailyStatuses[index].completedToday,
+                completedCount: passed ? 30 : (completedCounts[batchNum] || 0)
+              };
+            });
+          };
 
           // Race the fetch against a 10-second timeout
           const timeoutPromise = new Promise((_, reject) => 
@@ -125,19 +140,7 @@ export function MissionScreen() {
           ]) as [BatchStatus[]];
 
           if (isActive) {
-            // Append Coming Soon batches 5-8
-            const finalStatuses = [...resultStatuses];
-            for (let i = 5; i <= 8; i++) {
-              finalStatuses.push({
-                batchNumber: i,
-                canAccess: false,
-                averageScore: 0,
-                attemptCount: 0,
-                passed: false,
-                dailyCount: 0,
-              });
-            }
-            setBatchStatuses(finalStatuses);
+            setBatchStatuses(resultStatuses);
             lastLoadTime.current = Date.now();
             isFirstLoadRef.current = false; // Mark first load as complete
           }
@@ -307,16 +310,20 @@ export function MissionScreen() {
                   </View>
 
                   <View style={styles.batchStats}>
-                    {batch.attemptCount > 0 ? (
+                    {batch.attemptCount > 0 || batch.completedCount > 0 ? (
                       <>
-                        {selectedMode !== 'practice' && (
+                        <View style={styles.statRow}>
+                          <Text style={styles.statLabel}>{t('mission.progress', 'Progress')}</Text>
+                          <Text style={styles.statValue}>{batch.completedCount}/30 {t('quiz.completed', 'completed')}</Text>
+                        </View>
+                        {selectedMode !== 'practice' && batch.averageScore > 0 && (
                           <View style={styles.statRow}>
                             <Text style={styles.statLabel}>{t('mission.averageScore')}</Text>
                             <Text
                               style={[
                                 styles.statValue,
                                 batch.passed && styles.statValuePassed,
-                                !batch.passed && batch.attemptCount > 0 && styles.statValueFailed,
+                                !batch.passed && styles.statValueFailed,
                               ]}
                             >
                               {batch.averageScore.toFixed(1)}%
@@ -333,15 +340,13 @@ export function MissionScreen() {
                             <Text
                               style={[
                                 styles.statValue,
-                                (batch.passed || (selectedMode === 'live' && batch.dailyCount >= 3)) && styles.statValuePassed,
-                                !batch.passed && !(selectedMode === 'live' && batch.dailyCount >= 3) && styles.statValueFailed,
+                                batch.passed && styles.statValuePassed,
+                                !batch.passed && styles.statValueFailed,
                               ]}
                             >
-                              {selectedMode === 'live' && (batch.dailyCount >= 3 || batch.passed)
-                                ? `✓ ${t('mission.goalDone')}` 
-                                : batch.passed
-                                  ? `✓ ${t('mission.passed')}`
-                                  : t('mission.needMoreToPass', { percent: (60 - batch.averageScore).toFixed(1) })}
+                              {batch.passed
+                                ? `✓ ${t('mission.passed')}`
+                                : `${t('mission.inProgress', 'In Progress')}`}
                             </Text>
                           </View>
                         )}
