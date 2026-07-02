@@ -534,11 +534,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
         }
       } else {
         setLoading(false);
-        Alert.alert(
-          t('quiz.dailySessionCompleteTitle') || 'Session Complete!',
-          t('quiz.dailySessionCompleteMessage', { count: completedCount }) || `You have answered today's questions. Current progress: ${completedCount}/30 completed. Come back tomorrow!`,
-          [{ text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } }) }]
-        );
+        // Show session complete card instead of raw alert
+        setResultData({
+          title: t('quiz.dailySessionCompleteTitle') || 'Session Complete!',
+          score: 0,
+          avgScore: 0,
+          passed: false,
+          isPractice: false,
+          isDailySessionComplete: true, // Custom flag to render differently
+          completedCount: completedCount
+        } as any); // Casting as any to easily append custom fields for rendering
       }
     } catch (error) {
       console.error('Error finishing quiz:', error);
@@ -679,15 +684,25 @@ export const QuizScreen = ({ navigation, route }: any) => {
   // Batch Result / Celebration Card
   if (resultData) {
     const isPracticeResult = resultData.isPractice;
-    const celebrationEmoji = resultData.passed || isPracticeResult
-      ? resultData.score >= 80 ? '🏆' : resultData.score >= 60 ? '🎉' : '💪'
-      : '📋';
-    const bgColor = resultData.passed || (isPracticeResult && resultData.score >= 60)
-      ? 'rgba(0, 200, 83, 0.12)'
-      : 'rgba(255, 107, 107, 0.10)';
-    const accentColor = resultData.passed || (isPracticeResult && resultData.score >= 60)
-      ? '#00C853'
-      : '#B45309'; // dark amber — readable on the light beige background
+    const isDailySessionComplete = (resultData as any).isDailySessionComplete;
+    
+    let celebrationEmoji = '🏆';
+    let bgColor = 'rgba(0, 200, 83, 0.12)';
+    let accentColor = '#00C853';
+
+    if (isDailySessionComplete) {
+      celebrationEmoji = '👍';
+      bgColor = 'rgba(59, 130, 246, 0.12)';
+      accentColor = '#2563EB';
+    } else if (resultData.passed || isPracticeResult) {
+      celebrationEmoji = resultData.score >= 80 ? '🏆' : resultData.score >= 60 ? '🎉' : '💪';
+      bgColor = resultData.score >= 60 ? 'rgba(0, 200, 83, 0.12)' : 'rgba(255, 107, 107, 0.10)';
+      accentColor = resultData.score >= 60 ? '#00C853' : '#B45309';
+    } else {
+      celebrationEmoji = '📋';
+      bgColor = 'rgba(255, 107, 107, 0.10)';
+      accentColor = '#B45309';
+    }
 
     return (
       <GradientBackground>
@@ -699,7 +714,18 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
             <Text style={[styles.resumeTitle, { color: accentColor }]}>{resultData.title}</Text>
 
-              {isPracticeResult ? (
+              {isDailySessionComplete ? (
+                <>
+                  <Text style={[styles.resultMessage, { color: colors.text.secondary, marginTop: 12, textAlign: 'center', lineHeight: 22, fontSize: 16 }]}>
+                    {t('quiz.dailySessionCompleteMessage', { count: (resultData as any).completedCount }) || `Great work! You've answered ${(resultData as any).completedCount}/30 questions in this batch. Come back tomorrow to continue your progress.`}
+                  </Text>
+                  
+                  <View style={{ backgroundColor: 'rgba(0,0,0,0.04)', paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '90%', alignSelf: 'center' }}>
+                    <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Progress</Text>
+                    <Text style={{ fontSize: 28, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{(resultData as any).completedCount}/30</Text>
+                  </View>
+                </>
+              ) : isPracticeResult ? (
                 <>
                   <Text style={styles.resultScoreText}>{t('quiz.correctCount', { correct: resultData.correct, total: resultData.total })}</Text>
                   <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.score}%</Text>

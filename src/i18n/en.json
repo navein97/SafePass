@@ -271,7 +271,11 @@
     "backToMenu": "Back to Menu",
     "wrongAnswer": "❌ Wrong answer.",
     "hint": "Hint",
-    "nextQuestion": "Next Question →"
+    "nextQuestion": "Next Question →",
+    "dailySessionCompleteTitle": "Session Complete!",
+    "dailySessionCompleteMessage": "Great work! You've answered {{count}}/30 questions in this batch. Come back tomorrow to continue your progress.",
+    "reviewIncorrect": "Review Incorrect Answers",
+    "failedReviewTitle": "Incorrect Answers Review"
   },
   "profile": {
     "title": "Profile",

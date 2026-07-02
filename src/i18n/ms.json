@@ -271,7 +271,11 @@
     "backToMenu": "Kembali ke Menu",
     "wrongAnswer": "❌ Jawapan salah.",
     "hint": "Petunjuk",
-    "nextQuestion": "Soalan Seterusnya →"
+    "nextQuestion": "Soalan Seterusnya →",
+    "dailySessionCompleteTitle": "Sesi Selesai!",
+    "dailySessionCompleteMessage": "Bagus! Anda telah menjawab {{count}}/30 soalan dalam kelompok ini. Kembali esok untuk meneruskan kemajuan anda.",
+    "reviewIncorrect": "Semak Jawapan Salah",
+    "failedReviewTitle": "Semakan Jawapan Salah"
   },
   "profile": {
     "title": "Profil",

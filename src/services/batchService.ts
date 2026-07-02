@@ -1167,8 +1167,8 @@ export const BatchService = {
     async resetEntireBatch(userId: string, batchNumber: number): Promise<boolean> {
         try {
             console.log(`[BatchService] MU resetting batch ${batchNumber} for user ${userId}`);
-            
-            // Delete all question progress
+
+            // Delete all question progress for this batch
             const { error: qProgressError } = await supabase
                 .from('user_question_progress')
                 .delete()
@@ -1176,6 +1176,15 @@ export const BatchService = {
                 .eq('batch_number', batchNumber);
 
             if (qProgressError) throw qProgressError;
+
+            // Delete all batch attempt records for this batch (fixes scores/attempts not clearing)
+            const { error: batchProgressError } = await supabase
+                .from('user_batch_progress')
+                .delete()
+                .eq('user_id', userId)
+                .eq('batch_number', batchNumber);
+
+            if (batchProgressError) throw batchProgressError;
 
             // Reset consecutive resets count for this batch
             const { data: profile } = await supabase

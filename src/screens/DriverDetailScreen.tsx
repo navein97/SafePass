@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { ChevronLeft, RotateCcw, AlertTriangle, ShieldCheck, HelpCircle } from 'lucide-react-native';
+import { ChevronLeft, RotateCcw, AlertTriangle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { BatchService } from '../services/batchService';
 import { GradientBackground } from '../components/ui/GradientBackground';
@@ -22,6 +22,8 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
     const [batchQuestions, setBatchQuestions] = useState<any[]>([]);
     const [progressList, setProgressList] = useState<any[]>([]);
     const [actionLoading, setActionLoading] = useState(false);
+
+    const styles = useMemo(() => createStyles(colors, theme), [colors, theme]);
 
     useEffect(() => {
         loadDriverData();
@@ -49,7 +51,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             const batchNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(userId, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(userId, i)));
-            
+
             // Query DB question progress to count completed per batch
             const { data: qProgress } = await supabase
                 .from('user_question_progress')
@@ -118,68 +120,6 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
         } catch (error) {
             console.error('Error loading question progress details:', error);
         }
-    };
-
-    const handleToggleDailyLimit = async (value: boolean) => {
-        try {
-            setActionLoading(true);
-            const success = await BatchService.updateOverrides(userId, value, driverProfile.batch_lock_override);
-            if (success) {
-                setDriverProfile((prev: any) => ({ ...prev, daily_limit_override: value }));
-            } else {
-                throw new Error('Failed to update toggle');
-            }
-        } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to toggle override');
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    const handleToggleBatchLock = async (value: boolean) => {
-        try {
-            setActionLoading(true);
-            const success = await BatchService.updateOverrides(userId, driverProfile.daily_limit_override, value);
-            if (success) {
-                setDriverProfile((prev: any) => ({ ...prev, batch_lock_override: value }));
-            } else {
-                throw new Error('Failed to update toggle');
-            }
-        } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to toggle override');
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    const handleResetQuestion = (questionId: string, text: string) => {
-        Alert.alert(
-            'Reset MCQ',
-            `Are you sure you want to reset this question for this driver?\n\n"${text.substring(0, 60)}..."`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Reset',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            setActionLoading(true);
-                            const success = await BatchService.resetIndividualQuestion(userId, questionId);
-                            if (success) {
-                                Alert.alert('Success', 'Question reset successfully');
-                                loadDriverData();
-                            } else {
-                                throw new Error('Reset failed');
-                            }
-                        } catch (error: any) {
-                            Alert.alert('Error', error.message || 'Failed to reset question');
-                        } finally {
-                            setActionLoading(false);
-                        }
-                    }
-                }
-            ]
-        );
     };
 
     const handleResetBatch = (batchNumber: number, passed: boolean) => {
@@ -255,17 +195,20 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
         return batchProgress.find(b => b.batchNumber === selectedBatch);
     }, [batchProgress, selectedBatch]);
 
-    const activeQuestionProgress = useMemo(() => {
-        return batchQuestions.map(q => {
-            const prog = progressList.find(p => p.question_id === q.id);
-            return {
-                ...q,
-                answered: !!prog,
-                attempts: prog?.attempts || 0,
-                isCorrect: prog?.is_correct || false,
-                score: prog?.score || 0.0
-            };
-        });
+    // Only show incorrect answered questions
+    const incorrectQuestions = useMemo(() => {
+        return batchQuestions
+            .map(q => {
+                const prog = progressList.find(p => p.question_id === q.id);
+                return {
+                    ...q,
+                    answered: !!prog,
+                    attempts: prog?.attempts || 0,
+                    isCorrect: prog?.is_correct || false,
+                    score: prog?.score || 0.0
+                };
+            })
+            .filter(q => q.answered && !q.isCorrect);
     }, [batchQuestions, progressList]);
 
     if (loading) {
@@ -281,7 +224,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
     return (
         <GradientBackground>
             <SafeAreaView style={styles.safeArea}>
-                <StatusBar barStyle="light-content" />
+                <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} />
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <ChevronLeft color={colors.text.primary} size={24} />
@@ -314,37 +257,6 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         </View>
                     </GlassCard>
 
-                    {/* Overrides Card */}
-                    <GlassCard style={styles.card}>
-                        <Text style={styles.cardTitle}>Master User Overrides</Text>
-                        
-                        <View style={styles.overrideRow}>
-                            <View style={styles.overrideTextContainer}>
-                                <Text style={styles.overrideLabel}>Waive Daily Limit</Text>
-                                <Text style={styles.overrideDesc}>Allow driver to answer all 30 questions in one day</Text>
-                            </View>
-                            <Switch
-                                value={driverProfile?.daily_limit_override}
-                                onValueChange={handleToggleDailyLimit}
-                                trackColor={{ false: '#767577', true: colors.primary.DEFAULT }}
-                                thumbColor={driverProfile?.daily_limit_override ? '#FFF' : '#f4f3f4'}
-                            />
-                        </View>
-
-                        <View style={[styles.overrideRow, { borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 12, marginTop: 12 }]}>
-                            <View style={styles.overrideTextContainer}>
-                                <Text style={styles.overrideLabel}>Unlock All Batches</Text>
-                                <Text style={styles.overrideDesc}>Allow driver to access any batch out of sequence</Text>
-                            </View>
-                            <Switch
-                                value={driverProfile?.batch_lock_override}
-                                onValueChange={handleToggleBatchLock}
-                                trackColor={{ false: '#767577', true: colors.primary.DEFAULT }}
-                                thumbColor={driverProfile?.batch_lock_override ? '#FFF' : '#f4f3f4'}
-                            />
-                        </View>
-                    </GlassCard>
-
                     {/* Batch Selection Slider */}
                     <View style={{ marginVertical: 8 }}>
                         <Text style={styles.sectionLabel}>Batch Management</Text>
@@ -362,11 +274,11 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                                     <Text style={[
                                         styles.batchTabText,
                                         selectedBatch === b.batchNumber && styles.batchTabTextActive,
-                                        b.passed && { color: '#00C853' }
+                                        b.passed && selectedBatch !== b.batchNumber && { color: '#00C853' }
                                     ]}>
                                         Batch {b.batchNumber}
                                     </Text>
-                                    {b.passed && <Text style={{ fontSize: 9 }}>✓</Text>}
+                                    {b.passed && <Text style={{ fontSize: 9, color: selectedBatch === b.batchNumber ? '#FFF' : '#00C853' }}>✓</Text>}
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
@@ -377,7 +289,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         <GlassCard style={styles.card}>
                             <View style={styles.batchSummaryHeader}>
                                 <Text style={styles.cardTitle}>Batch {selectedBatch} Summary</Text>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     onPress={() => handleResetBatch(selectedBatch, selectedSummary.passed)}
                                     style={styles.resetBatchButton}
                                 >
@@ -409,28 +321,26 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         </GlassCard>
                     )}
 
-                    {/* Question Reset List */}
-                    <Text style={styles.sectionLabel}>Answered Questions ({progressList.length})</Text>
-                    
-                    {activeQuestionProgress.filter(q => q.answered).length === 0 ? (
-                        <Text style={styles.emptyText}>No answered questions recorded in this batch.</Text>
+                    {/* Incorrect Questions List (Read-only) */}
+                    <Text style={styles.sectionLabel}>
+                        Incorrect Questions ({incorrectQuestions.length})
+                    </Text>
+
+                    {incorrectQuestions.length === 0 ? (
+                        <GlassCard style={styles.emptyCard}>
+                            <Text style={styles.emptyText}>
+                                {progressList.length === 0
+                                    ? 'No questions answered in this batch yet.'
+                                    : '✅ No incorrect questions — great performance!'}
+                            </Text>
+                        </GlassCard>
                     ) : (
-                        activeQuestionProgress.filter(q => q.answered).map((q, idx) => (
+                        incorrectQuestions.map((q, idx) => (
                             <GlassCard key={q.id} style={styles.questionProgressCard}>
                                 <View style={styles.qHeader}>
                                     <Text style={styles.qIndex}>Question #{idx + 1}</Text>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                        <View style={[styles.badge, q.isCorrect ? styles.badgeCorrect : styles.badgeIncorrect]}>
-                                            <Text style={q.isCorrect ? styles.badgeTextCorrect : styles.badgeTextIncorrect}>
-                                                {q.isCorrect ? `Correct (${q.score} pts)` : 'Incorrect'}
-                                            </Text>
-                                        </View>
-                                        <TouchableOpacity 
-                                            onPress={() => handleResetQuestion(q.id, q.text)}
-                                            style={styles.trashBtn}
-                                        >
-                                            <RotateCcw size={16} color="#FF6B6B" />
-                                        </TouchableOpacity>
+                                    <View style={styles.badgeIncorrect}>
+                                        <Text style={styles.badgeTextIncorrect}>Incorrect</Text>
                                     </View>
                                 </View>
                                 <Text style={styles.qText}>{q.text}</Text>
@@ -439,8 +349,8 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         ))
                     )}
 
-                    {/* Revert / Nuclear Option */}
-                    <TouchableOpacity 
+                    {/* Nuclear Option */}
+                    <TouchableOpacity
                         onPress={handleResetAll}
                         style={styles.nuclearBtn}
                     >
@@ -453,7 +363,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, theme: string) => StyleSheet.create({
     safeArea: {
         flex: 1,
     },
@@ -469,7 +379,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomColor: colors.border,
     },
     backButton: {
         padding: 4,
@@ -477,7 +387,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontFamily: typography.fonts.bold,
-        color: '#1A1A1A',
+        color: colors.text.primary,
     },
     content: {
         padding: 16,
@@ -486,7 +396,6 @@ const styles = StyleSheet.create({
     },
     overviewCard: {
         padding: 16,
-        backgroundColor: 'rgba(255,255,255,0.7)',
     },
     card: {
         padding: 16,
@@ -494,66 +403,49 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 15,
         fontFamily: typography.fonts.bold,
-        color: '#1A1A1A',
+        color: colors.text.primary,
         marginBottom: 12,
     },
     profileRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingVertical: 6,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: colors.border,
     },
     profileLabel: {
         fontSize: 14,
         fontFamily: typography.fonts.medium,
-        color: '#666',
+        color: colors.text.secondary,
     },
     profileVal: {
         fontSize: 14,
         fontFamily: typography.fonts.bold,
-        color: '#1A1A1A',
-    },
-    overrideRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    overrideTextContainer: {
-        flex: 1,
-        paddingRight: 16,
-    },
-    overrideLabel: {
-        fontSize: 14,
-        fontFamily: typography.fonts.bold,
-        color: '#1A1A1A',
-    },
-    overrideDesc: {
-        fontSize: 11,
-        fontFamily: typography.fonts.regular,
-        color: '#888',
-        marginTop: 2,
+        color: colors.text.primary,
     },
     sectionLabel: {
-        fontSize: 14,
+        fontSize: 12,
         fontFamily: typography.fonts.bold,
-        color: '#666',
+        color: colors.text.secondary,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginVertical: 8,
+        letterSpacing: 0.8,
+        marginVertical: 4,
     },
     batchScroller: {
         gap: 8,
         paddingRight: 16,
+        paddingVertical: 8,
     },
     batchTab: {
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#FFF',
+        backgroundColor: theme === 'dark' ? colors.background.subtle : '#FFFFFF',
         borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderColor: colors.border,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 4,
     },
     batchTabActive: {
         backgroundColor: '#1E293B',
@@ -562,7 +454,7 @@ const styles = StyleSheet.create({
     batchTabText: {
         fontSize: 13,
         fontFamily: typography.fonts.bold,
-        color: '#475569',
+        color: colors.text.secondary,
     },
     batchTabTextActive: {
         color: '#FFF',
@@ -595,20 +487,22 @@ const styles = StyleSheet.create({
     statBox: {
         flex: 1,
         minWidth: '45%',
-        backgroundColor: 'rgba(0,0,0,0.03)',
-        borderRadius: 8,
-        padding: 10,
+        backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+        borderRadius: 10,
+        padding: 12,
     },
     statBoxLabel: {
         fontSize: 11,
         fontFamily: typography.fonts.medium,
-        color: '#888',
+        color: colors.text.secondary,
         marginBottom: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
     },
     statBoxVal: {
-        fontSize: 15,
+        fontSize: 18,
         fontFamily: typography.fonts.bold,
-        color: '#1A1A1A',
+        color: colors.text.primary,
     },
     questionProgressCard: {
         padding: 14,
@@ -623,43 +517,40 @@ const styles = StyleSheet.create({
     qIndex: {
         fontSize: 12,
         fontFamily: typography.fonts.bold,
-        color: '#888',
+        color: colors.text.secondary,
     },
     qText: {
         fontSize: 14,
         fontFamily: typography.fonts.medium,
-        color: '#1A1A1A',
+        color: colors.text.primary,
         lineHeight: 20,
     },
     qAttempts: {
         fontSize: 11,
         fontFamily: typography.fonts.medium,
-        color: '#888',
+        color: colors.text.tertiary,
         marginTop: 6,
     },
-    badge: {
+    badgeIncorrect: {
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
-    },
-    badgeCorrect: {
-        backgroundColor: 'rgba(0, 200, 83, 0.1)',
-    },
-    badgeIncorrect: {
-        backgroundColor: 'rgba(255, 61, 0, 0.1)',
-    },
-    badgeTextCorrect: {
-        color: '#00C853',
-        fontSize: 11,
-        fontFamily: typography.fonts.bold,
+        backgroundColor: 'rgba(255, 61, 0, 0.12)',
     },
     badgeTextIncorrect: {
         color: '#FF3D00',
         fontSize: 11,
         fontFamily: typography.fonts.bold,
     },
-    trashBtn: {
-        padding: 4,
+    emptyCard: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: 13,
+        fontFamily: typography.fonts.medium,
+        color: colors.text.secondary,
+        textAlign: 'center',
     },
     nuclearBtn: {
         flexDirection: 'row',
@@ -669,26 +560,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         gap: 8,
-        marginTop: 20,
+        marginTop: 12,
     },
     nuclearBtnText: {
         color: '#FFF',
         fontSize: 15,
         fontFamily: typography.fonts.bold,
     },
-    emptyText: {
-        fontSize: 13,
-        fontFamily: typography.fonts.medium,
-        color: '#888',
-        textAlign: 'center',
-        marginVertical: 12,
-    },
     actionLoader: {
         position: 'absolute',
         top: 20,
         right: 20,
         zIndex: 99,
-        backgroundColor: 'rgba(255,255,255,0.9)',
+        backgroundColor: theme === 'dark' ? 'rgba(20,20,20,0.9)' : 'rgba(255,255,255,0.9)',
         borderRadius: 50,
         padding: 6,
         shadowColor: '#000',
