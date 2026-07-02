@@ -128,67 +128,44 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 setActionLoading(true);
                 const success = await BatchService.resetEntireBatch(userId, batchNumber);
                 if (success) {
-                    Alert.alert('Success', `Batch ${batchNumber} has been reset.`);
+                    if (Platform.OS === 'web') {
+                        window.alert(`Success: Batch ${batchNumber} has been reset.`);
+                    } else {
+                        Alert.alert('Success', `Batch ${batchNumber} has been reset.`);
+                    }
                     loadDriverData();
                 } else {
                     throw new Error('Reset failed');
                 }
             } catch (error: any) {
-                Alert.alert('Error', error.message || 'Failed to reset batch');
+                if (Platform.OS === 'web') {
+                    window.alert(error.message || 'Failed to reset batch');
+                } else {
+                    Alert.alert('Error', error.message || 'Failed to reset batch');
+                }
             } finally {
                 setActionLoading(false);
             }
         };
 
-        if (passed) {
-            Alert.alert(
-                'Warning',
-                `Batch ${batchNumber} has been passed. Resetting will remove the score and the driver must retake it. Are you sure?`,
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Reset Entire Batch', style: 'destructive', onPress: resetAction }
-                ]
-            );
+        const msg = passed 
+            ? `Batch ${batchNumber} has been passed. Resetting will remove the score and the driver must retake it. Are you sure?`
+            : `Are you sure you want to reset Batch ${batchNumber}? All current answers will be removed.`;
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(msg)) {
+                resetAction();
+            }
         } else {
             Alert.alert(
-                'Confirm Reset',
-                `Are you sure you want to reset Batch ${batchNumber}? All current answers will be removed.`,
+                passed ? 'Warning' : 'Confirm Reset',
+                msg,
                 [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Reset', style: 'destructive', onPress: resetAction }
                 ]
             );
         }
-    };
-
-    const handleResetAll = () => {
-        Alert.alert(
-            'DANGER: Reset All',
-            'This will delete ALL quiz scores, batch progress, and individual question progress for this driver. They will start over from Batch 1.\n\nThis cannot be undone. Proceed?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Reset All Progress',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            setActionLoading(true);
-                            const success = await BatchService.resetAllBatches(userId);
-                            if (success) {
-                                Alert.alert('Success', 'Driver progress fully reset.');
-                                loadDriverData();
-                            } else {
-                                throw new Error('Reset failed');
-                            }
-                        } catch (error: any) {
-                            Alert.alert('Error', error.message || 'Failed to reset all progress');
-                        } finally {
-                            setActionLoading(false);
-                        }
-                    }
-                }
-            ]
-        );
     };
 
     const selectedSummary = useMemo(() => {
@@ -349,14 +326,6 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         ))
                     )}
 
-                    {/* Nuclear Option */}
-                    <TouchableOpacity
-                        onPress={handleResetAll}
-                        style={styles.nuclearBtn}
-                    >
-                        <AlertTriangle size={18} color="#FFF" />
-                        <Text style={styles.nuclearBtnText}>Reset Driver Entire Profile</Text>
-                    </TouchableOpacity>
                 </ScrollView>
             </SafeAreaView>
         </GradientBackground>

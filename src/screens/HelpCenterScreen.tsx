@@ -249,6 +249,18 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       ]
     },
     {
+      id: 'q_reset_driver',
+      category: 'Manager Tools',
+      icon: getCategoryIcon('Manager Tools'),
+      question: 'Can I reset a driver\'s progress?',
+      roles: ['manager', 'master'],
+      answer: [
+        '1. Go to the **Team** tab and tap on a specific driver to view their details.',
+        '2. You can manually reset a specific **Batch** if a driver experienced technical issues or needs a fresh start on that batch.',
+        '3. For compliance and safety auditing reasons, you **cannot** waive their 3-question daily limit, unlock future batches prematurely, or delete their entire historical profile progress.'
+      ]
+    },
+    {
       id: 'q10',
       category: 'Manager Tools',
       icon: getCategoryIcon('Manager Tools'),
