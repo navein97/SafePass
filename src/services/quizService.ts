@@ -638,7 +638,7 @@ export const QuizService = {
 
             if (allError) throw allError;
 
-            // 2. This week's records — just need timestamps to find active days
+            // 2. This week's completed batch records — to find active days
             const { data: weekData, error: weekError } = await supabase
                 .from('user_batch_progress')
                 .select('completed_at')
@@ -647,7 +647,14 @@ export const QuizService = {
 
             if (weekError) throw weekError;
 
-            // 3. Compute current overall avg: average per batch → average across batches
+            // 3. PROVISIONAL: Also check user_question_progress for in-progress activity this week
+            const { data: qWeekData } = await supabase
+                .from('user_question_progress')
+                .select('completed_at, score')
+                .eq('user_id', userId)
+                .gte('completed_at', weekStart.toISOString());
+
+            // 4. Compute overall avg from completed batches
             const batchMap = new Map<number, number[]>();
             (allData || []).forEach((a: any) => {
                 if (!batchMap.has(a.batch_number)) batchMap.set(a.batch_number, []);
@@ -657,18 +664,28 @@ export const QuizService = {
             const batchAvgs = Array.from(batchMap.values()).map(
                 scores => scores.reduce((s: number, v: number) => s + v, 0) / scores.length
             );
-            const overallAvg = batchAvgs.length > 0
+
+            // 4b. PROVISIONAL: If no completed batches yet, estimate from in-progress questions
+            let overallAvg = batchAvgs.length > 0
                 ? Math.round(batchAvgs.reduce((s: number, v: number) => s + v, 0) / batchAvgs.length)
                 : 0;
 
-            // 4. Build Mon–Sun chart: show overallAvg on active days, 0 on inactive
+            if (overallAvg === 0 && qWeekData && qWeekData.length > 0) {
+                const totalRaw = qWeekData.reduce((sum: number, a: any) => sum + parseFloat(String(a.score || 0)), 0);
+                overallAvg = Math.round((totalRaw / 30) * 100);
+            }
+
+            // 5. Build Mon–Sun chart: show overallAvg on active days (batch OR in-progress), 0 on inactive
             const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
             return dayLabels.map((label, i) => {
                 const dayDate = addDays(weekStart, i);
-                const hadActivity = (weekData || []).some((log: any) =>
+                const hadBatchActivity = (weekData || []).some((log: any) =>
                     isSameDay(new Date(log.completed_at), dayDate)
                 );
-                return { value: hadActivity ? overallAvg : 0, label };
+                const hadInProgressActivity = (qWeekData || []).some((log: any) =>
+                    isSameDay(new Date(log.completed_at), dayDate)
+                );
+                return { value: (hadBatchActivity || hadInProgressActivity) ? overallAvg : 0, label };
             });
 
         } catch (error) {

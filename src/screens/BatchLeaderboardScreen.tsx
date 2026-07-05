@@ -265,7 +265,14 @@ export function BatchLeaderboardScreen({ navigation }: any) {
 
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{entry.userName}</Text>
-            <Text style={styles.userSubtext}>{entry.staffId}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.userSubtext}>{entry.staffId}</Text>
+              {entry.completion < 100 && (
+                <View style={styles.inProgressBadge}>
+                  <Text style={styles.inProgressText}>{t('leaderboard.inProgress', 'In Progress')}</Text>
+                </View>
+              )}
+            </View>
           </View>
 
           <View style={styles.scoreInfo}>
@@ -818,6 +825,18 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   dopValue: {
     fontSize: 14,
+    fontFamily: typography.fonts.bold,
+  },
+  inProgressBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  inProgressText: {
+    fontSize: 10,
+    color: '#D97706',
     fontFamily: typography.fonts.bold,
   },
 });

@@ -687,28 +687,23 @@ export const QuizScreen = ({ navigation, route }: any) => {
     const isDailySessionComplete = (resultData as any).isDailySessionComplete;
     
     let celebrationEmoji = '🏆';
-    let bgColor = 'rgba(0, 200, 83, 0.12)';
-    let accentColor = '#00C853';
-
+    let accentColor: string;
     if (isDailySessionComplete) {
       celebrationEmoji = '👍';
-      bgColor = 'rgba(59, 130, 246, 0.12)';
-      accentColor = '#2563EB';
+      accentColor = colors.status.info || '#2563EB';
     } else if (resultData.passed || isPracticeResult) {
       celebrationEmoji = resultData.score >= 80 ? '🏆' : resultData.score >= 60 ? '🎉' : '💪';
-      bgColor = resultData.score >= 60 ? 'rgba(0, 200, 83, 0.12)' : 'rgba(255, 107, 107, 0.10)';
-      accentColor = resultData.score >= 60 ? '#00C853' : '#B45309';
+      accentColor = resultData.score >= 60 ? colors.status.success : colors.status.warning;
     } else {
       celebrationEmoji = '📋';
-      bgColor = 'rgba(255, 107, 107, 0.10)';
-      accentColor = '#B45309';
+      accentColor = colors.status.danger;
     }
 
     return (
       <GradientBackground>
         <SafeAreaView style={styles.resumeContainer}>
           <StatusBar barStyle="light-content" />
-          <View style={[styles.resumeCard, { backgroundColor: bgColor, borderWidth: 1.5, borderColor: accentColor + '60' }]}>
+          <View style={[styles.resumeCard, { borderWidth: 1.5, borderColor: accentColor }]}>
             {/* Big emoji */}
             <Text style={{ fontSize: 72, textAlign: 'center', marginBottom: 8 }}>{celebrationEmoji}</Text>
 
@@ -720,8 +715,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
                     {t('quiz.dailySessionCompleteMessage', { count: (resultData as any).completedCount }) || `Great work! You've answered ${(resultData as any).completedCount}/30 questions in this batch. Come back tomorrow to continue your progress.`}
                   </Text>
                   
-                  <View style={{ backgroundColor: 'rgba(0,0,0,0.04)', paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '90%', alignSelf: 'center' }}>
-                    <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Progress</Text>
+                  <View style={{ backgroundColor: colors.background.subtle, paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '90%', alignSelf: 'center' }}>
+                    <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Progress</Text>
                     <Text style={{ fontSize: 28, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{(resultData as any).completedCount}/30</Text>
                   </View>
                 </>
@@ -736,8 +731,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   <Text style={styles.resultSubLabel}>{t('quiz.scoreLabel').replace(':', '')}</Text>
                   <Text style={[styles.resultScoreValue, { color: accentColor, marginTop: -4 }]}>{resultData.score.toFixed(1)}%</Text>
                   
-                  <View style={{ backgroundColor: 'rgba(0,0,0,0.04)', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '80%', alignSelf: 'center' }}>
-                    <Text style={{ fontSize: 12, fontFamily: typography.fonts.medium, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('quiz.averageScore')}</Text>
+                  <View style={{ backgroundColor: colors.background.subtle, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '80%', alignSelf: 'center' }}>
+                    <Text style={{ fontSize: 12, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('quiz.averageScore')}</Text>
                     <Text style={{ fontSize: 22, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{resultData.avgScore.toFixed(1)}%</Text>
                   </View>
 
@@ -774,7 +769,10 @@ export const QuizScreen = ({ navigation, route }: any) => {
               {!isPracticeResult && !resultData.passed && (
                 <TouchableOpacity
                   style={[styles.resumeButton, styles.resumeButtonPrimary]}
-                  onPress={() => setShowFailedReview(true)}
+                  onPress={() => {
+                    setResultData(null);
+                    setShowFailedReview(true);
+                  }}
                   activeOpacity={0.8}
                 >
                   <LinearGradient
@@ -815,7 +813,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     const incorrectQuestions = questions.filter((q) => {
       const qAnswers = answers.filter(a => a.questionId === q.id);
       const lastAns = qAnswers[qAnswers.length - 1];
-      return lastAns ? !lastAns.isCorrect : true;
+      return lastAns ? !lastAns.isCorrect : false;
     });
 
     return (
@@ -1280,7 +1278,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: 20,
   },
   resumeCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: colors.background.card,
     borderRadius: 20,
     padding: 30,
     width: '100%',
@@ -1288,7 +1286,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -1296,7 +1294,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(225, 37, 124, 0.15)', // 15% opacity primary accent
+    backgroundColor: colors.background.subtle,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',

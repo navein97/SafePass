@@ -175,19 +175,14 @@ export const BatchService = {
      * Get average score for a batch across all attempts
      */
     async getBatchAverageScore(userId: string, batchNumber: number): Promise<number> {
-        const { data, error } = await supabase
-            .from('user_batch_progress')
-            .select('score')
-            .eq('user_id', userId)
-            .eq('batch_number', batchNumber);
-
-        if (error || !data || data.length === 0) {
+        const attempts = await this.getBatchAttempts(userId, batchNumber);
+        if (!attempts || attempts.length === 0) {
             return 0;
         }
 
-        // Simple average of all attempts
-        const total = data.reduce((sum, attempt) => sum + attempt.score, 0);
-        return total / data.length;
+        // Simple average of all attempts (including provisional if any)
+        const total = attempts.reduce((sum, attempt) => sum + attempt.score, 0);
+        return total / attempts.length;
     },
 
     /**
@@ -206,7 +201,7 @@ export const BatchService = {
             return [];
         }
 
-        return (data || []).map(attempt => ({
+        const attempts: BatchProgress[] = (data || []).map(attempt => ({
             id: attempt.id,
             userId: attempt.user_id,
             batchNumber: attempt.batch_number,
@@ -219,6 +214,56 @@ export const BatchService = {
             timeSpentSeconds: attempt.time_spent_seconds,
             completedAt: attempt.completed_at,
         }));
+
+        // PROVISIONAL SCORE LOGIC: Fetch in-progress questions
+        const { data: qProgress } = await supabase
+            .from('user_question_progress')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('batch_number', batchNumber);
+
+        if (qProgress && qProgress.length > 0) {
+            const { data: questionsData } = await supabase
+                .from('questions')
+                .select('id, component_weights')
+                .eq('batch_number', batchNumber);
+
+            const questions = (questionsData || []).map(q => ({
+                id: q.id,
+                componentWeights: q.component_weights || (q as any).componentWeights
+            })) as Question[];
+
+            const mappedAnswers = qProgress.map(a => ({
+                questionId: a.question_id,
+                attempts: a.attempts,
+                isCorrect: a.is_correct
+            }));
+
+            const componentScores = this.calculateComponentScores(questions, mappedAnswers);
+            let totalScore = 0;
+            qProgress.forEach(a => {
+                totalScore += parseFloat(String(a.score || 0));
+            });
+            const score = Math.max(0, Math.round((totalScore / 30) * 100)); // Score out of 30 questions
+            const accuracy = Math.round((qProgress.filter(a => a.is_correct).length / 30) * 100);
+            const completion = Math.round((qProgress.length / 30) * 100);
+
+            attempts.push({
+                id: `provisional_${batchNumber}`,
+                userId,
+                batchNumber,
+                attemptNumber: attempts.length + 1,
+                score,
+                accuracyPercentage: accuracy,
+                completionPercentage: completion,
+                componentScores,
+                answers: mappedAnswers,
+                timeSpentSeconds: 0,
+                completedAt: new Date().toISOString() // Represents "now" since it's active
+            });
+        }
+
+        return attempts;
     },
 
     /**
@@ -656,6 +701,78 @@ export const BatchService = {
                 progressMap.get(key)?.push(attempt);
             });
 
+            // --- PROVISIONAL SCORE LOGIC ---
+            // Fetch in-progress questions for all users
+            const { data: allQProgress } = await supabase
+                .from('user_question_progress')
+                .select('*')
+                .in('user_id', userIds);
+
+            if (allQProgress && allQProgress.length > 0) {
+                // Fetch all questions to calculate component weights
+                const { data: questionsData } = await supabase
+                    .from('questions')
+                    .select('id, batch_number, component_weights');
+                
+                const questions = (questionsData || []).map(q => ({
+                    id: q.id,
+                    batchNumber: q.batch_number,
+                    componentWeights: q.component_weights || (q as any).componentWeights
+                })) as unknown as Question[];
+
+                // Group qProgress by user and batch
+                const qProgressMap = new Map<string, any[]>();
+                allQProgress.forEach((row: any) => {
+                    const key = `${row.user_id}_${row.batch_number}`;
+                    if (!qProgressMap.has(key)) qProgressMap.set(key, []);
+                    qProgressMap.get(key)?.push(row);
+                });
+
+                qProgressMap.forEach((qRows, key) => {
+                    const [userId, batchStr] = key.split('_');
+                    const batchNum = parseInt(batchStr, 10);
+                    
+                    const mappedAnswers = qRows.map(a => ({
+                        questionId: a.question_id,
+                        attempts: a.attempts,
+                        isCorrect: a.is_correct
+                    }));
+
+                    const batchQuestions = questions.filter(q => (q as any).batchNumber === batchNum);
+                    const componentScores = this.calculateComponentScores(batchQuestions, mappedAnswers);
+                    
+                    let totalScore = 0;
+                    qRows.forEach(a => {
+                        totalScore += parseFloat(String(a.score || 0));
+                    });
+                    
+                    const score = Math.max(0, Math.round((totalScore / 30) * 100)); // Out of 30
+                    const accuracy = Math.round((qRows.filter(a => a.is_correct).length / 30) * 100);
+                    const completion = Math.round((qRows.length / 30) * 100);
+
+                    if (!progressMap.has(key)) {
+                        progressMap.set(key, []);
+                    }
+                    
+                    const existingAttempts = progressMap.get(key) || [];
+                    
+                    existingAttempts.push({
+                        id: `provisional_${batchNum}`,
+                        userId,
+                        batchNumber: batchNum,
+                        attemptNumber: existingAttempts.length + 1,
+                        score,
+                        accuracyPercentage: accuracy,
+                        completionPercentage: completion,
+                        componentScores,
+                        answers: mappedAnswers,
+                        timeSpentSeconds: 0,
+                        completedAt: new Date().toISOString()
+                    });
+                });
+            }
+            // --- END PROVISIONAL SCORE LOGIC ---
+
             // 4. Build statistics
             const stats = (users || []).map(user => {
                 const batches = [1, 2, 3, 4, 5, 6, 7, 8].map(batchNum => {
@@ -819,15 +936,27 @@ export const BatchService = {
      */
     async getTotalXP(userId: string): Promise<number> {
         try {
+            // Completed batches XP
             const { data, error } = await supabase
                 .from('user_batch_progress')
                 .select('score')
                 .eq('user_id', userId);
 
-            if (error || !data || data.length === 0) return 0;
+            const completedXP = (error || !data) ? 0 : data.reduce((sum: number, a: any) => sum + (a.score || 0), 0);
 
-            const total = data.reduce((sum: number, a: any) => sum + (a.score || 0), 0);
-            return Math.round(total);
+            // In-progress questions XP (provisional: score each answered question out of 30 total)
+            const { data: qProgress } = await supabase
+                .from('user_question_progress')
+                .select('score')
+                .eq('user_id', userId);
+
+            let provisionalScore = 0;
+            if (qProgress && qProgress.length > 0) {
+                const totalRaw = qProgress.reduce((sum: number, a: any) => sum + parseFloat(String(a.score || 0)), 0);
+                provisionalScore = Math.round((totalRaw / 30) * 100);
+            }
+
+            return Math.round(completedXP + provisionalScore);
         } catch (error) {
             console.error('[BatchService] Error getting total XP:', error);
             return 0;
@@ -839,21 +968,30 @@ export const BatchService = {
      */
     async getTotalAnsweredQuestions(userId: string): Promise<number> {
         try {
+            // Count from completed batches
             const { data, error } = await supabase
                 .from('user_batch_progress')
                 .select('answers')
                 .eq('user_id', userId);
 
-            if (error || !data || data.length === 0) return 0;
+            let completedTotal = 0;
+            if (!error && data) {
+                data.forEach((row: any) => {
+                    if (row.answers && Array.isArray(row.answers)) {
+                        completedTotal += row.answers.length;
+                    }
+                });
+            }
 
-            let totalQuestions = 0;
-            data.forEach((row: any) => {
-                if (row.answers && Array.isArray(row.answers)) {
-                    totalQuestions += row.answers.length;
-                }
-            });
+            // Also count from in-progress questions (not yet submitted as a full batch)
+            const { data: qProgress } = await supabase
+                .from('user_question_progress')
+                .select('id')
+                .eq('user_id', userId);
 
-            return totalQuestions;
+            const inProgressTotal = qProgress?.length || 0;
+
+            return completedTotal + inProgressTotal;
         } catch (error) {
             console.error('[BatchService] Error getting total answered questions:', error);
             return 0;

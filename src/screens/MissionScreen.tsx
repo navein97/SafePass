@@ -19,7 +19,7 @@ import { QuizStorageService } from '../services/quizStorageService';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { typography } from '../theme/typography';
-import { Lock, CheckCircle, PlayCircle, AlertCircle, Target } from 'lucide-react-native';
+import { Lock, CheckCircle, PlayCircle, AlertCircle, Target, ArrowLeft } from 'lucide-react-native';
 import { SubscriptionService } from '../services/subscriptionService';
 import { supabase } from '../lib/supabase';
 
@@ -273,9 +273,26 @@ export function MissionScreen() {
           ) : (
             <>
               <View style={styles.modeHeader}>
-                <TouchableOpacity style={styles.backToMode} onPress={() => setSelectedMode(null)}>
-                  <Text style={styles.backToModeText}>← {t('mission.changeMode')} ({selectedMode === 'live' ? t('mission.liveModeTitle') : t('mission.practiceModeTitle')})</Text>
+                <TouchableOpacity style={styles.backButton} onPress={() => setSelectedMode(null)}>
+                  <ArrowLeft size={20} color={colors.text.primary} />
                 </TouchableOpacity>
+                <View style={[
+                  styles.modePill,
+                  { backgroundColor: selectedMode === 'live' ? colors.status.success + '22' : colors.primary.DEFAULT + '22' }
+                ]}>
+                  {selectedMode === 'live'
+                    ? <PlayCircle size={15} color={colors.status.success} />
+                    : <Target size={15} color={colors.primary.DEFAULT} />
+                  }
+                  <Text style={[
+                    styles.modePillText,
+                    { color: selectedMode === 'live' ? colors.status.success : colors.primary.DEFAULT }
+                  ]}>
+                    {selectedMode === 'live' ? t('mission.liveModeTitle') : t('mission.practiceModeTitle')}
+                  </Text>
+                </View>
+                {/* Spacer to keep title truly centered */}
+                <View style={{ width: 40 }} />
               </View>
               
               {batchStatuses.map((batch) => (
@@ -304,7 +321,6 @@ export function MissionScreen() {
                       )}
                       <View style={styles.batchTitleContainer}>
                         <Text style={styles.batchTitle}>{t('quiz.batchTitle', { number: batch.batchNumber })}</Text>
-                        <Text style={styles.batchSubtitle}>{t('mission.trainingCourse')}</Text>
                       </View>
                     </View>
                   </View>
@@ -578,13 +594,57 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.bold,
     color: colors.primary.DEFAULT,
   },
+  modeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  modePillText: {
+    fontSize: 15,
+    fontFamily: typography.fonts.bold,
+  },
+  changeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  changeButtonText: {
+    fontSize: 13,
+    fontFamily: typography.fonts.medium,
+    color: colors.text.secondary,
+  },
   modeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-    flexWrap: 'wrap',
-    gap: 8,
+    paddingHorizontal: 4,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.subtle,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modeHeaderTitle: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    textAlign: 'center',
+    flex: 1,
   },
   quotaAlert: {
     flexDirection: 'row',
