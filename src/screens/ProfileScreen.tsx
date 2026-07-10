@@ -158,19 +158,23 @@ export const ProfileScreen = ({ navigation }: any) => {
         contactNumber: userProfile.phone_number || '', // Mapped from phone_number
       });
 
-      // SYNC CHECK: Use userProfile.role directly (not the stale `isManager` state var)
-      if (userProfile.role !== 'manager' && (userProfile.safety_index === 0 || !userProfile.component_scores) && userProfile.id) {
-          console.log('[ProfileScreen] Scores are zero, syncing from batch history...');
+      // Always sync profile stats on load for non-manager drivers to ensure fresh dashboard metrics
+      if (userProfile.role !== 'manager' && userProfile.id) {
+          console.log('[ProfileScreen] Syncing profile stats...');
           await BatchService.syncProfileStats(userProfile.id);
-          // Re-fetch the profile to pick up the newly synced component_scores
+          // Re-fetch the profile to pick up the newly synced metrics
           const { profile: refreshedProfile } = await AuthService.getUserProfile();
-          if (refreshedProfile?.component_scores) {
+          if (refreshedProfile) {
               setProfile(prev => prev ? {
                   ...prev,
+                  ...refreshedProfile,
                   operationalEffectiveness: refreshedProfile.component_scores?.operation || 0,
                   operationalDiscipline: refreshedProfile.component_scores?.discipline || 0,
                   professionalConduct: refreshedProfile.component_scores?.professionalism || 0,
                   safety_index: refreshedProfile.safety_index || 0,
+                  streak: refreshedProfile.streak || 0,
+                  totalScore: refreshedProfile.total_score || 0,
+                  total_batches_completed: refreshedProfile.total_batches_completed || 0,
               } : prev);
           }
       }

@@ -559,6 +559,13 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const accuracy = attemptedCount > 0 ? (correctCount / attemptedCount) * 100 : 0;
   const completion = (attemptedCount / questions.length) * 100;
 
+  const hasIncorrectAnswers = useMemo(() => {
+    return questions.some((q) => {
+      const qAnswers = answers.filter(a => a.questionId === q.id);
+      return qAnswers.some(a => !a.isCorrect);
+    });
+  }, [questions, answers]);
+
   // Language Selection Logic
   const rawQuestion = questions[currentIndex] || { options: [], text: '' };
   const currentQuestion = useMemo(() => {
@@ -766,7 +773,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 </TouchableOpacity>
               )}
 
-              {!isPracticeResult && !resultData.passed && (
+              {!isPracticeResult && !resultData.passed && hasIncorrectAnswers && (
                 <TouchableOpacity
                   style={[styles.resumeButton, styles.resumeButtonPrimary]}
                   onPress={() => {
@@ -786,7 +793,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
               )}
 
               <TouchableOpacity
-                style={[styles.resumeButton, (isPracticeResult || (!isPracticeResult && !resultData.passed)) ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
+                style={[styles.resumeButton, (isPracticeResult || (!isPracticeResult && !resultData.passed && hasIncorrectAnswers)) ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } })}
                 activeOpacity={0.8}
               >
@@ -812,8 +819,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
   if (showFailedReview) {
     const incorrectQuestions = questions.filter((q) => {
       const qAnswers = answers.filter(a => a.questionId === q.id);
-      const lastAns = qAnswers[qAnswers.length - 1];
-      return lastAns ? !lastAns.isCorrect : false;
+      return qAnswers.some(a => !a.isCorrect);
     });
 
     return (
@@ -842,7 +848,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   </Text>
                   <Text style={[styles.questionText, { fontSize: 15, lineHeight: 22, marginBottom: 8 }]}>{text}</Text>
                   
-                  <View style={{ backgroundColor: 'rgba(0, 200, 83, 0.08)', padding: 10, borderRadius: 8, marginVertical: 6 }}>
+                  <View style={{ backgroundColor: colors.mode === 'dark' ? '#0A2412' : '#F0FBF4', padding: 10, borderRadius: 8, marginVertical: 6 }}>
                     <Text style={{ fontSize: 13, color: '#00C853', fontFamily: typography.fonts.bold }}>✓ {t('quiz.correctAnswer', 'Correct Answer')}:</Text>
                     <Text style={{ fontSize: 14, color: '#00C853', marginTop: 2, fontFamily: typography.fonts.medium }}>{localizedCorrectOptionText}</Text>
                   </View>
@@ -1160,11 +1166,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     elevation: 2,
   },
   optionCorrect: {
-    backgroundColor: 'rgba(0, 200, 83, 0.15)',
+    backgroundColor: colors.mode === 'dark' ? '#14291B' : '#E8F8EF',
     borderColor: '#00C853',
   },
   optionWrong: {
-    backgroundColor: 'rgba(255, 61, 0, 0.12)',
+    backgroundColor: colors.mode === 'dark' ? '#2D1611' : '#FFEBE6',
     borderColor: '#FF3D00',
   },
   optionDimmed: {
@@ -1199,7 +1205,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   // Feedback
   feedbackCard: {
     flexDirection: 'column',
-    backgroundColor: 'rgba(255, 61, 0, 0.08)',
+    backgroundColor: colors.mode === 'dark' ? '#240F0A' : '#FFF0EE',
     borderWidth: 1.5,
     borderColor: '#FF3D00',
     borderRadius: 12,

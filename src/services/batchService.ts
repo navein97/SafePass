@@ -845,8 +845,60 @@ export const BatchService = {
                 .eq('user_id', userId)
                 .order('completed_at', { ascending: false });
 
-            if (error || !attempts || attempts.length === 0) {
-                console.log('[BatchService] No attempts found to sync.');
+            if (error) throw error;
+
+            if (!attempts || attempts.length === 0) {
+                console.log('[BatchService] No attempts found to sync. Calculating provisional component scores from question progress...');
+                
+                // Fetch all answered questions from user_question_progress
+                const { data: qProgress, error: qError } = await supabase
+                    .from('user_question_progress')
+                    .select('question_id, is_correct')
+                    .eq('user_id', userId);
+
+                let componentScores = { operation: 0, discipline: 0, professionalism: 0 };
+                
+                if (!qError && qProgress && qProgress.length > 0) {
+                    const questionIds = qProgress.map(q => q.question_id);
+                    const { data: questionsData } = await supabase
+                        .from('questions')
+                        .select('id, category, component_weights')
+                        .in('id', questionIds);
+
+                    if (questionsData && questionsData.length > 0) {
+                        const questionList = questionsData.map(q => ({
+                            id: q.id,
+                            category: q.category,
+                            componentWeights: q.component_weights || (q as any).componentWeights
+                        })) as Question[];
+
+                        const mappedAnswers = qProgress.map(q => ({
+                            questionId: q.question_id,
+                            attempts: 1,
+                            isCorrect: q.is_correct
+                        }));
+
+                        const computedScores = this.calculateComponentScores(questionList, mappedAnswers);
+                        componentScores = {
+                            operation: computedScores.operation,
+                            discipline: computedScores.discipline,
+                            professionalism: computedScores.professionalism
+                        };
+                    }
+                }
+
+                // Update profile with provisional scores
+                console.log(`[BatchService] Synced provisional components:`, componentScores);
+                await supabase
+                    .from('profiles')
+                    .update({
+                        safety_index: 0,
+                        component_scores: componentScores,
+                        total_score: 0,
+                        total_batches_completed: 0
+                    })
+                    .eq('id', userId);
+                
                 return;
             }
 
