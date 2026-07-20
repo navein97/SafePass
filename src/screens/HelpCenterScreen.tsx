@@ -27,7 +27,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  
+
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,7 +55,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
   };
 
   const getCategoryIcon = (category: string, size = 20) => {
-    switch(category) {
+    switch (category) {
       case 'Account & Setup': return <BookOpen size={size} color={colors.primary.DEFAULT} />;
       case 'Driver Training': return <TrendingUp size={size} color={colors.status.success} />;
       case 'Manager Tools': return <Users size={size} color={colors.status.info} />;
@@ -75,10 +75,10 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       roles: ['master'],
       answer: [
         'This feature is strictly for business owners or fleet managers.',
-        '1. On the main Login screen, tap on **Register Your Company**.',
-        '2. Enter your Company Name, your Admin Name, Email, and create a Password.',
-        '3. Once successful, you will become the "Master User" for your organization.',
-        '4. You can now log in and start adding your drivers in the Profile tab.'
+        '1. On the main Login screen, tap on **Request Trial**.',
+        '2. This will open WhatsApp. Send the pre-filled message with your company details.',
+        '3. Our support team will create your Master Account and reply with your temporary login credentials.',
+        '4. You can then log in and start adding your drivers in the Profile tab.'
       ]
     },
     {
@@ -91,7 +91,19 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         'Drivers cannot create their own accounts. Your manager must create it for you.',
         '1. Ask your manager for your **Employee ID** and **Temporary Password**.',
         '2. Enter these details on the main Login screen.',
-        '3. If you want to change your password later, ask your manager to reset it for you.'
+        '3. If you want to change your password later, ask your manager to change it for you.'
+      ]
+    },
+    {
+      id: 'q_password_reset',
+      category: 'Account & Setup',
+      icon: getCategoryIcon('Account & Setup'),
+      question: 'How do I change my password?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        'Password changes depend on your role:',
+        '• **Drivers and Managers:** You may ask the person who created your account for you to change your password from their Profile screen > Team Management > Click the key icon.',
+        '• **Master Users:** Tap **Forgot Password** on the Login screen to receive a secure reset link via your email.'
       ]
     },
     {
@@ -329,78 +341,78 @@ export const HelpCenterScreen = ({ navigation }: any) => {
     // --- NOTIFICATIONS ---
     {
 
-        id: 'q15',
-        category: 'Notifications',
-        icon: getCategoryIcon('Notifications'),
-        question: 'Where can I find my alerts and messages?',
-        roles: ['driver', 'manager', 'master'],
-        answer: [
-          '1. Tap the **Notifications** tab (the Bell icon at the bottom of the main screen).',
-          '2. Here you will see system alerts and direct messages from your managers.',
-          '3. Unread messages will have a highlight. Tap a message to mark it as read.'
-        ]
-      },
-      // --- ADDITIONAL TOPICS ---
-      {
-        id: 'q_theme',
-        category: 'Account & Setup',
-        icon: getCategoryIcon('Account & Setup'),
-        question: 'How do I toggle Dark/Light mode?',
-        roles: ['driver', 'manager', 'master'],
-        answer: [
-          '1. Open the **Profile** tab.',
-          '2. Tap the **Theme** toggle button (Sun/Moon icon) at the top right.',
-          '3. The app will instantly switch between Light and Dark themes.'
-        ]
-      },
-      {
-        id: 'q_language',
-        category: 'Account & Setup',
-        icon: getCategoryIcon('Account & Setup'),
-        question: 'How do I change the app language?',
-        roles: ['driver', 'manager', 'master'],
-        answer: [
-          '1. Open the **Profile** tab.',
-          '2. Tap the **Language** button.',
-          '3. Select **English** or **Malay**. The interface will update immediately.'
-        ]
-      },
-      {
-        id: 'q_logout',
-        category: 'Account & Setup',
-        icon: getCategoryIcon('Account & Setup'),
-        question: 'How do I log out of Driver 360?',
-        roles: ['driver', 'manager', 'master'],
-        answer: [
-          '1. Open the **Profile** tab.',
-          '2. Scroll down and tap the **Logout** button.',
-          '3. Confirm the logout prompt. You will be returned to the Login screen.'
-        ]
-      },
+      id: 'q15',
+      category: 'Notifications',
+      icon: getCategoryIcon('Notifications'),
+      question: 'Where can I find my alerts and messages?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        '1. Tap the **Notifications** tab (the Bell icon at the bottom of the main screen).',
+        '2. Here you will see system alerts and direct messages from your managers.',
+        '3. Unread messages will have a highlight. Tap a message to mark it as read.'
+      ]
+    },
+    // --- ADDITIONAL TOPICS ---
+    {
+      id: 'q_theme',
+      category: 'Account & Setup',
+      icon: getCategoryIcon('Account & Setup'),
+      question: 'How do I toggle Dark/Light mode?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        '1. Open the **Profile** tab.',
+        '2. Tap the **Theme** toggle button (Sun/Moon icon) at the top right.',
+        '3. The app will instantly switch between Light and Dark themes.'
+      ]
+    },
+    {
+      id: 'q_language',
+      category: 'Account & Setup',
+      icon: getCategoryIcon('Account & Setup'),
+      question: 'How do I change the app language?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        '1. Open the **Profile** tab.',
+        '2. Tap the **Language** button.',
+        '3. Select **English** or **Malay**. The interface will update immediately.'
+      ]
+    },
+    {
+      id: 'q_logout',
+      category: 'Account & Setup',
+      icon: getCategoryIcon('Account & Setup'),
+      question: 'How do I log out of Driver 360?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        '1. Open the **Profile** tab.',
+        '2. Scroll down and tap the **Logout** button.',
+        '3. Confirm the logout prompt. You will be returned to the Login screen.'
+      ]
+    },
 
-      {
-        id: 'q_performance_chart',
-        category: 'Driver Training',
-        icon: getCategoryIcon('Driver Training'),
-        question: 'How do I view my performance chart?',
-        roles: ['driver', 'manager', 'master'],
-        answer: [
-          '1. Open the **Profile** tab.',
-          '2. Scroll down to the **Performance Chart** section to see a visual representation of your daily XP and performance trends over the past weeks.'
-        ]
-      },
-      {
-        id: 'q_milestone_tracker',
-        category: 'Driver Training',
-        icon: getCategoryIcon('Driver Training'),
-        question: 'How do I see my milestone tracker?',
-        roles: ['driver', 'manager', 'master'],
-        answer: [
-          '1. Open the **Profile** tab.',
-          '2. Scroll down to the **Milestone Tracker** section to view your earned milestones (e.g., number of quizzes completed, streak days).'
-        ]
-      }
-    ];
+    {
+      id: 'q_performance_chart',
+      category: 'Driver Training',
+      icon: getCategoryIcon('Driver Training'),
+      question: 'How do I view my performance chart?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        '1. Open the **Profile** tab.',
+        '2. Scroll down to the **Performance Chart** section to see a visual representation of your daily XP and performance trends over the past weeks.'
+      ]
+    },
+    {
+      id: 'q_milestone_tracker',
+      category: 'Driver Training',
+      icon: getCategoryIcon('Driver Training'),
+      question: 'How do I see my milestone tracker?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        '1. Open the **Profile** tab.',
+        '2. Scroll down to the **Milestone Tracker** section to view your earned milestones (e.g., number of quizzes completed, streak days).'
+      ]
+    }
+  ];
 
 
   // Formatting helper: Make text between ** ** bold
@@ -437,11 +449,11 @@ export const HelpCenterScreen = ({ navigation }: any) => {
     // Filter by search query
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
-      result = result.filter(faq => 
-        faq.question.toLowerCase().includes(query) || 
+      result = result.filter(faq =>
+        faq.question.toLowerCase().includes(query) ||
         faq.answer.some(a => a.toLowerCase().includes(query))
       );
-    } 
+    }
     // Filter by selected category (only if not searching)
     else if (selectedCategory) {
       result = result.filter(faq => faq.category === selectedCategory);
@@ -466,7 +478,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
@@ -480,7 +492,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         <View style={styles.searchContainer}>
           <GlassCard contentStyle={styles.searchBar}>
             <Search size={20} color={colors.text.tertiary} />
-            <TextInput 
+            <TextInput
               style={styles.searchInput}
               placeholder="Search for help (e.g., password, batches)"
               placeholderTextColor={colors.text.tertiary}
@@ -508,7 +520,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
               >
                 <Text style={[styles.categoryPillText, !selectedCategory && styles.categoryPillTextActive]}>All Topics</Text>
               </TouchableOpacity>
-              
+
               {categories.map(cat => {
                 // Hide billing category if user is not master
                 if (cat === 'Billing & Plans' && profile?.manager_level !== 1) return null;
@@ -533,7 +545,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
           </View>
         )}
 
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -548,8 +560,8 @@ export const HelpCenterScreen = ({ navigation }: any) => {
               const isExpanded = expandedId === faq.id;
               return (
                 <GlassCard key={faq.id} style={styles.faqCard} contentStyle={{ padding: 0 }}>
-                  <TouchableOpacity 
-                    style={styles.faqHeader} 
+                  <TouchableOpacity
+                    style={styles.faqHeader}
                     onPress={() => toggleExpand(faq.id)}
                     activeOpacity={0.7}
                   >
@@ -580,14 +592,14 @@ export const HelpCenterScreen = ({ navigation }: any) => {
           <View style={styles.footer}>
             <Text style={styles.footerTitle}>Can't find what you're looking for?</Text>
             <Text style={styles.footerSubtitle}>Our support team is ready to assist you.</Text>
-            
+
             <GlassButton
               title="Chat with Support"
               onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20need%20help%20with%20Driver%20360.')}
               icon={<MessageCircle size={20} color="#FFF" />}
               style={styles.supportButton}
             />
-            
+
             <Text style={styles.footerHours}>
               Available Mon-Fri, 9am - 6pm (MYT)
             </Text>
@@ -617,7 +629,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.bold,
     color: colors.text.primary,
   },
-  
+
   // Search Bar
   searchContainer: {
     paddingHorizontal: 20,

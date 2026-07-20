@@ -129,7 +129,7 @@ export const AuthService = {
                 // If profile doesn't exist or error, stay cautious
                 console.error('Login profile check error:', profileError);
             } else if (profileData && profileData.status === 'inactive') {
-                // BLOCK LOGIN: If status is 'inactive', signed out immediately
+                // BLOCK LOGIN: If status is 'inactive', sign out immediately
                 await supabase.auth.signOut();
                 throw new Error('Account inactive. Please contact your administrator.');
             }

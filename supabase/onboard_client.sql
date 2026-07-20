@@ -17,13 +17,11 @@ DECLARE
 
   -- Company Info
   v_company_name TEXT        := 'Example Logistics Sdn Bhd';
-
-  -- Master User (Level 1 Manager) Info
   v_manager_email TEXT       := 'manager@examplelogistics.com';
   v_manager_password TEXT    := 'SecureTemporaryPassword123!'; -- Send this to the client securely
   v_manager_full_name TEXT   := 'John Doe';
   v_manager_employee_id TEXT := 'MGR-001';     -- This is what they type to log in
-  v_manager_region TEXT      := 'MY';          -- 'MY' for Malaysia, 'PT' for Portugal
+  v_manager_region TEXT      := 'MY';          -- 'MY' for Malaysia
   v_manager_phone TEXT       := '+60123456789';
   v_manager_designation TEXT := 'Operations Manager';
 
@@ -37,8 +35,8 @@ DECLARE
   v_user_id UUID             := gen_random_uuid();
 BEGIN
   -- 2. Validate input parameters
-  IF v_manager_region NOT IN ('MY', 'PT') THEN
-    RAISE EXCEPTION 'Invalid region "%". Must be either "MY" or "PT".', v_manager_region;
+  IF v_manager_region NOT IN ('MY') THEN
+    RAISE EXCEPTION 'Invalid region "%". Must be either "MY".', v_manager_region;
   END IF;
 
   IF EXISTS (SELECT 1 FROM auth.users WHERE email = v_manager_email) THEN

@@ -30,7 +30,7 @@ export const LoginScreen = ({ navigation }: any) => {
     i18n.changeLanguage(lang);
     setActiveLang(lang);
   };
-  
+
   const [companyName, setCompanyName] = useState('CNG Driver 360');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
@@ -53,7 +53,7 @@ export const LoginScreen = ({ navigation }: any) => {
     if (!employeeId.trim()) {
       newErrors.employeeId = t('auth.employeeIdRequired', 'Employee ID is required');
       isValid = false;
-    } 
+    }
 
     if (!password) {
       newErrors.password = t('auth.passwordRequired');
@@ -70,7 +70,7 @@ export const LoginScreen = ({ navigation }: any) => {
   };
 
   const handleWhatsAppRegistration = () => {
-    const message = `Hi SafePass, I would like to register my company:
+    const message = `Hi there, I would like to register my company:
 Company Name: 
 Manager Email: 
 Name: 
@@ -111,20 +111,20 @@ Designation: `;
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
             bounces={true}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.header}>
-              <Image 
-                source={require('../../assets/logo.png')} 
+              <Image
+                source={require('../../assets/logo.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
@@ -187,7 +187,7 @@ Designation: `;
                   style={styles.loginButton}
                 />
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.forgotPasswordButton}
                   onPress={() => navigation.navigate('ForgotPassword')}
                   disabled={loading}
@@ -196,7 +196,7 @@ Designation: `;
                 </TouchableOpacity>
 
                 <View style={[styles.linkButton, { marginTop: 24, alignItems: 'center' }]}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.guideButton}
                     onPress={() => navigation.navigate('HelpCenter')}
                   >
@@ -204,13 +204,13 @@ Designation: `;
                     <Text style={styles.guideButtonText}>New User? View App Guide</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.guideButton, { marginTop: 12, backgroundColor: '#25D36615', borderColor: '#25D366', borderWidth: 1 }]}
                     onPress={handleWhatsAppRegistration}
                   >
                     <Mail size={18} color="#25D366" style={{ marginRight: 8 }} />
                     <Text style={[styles.guideButtonText, { color: '#25D366', fontFamily: typography.fonts.bold }]}>
-                      {t('auth.registerCompany', 'Register via WhatsApp')}
+                      {t('auth.registerCompany', 'Request Trial')}
                     </Text>
                   </TouchableOpacity>
 
@@ -218,7 +218,7 @@ Designation: `;
 
                   <Text style={styles.linkText}>
                     {t('auth.needHelp', 'Need help?')} {' '}
-                    <Text 
+                    <Text
                       style={styles.linkTextBold}
                       onPress={handleContactSupport}
                     >

@@ -316,11 +316,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     } else {
       await QuizStorageService.clearProgress(userId, batchNumber, mode);
     }
-    if (route.params?.isGuest) {
-      navigation.replace('Login');
-    } else {
-      navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } });
-    }
+    navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } });
   };
   
   const handleBack = () => {
@@ -765,7 +761,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
               {isPracticeResult && (
                 <TouchableOpacity
                   style={[styles.resumeButton, styles.resumeButtonPrimary]}
-                  onPress={() => navigation.replace('Quiz', { mode: 'practice', batchNumber: 1, isGuest: route.params?.isGuest })}
+                  onPress={() => navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 })}
                   activeOpacity={0.8}
                 >
                   <LinearGradient
