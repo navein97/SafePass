@@ -104,12 +104,22 @@ export const AuthService = {
      */
     async signIn(data: SignInData) {
         try {
-            // Normalize: always lowercase+trim the employee ID before converting to email
-            // This ensures login always matches how the account was created
-            const normalizedInput = data.employeeId.trim();
-            const email = normalizedInput.includes('@')
-                ? normalizedInput.toLowerCase()
-                : `${normalizedInput.toLowerCase()}@driver360.internal`;
+            // Normalize: always lowercase+trim the input
+            const normalizedInput = data.employeeId.trim().toLowerCase();
+            
+            // Look up the true email using the new Universal Login RPC
+            const { data: trueEmail, error: lookupError } = await supabase.rpc('get_email_for_login', {
+                p_input: normalizedInput
+            });
+
+            // If the RPC fails (e.g. network error), fallback to the old logic to prevent complete lockout
+            let email = trueEmail;
+            if (lookupError || !email) {
+                console.warn('Email lookup RPC failed, falling back to dummy format:', lookupError);
+                email = normalizedInput.includes('@')
+                    ? normalizedInput
+                    : `${normalizedInput}@driver360.internal`;
+            }
 
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: email,
