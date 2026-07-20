@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
@@ -8,6 +8,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Toast } from './Toast';
 import { X, UserPlus, Eye, EyeOff } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
+import { PracticeService } from '../services/practiceService';
 
 interface CreateUserModalProps {
   visible: boolean;
@@ -46,11 +47,39 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
-  const vehicleOptions = [
+  const [vehicleOptions, setVehicleOptions] = useState<{ label: string; value: string }[]>([
     { label: t('profile.vehicles.generalCargo', 'General Cargo'), value: 'General Cargo' },
     { label: t('profile.vehicles.containerHaulage', 'Container Haulage'), value: 'Container Haulage' },
     { label: t('profile.vehicles.boxVan', 'Box Van'), value: 'Box Van' }
-  ];
+  ]);
+
+  useEffect(() => {
+    if (visible) {
+      const loadOptions = async () => {
+        try {
+          const types = await PracticeService.getVehicleTypes();
+          if (types && types.length > 0) {
+            const opts = types.map(type => {
+              const toCamelCase = (str: string) => {
+                return str
+                    .toLowerCase()
+                    .replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+              };
+              const labelKey = `profile.vehicles.${toCamelCase(type)}`;
+              return {
+                label: t(labelKey, type),
+                value: type
+              };
+            });
+            setVehicleOptions(opts);
+          }
+        } catch (err) {
+          console.error('Error fetching vehicle options in CreateUserModal:', err);
+        }
+      };
+      loadOptions();
+    }
+  }, [visible]);
 
   const regionOptions = [
     { label: t('common.malaysia'), value: 'MY' },

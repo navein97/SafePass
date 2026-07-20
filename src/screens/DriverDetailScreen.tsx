@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { BatchService } from '../services/batchService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
+import { PracticeService } from '../services/practiceService';
 
 export const DriverDetailScreen = ({ navigation, route }: any) => {
     const { userId } = route.params;
@@ -98,8 +99,10 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 .eq('batch_number', selectedBatch);
 
             let vType = driverProfile?.vehicle_type;
-            const validTypes = ['Box Van', 'Container Haulage', 'General Cargo'];
-            if (vType && !validTypes.includes(vType)) vType = 'General Cargo';
+            const validTypes = await PracticeService.getVehicleTypes();
+            if (vType && !validTypes.includes(vType)) {
+                vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
+            }
 
             if (vType) {
                 query = query.contains('driver_categories', [vType]);

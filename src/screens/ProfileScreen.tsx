@@ -10,6 +10,7 @@ import { LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, Chev
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { BatchService } from '../services/batchService';
+import { PracticeService } from '../services/practiceService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -70,6 +71,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   
   const [age, setAge] = useState('');
   const [vehicleType, setVehicleType] = useState('');
+  const [vehicleTypesList, setVehicleTypesList] = useState<string[]>(['Box Van', 'Container Haulage', 'General Cargo']);
   
   // Master Profile State
   const [showMasterDetails, setShowMasterDetails] = useState(false);
@@ -255,6 +257,16 @@ export const ProfileScreen = ({ navigation }: any) => {
         
         setAge(initialAge);
         setVehicleType(initialVehicle);
+      }
+
+      // Load dynamic vehicle types
+      try {
+        const types = await PracticeService.getVehicleTypes();
+        if (types && types.length > 0) {
+          setVehicleTypesList(types);
+        }
+      } catch (err) {
+        console.error('Error fetching vehicle types in ProfileScreen:', err);
       }
     } catch (error) {
       console.error('Fatal loadProfile error:', error);
@@ -591,28 +603,33 @@ export const ProfileScreen = ({ navigation }: any) => {
                             />
 
                             <Text style={styles.inputLabel}>{t('profile.vehicleType')}</Text>
-                            <View style={styles.vehicleOptions}>
-                               {[
-                                 { key: 'Container Haulage', label: t('profile.vehicles.containerHaulage') },
-                                 { key: 'Curtain Side', label: t('profile.vehicles.curtainSide') },
-                                 { key: 'Open Cargo', label: t('profile.vehicles.openCargo') },
-                                 { key: 'Small Truck', label: t('profile.vehicles.smallTruck') }
-                               ].map((v) => (
-                                 <TouchableOpacity
-                                   key={v.key}
-                                   style={[
-                                     styles.vehicleOption,
-                                     vehicleType === v.key && styles.vehicleOptionSelected
-                                   ]}
-                                   onPress={() => handleVehicleSelect(v.key)}
-                                 >
-                                    <Text style={[
-                                      styles.vehicleText,
-                                      vehicleType === v.key && styles.vehicleTextSelected
-                                    ]}>{v.label}</Text>
-                                 </TouchableOpacity>
-                               ))}
-                            </View>
+                             <View style={styles.vehicleOptions}>
+                                {vehicleTypesList.map((type) => {
+                                  const toCamelCase = (str: string) => {
+                                      return str
+                                          .toLowerCase()
+                                          .replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+                                  };
+                                  const labelKey = `profile.vehicles.${toCamelCase(type)}`;
+                                  const label = t(labelKey, type);
+                                  
+                                  return (
+                                    <TouchableOpacity
+                                      key={type}
+                                      style={[
+                                        styles.vehicleOption,
+                                        vehicleType === type && styles.vehicleOptionSelected
+                                      ]}
+                                      onPress={() => handleVehicleSelect(type)}
+                                    >
+                                       <Text style={[
+                                         styles.vehicleText,
+                                         vehicleType === type && styles.vehicleTextSelected
+                                       ]}>{label}</Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                             </View>
                           </>
                         )}
                     </View>
@@ -646,11 +663,19 @@ export const ProfileScreen = ({ navigation }: any) => {
                  {/* Billing & Subscription - For Level 1 Master Users */}
                  {profile?.managerLevel === 1 && (
                     <TouchableOpacity 
-                      style={[styles.manageUsersButton, { marginTop: 12, backgroundColor: 'rgba(100, 149, 237, 0.2)', borderWidth: 1, borderColor: 'rgba(100, 149, 237, 0.5)' }]} 
+                      style={[
+                        styles.manageUsersButton, 
+                        { 
+                          marginTop: 12, 
+                          backgroundColor: colors.mode === 'light' ? 'rgba(37, 99, 235, 0.1)' : 'rgba(96, 165, 250, 0.15)', 
+                          borderWidth: 1, 
+                          borderColor: colors.mode === 'light' ? 'rgba(37, 99, 235, 0.3)' : 'rgba(96, 165, 250, 0.4)' 
+                        }
+                      ]} 
                       onPress={() => navigation.navigate('Billing')}
                     >
-                       <CreditCard size={24} color="#6495ED" />
-                       <Text style={[styles.manageUsersText, { color: '#6495ED' }]}>{t('profile.billing', 'Billing & Plans')}</Text>
+                       <CreditCard size={24} color={colors.mode === 'light' ? '#2563EB' : '#60A5FA'} />
+                       <Text style={[styles.manageUsersText, { color: colors.mode === 'light' ? '#2563EB' : '#60A5FA' }]}>{t('profile.billing', 'Billing & Plans')}</Text>
                     </TouchableOpacity>
                  )}
 
@@ -693,13 +718,13 @@ export const ProfileScreen = ({ navigation }: any) => {
                     {/* Discipline */}
                     <View style={styles.scoreRow}>
                       <View style={styles.scoreLabelRow}>
-                        <View style={[styles.scoreDot, { backgroundColor: '#E64A19' }]} />
+                        <View style={[styles.scoreDot, { backgroundColor: colors.mode === 'light' ? '#E64A19' : '#FF7043' }]} />
                         <Text style={styles.scoreLabelText}>{t('profile.opDiscipline')}</Text>
-                        <Text style={[styles.scoreValueText, { color: '#E64A19' }]}>{profile?.operationalDiscipline || 0}%</Text>
+                        <Text style={[styles.scoreValueText, { color: colors.mode === 'light' ? '#E64A19' : '#FF7043' }]}>{profile?.operationalDiscipline || 0}%</Text>
                       </View>
                       <View style={styles.scoreBarTrack}>
                         <LinearGradient
-                          colors={['#FF8A65', '#E64A19'] as any}
+                          colors={colors.mode === 'light' ? ['#FF8A65', '#E64A19'] : ['#FF8A65', '#FF7043'] as any}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 0 }}
                           style={[
@@ -713,13 +738,13 @@ export const ProfileScreen = ({ navigation }: any) => {
                     {/* Operation */}
                     <View style={styles.scoreRow}>
                       <View style={styles.scoreLabelRow}>
-                        <View style={[styles.scoreDot, { backgroundColor: '#2E7D32' }]} />
+                        <View style={[styles.scoreDot, { backgroundColor: colors.mode === 'light' ? '#2E7D32' : '#81C784' }]} />
                         <Text style={styles.scoreLabelText}>{t('profile.opEffectiveness')}</Text>
-                        <Text style={[styles.scoreValueText, { color: '#2E7D32' }]}>{profile?.operationalEffectiveness || 0}%</Text>
+                        <Text style={[styles.scoreValueText, { color: colors.mode === 'light' ? '#2E7D32' : '#81C784' }]}>{profile?.operationalEffectiveness || 0}%</Text>
                       </View>
                       <View style={styles.scoreBarTrack}>
                         <LinearGradient
-                          colors={['#66BB6A', '#2E7D32'] as any}
+                          colors={colors.mode === 'light' ? ['#66BB6A', '#2E7D32'] : ['#81C784', '#4CAF50'] as any}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 0 }}
                           style={[

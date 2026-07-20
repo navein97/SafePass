@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff, Mail, Lock, HelpCircle } from 'lucide-react-native';
+import { Eye, EyeOff, Mail, Lock, HelpCircle, Car } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import CountryFlag from 'react-native-country-flag';
 import { useTheme } from '../context/ThemeContext';
@@ -66,6 +66,20 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const handleContactSupport = () => {
     const whatsappUrl = 'https://wa.me/601120616323?text=Hi%20Driver%20360%20Support,%20I%20need%20help%20with%20logging%20in.';
+    Linking.openURL(whatsappUrl);
+  };
+
+  const handleWhatsAppRegistration = () => {
+    const message = `Hi SafePass, I would like to register my company:
+Company Name: 
+Manager Email: 
+Name: 
+Employee ID: 
+Region: 
+Phone: 
+Designation: `;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/601120616323?text=${encodedMessage}`;
     Linking.openURL(whatsappUrl);
   };
 
@@ -181,18 +195,6 @@ export const LoginScreen = ({ navigation }: any) => {
                   <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword', 'Forgot Password?')}</Text>
                 </TouchableOpacity>
 
-                <View style={styles.linkButton}>
-                  <Text style={styles.linkText}>
-                    {t('auth.noAccount', "Don't have an account?")}{' '}
-                    <Text 
-                      style={styles.linkTextBold}
-                      onPress={() => navigation.navigate('RegisterWorkspace')}
-                    >
-                      {t('auth.registerWorkspace', 'Register Your Company')}
-                    </Text>
-                  </Text>
-                </View>
-
                 <View style={[styles.linkButton, { marginTop: 24, alignItems: 'center' }]}>
                   <TouchableOpacity 
                     style={styles.guideButton}
@@ -200,6 +202,16 @@ export const LoginScreen = ({ navigation }: any) => {
                   >
                     <HelpCircle size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
                     <Text style={styles.guideButtonText}>New User? View App Guide</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.guideButton, { marginTop: 12, backgroundColor: '#25D36615', borderColor: '#25D366', borderWidth: 1 }]}
+                    onPress={handleWhatsAppRegistration}
+                  >
+                    <Mail size={18} color="#25D366" style={{ marginRight: 8 }} />
+                    <Text style={[styles.guideButtonText, { color: '#25D366', fontFamily: typography.fonts.bold }]}>
+                      {t('auth.registerCompany', 'Register via WhatsApp')}
+                    </Text>
                   </TouchableOpacity>
 
                   <View style={styles.divider} />

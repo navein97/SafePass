@@ -2,6 +2,42 @@ import { supabase } from '../lib/supabase';
 import { Question, Region } from '../types/models';
 
 export const PracticeService = {
+    _vehicleTypesCache: null as string[] | null,
+
+    /**
+     * Fetch all unique vehicle types from existing questions driver_categories.
+     */
+    async getVehicleTypes(forceRefresh = false): Promise<string[]> {
+        if (!forceRefresh && this._vehicleTypesCache) {
+            return this._vehicleTypesCache;
+        }
+        try {
+            const { data, error } = await supabase
+                .from('questions')
+                .select('driver_categories');
+            
+            if (error) throw error;
+            
+            const categoriesSet = new Set<string>();
+            data?.forEach(row => {
+                if (row.driver_categories && Array.isArray(row.driver_categories)) {
+                    row.driver_categories.forEach((cat: string) => {
+                        if (cat && cat.trim()) {
+                            categoriesSet.add(cat.trim());
+                        }
+                    });
+                }
+            });
+            
+            const sortedCategories = Array.from(categoriesSet).sort();
+            this._vehicleTypesCache = sortedCategories.length > 0 ? sortedCategories : ['Box Van', 'Container Haulage', 'General Cargo'];
+            return this._vehicleTypesCache;
+        } catch (error) {
+            console.error('Error fetching vehicle types:', error);
+            return ['Box Van', 'Container Haulage', 'General Cargo'];
+        }
+    },
+
     /**
      * Get a session of 30 questions for practice
      * Prioritizes questions the user has previously answered incorrectly.
@@ -22,11 +58,11 @@ export const PracticeService = {
                 .select('*');
 
             let vType = profile?.vehicle_type;
-            const validTypes = ['Box Van', 'Container Haulage', 'General Cargo'];
+            const validTypes = await this.getVehicleTypes();
             
-            // Failsafe: Default to General Cargo if their vehicle type is old/invalid
+            // Failsafe: Default to first valid vehicle type if their vehicle type is old/invalid
             if (vType && !validTypes.includes(vType)) {
-                vType = 'General Cargo';
+                vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
             }
 
             if (vType) {
@@ -108,23 +144,27 @@ export const PracticeService = {
      * Fallback random questions
      */
     async getRandomQuestions(userId: string, region: Region, limit: number): Promise<Question[]> {
+        let vType = 'General Cargo';
+
         // Load all questions from all regions from Supabase
         const { data: profile } = await supabase
             .from('profiles')
             .select('vehicle_type')
             .eq('id', userId)
             .single();
+            
+        if (profile?.vehicle_type) {
+            vType = profile.vehicle_type;
+        }
 
         let query = supabase
             .from('questions')
             .select('*');
-
-        let vType = profile?.vehicle_type;
-        const validTypes = ['Box Van', 'Container Haulage', 'General Cargo'];
+        const validTypes = await this.getVehicleTypes();
         
-        // Failsafe: Default to General Cargo if their vehicle type is old/invalid
+        // Failsafe: Default to first valid vehicle type if their vehicle type is old/invalid
         if (vType && !validTypes.includes(vType)) {
-            vType = 'General Cargo';
+            vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
         }
 
         if (vType) {

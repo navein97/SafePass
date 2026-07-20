@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { Question } from '../types/models';
 import { getWeek, getYear } from 'date-fns';
 import * as Crypto from 'expo-crypto';
+import { PracticeService } from './practiceService';
 
 
 export interface BatchProgress {
@@ -50,11 +51,11 @@ export const BatchService = {
             .eq('batch_number', batchNumber);
 
         let vType = profile?.vehicle_type;
-        const validTypes = ['Box Van', 'Container Haulage', 'General Cargo'];
+        const validTypes = await PracticeService.getVehicleTypes();
         
-        // Failsafe: Default to General Cargo so the app doesn't break
+        // Failsafe: Default to first valid vehicle type so the app doesn't break
         if (vType && !validTypes.includes(vType)) {
-            vType = 'General Cargo';
+            vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
         }
 
         if (vType) {

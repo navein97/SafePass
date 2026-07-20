@@ -1,4 +1,4 @@
-export type Region = 'MY' | 'TH' | 'SG' | 'PT';
+export type Region = 'MY' | 'TH' | 'SG';
 
 export interface Company {
     id: string;

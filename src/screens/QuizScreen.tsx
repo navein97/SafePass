@@ -77,6 +77,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     let shouldUpdateLoading = true;
     try {
       setLoading(true);
+
       setLoadingStatus(t('common.fetchingProfile'));
       
       // Add timeout to prevent infinite hang
@@ -308,6 +309,19 @@ export const QuizScreen = ({ navigation, route }: any) => {
       saveProgressLocally();
     }
   }, [currentIndex, answers.length, hasAnnouncedReview]);
+
+  const exitQuiz = async (save = false) => {
+    if (save) {
+      await saveProgressLocally();
+    } else {
+      await QuizStorageService.clearProgress(userId, batchNumber, mode);
+    }
+    if (route.params?.isGuest) {
+      navigation.replace('Login');
+    } else {
+      navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } });
+    }
+  };
   
   const handleBack = () => {
     // Platform-agnostic confirmation with save option
@@ -319,9 +333,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       // Web: Use confirm for simple yes/no, save progress if confirmed
       const saveAndExit = window.confirm(`${String(title)}\n\n${String(message)}\n\n${t('common.saveExitWebConfirm')}`);
       if (saveAndExit) {
-        saveProgressLocally().then(() => {
-          navigation.navigate('MainTabs', { screen: 'Mission' });
-        });
+        exitQuiz(true);
       }
     } else {
       Alert.alert(
@@ -331,18 +343,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
           { text: t('common.cancel') || 'Cancel', style: 'cancel' },
           { 
             text: t('common.saveAndExitButton') || 'Save & Exit',
-            onPress: async () => {
-              await saveProgressLocally();
-              navigation.navigate('MainTabs', { screen: 'Mission' });
-            }
+            onPress: () => exitQuiz(true)
           },
           { 
             text: t('common.exitWithoutSaving') || 'Exit Without Saving', 
             style: 'destructive',
-            onPress: async () => {
-              await QuizStorageService.clearProgress(userId, batchNumber, mode);
-              navigation.navigate('MainTabs', { screen: 'Mission' });
-            }
+            onPress: () => exitQuiz(false)
           }
         ]
       );
@@ -600,7 +606,6 @@ export const QuizScreen = ({ navigation, route }: any) => {
       </GradientBackground>
     );
   }
-
   // Resume Prompt
   if (showResumePrompt && savedProgress) {
     const savedQuestion = savedProgress.currentIndex + 1;
@@ -760,7 +765,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
               {isPracticeResult && (
                 <TouchableOpacity
                   style={[styles.resumeButton, styles.resumeButtonPrimary]}
-                  onPress={() => navigation.replace('Quiz', { mode: 'practice', batchNumber: 1 })}
+                  onPress={() => navigation.replace('Quiz', { mode: 'practice', batchNumber: 1, isGuest: route.params?.isGuest })}
                   activeOpacity={0.8}
                 >
                   <LinearGradient
@@ -794,7 +799,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
               <TouchableOpacity
                 style={[styles.resumeButton, (isPracticeResult || (!isPracticeResult && !resultData.passed && hasIncorrectAnswers)) ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
-                onPress={() => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } })}
+                onPress={() => exitQuiz(false)}
                 activeOpacity={0.8}
               >
                   {!isPracticeResult && resultData.passed && (
@@ -842,19 +847,19 @@ export const QuizScreen = ({ navigation, route }: any) => {
               const localizedCorrectOptionText = options[q.correctOptionIndex];
 
               return (
-                <View key={q.id} style={[styles.questionCard, { borderLeftWidth: 4, borderLeftColor: '#FF3D00', marginBottom: 16 }]}>
+                <View key={q.id} style={[styles.questionCard, { borderLeftWidth: 4, borderLeftColor: colors.status.danger, marginBottom: 16 }]}>
                   <Text style={{ fontSize: 13, color: colors.text.secondary, fontFamily: typography.fonts.bold, marginBottom: 4 }}>
                     {t('quiz.questionNumber', { number: index + 1 }) || `Question ${index + 1}`}
                   </Text>
                   <Text style={[styles.questionText, { fontSize: 15, lineHeight: 22, marginBottom: 8 }]}>{text}</Text>
                   
                   <View style={{ backgroundColor: colors.mode === 'dark' ? '#0A2412' : '#F0FBF4', padding: 10, borderRadius: 8, marginVertical: 6 }}>
-                    <Text style={{ fontSize: 13, color: '#00C853', fontFamily: typography.fonts.bold }}>✓ {t('quiz.correctAnswer', 'Correct Answer')}:</Text>
-                    <Text style={{ fontSize: 14, color: '#00C853', marginTop: 2, fontFamily: typography.fonts.medium }}>{localizedCorrectOptionText}</Text>
+                    <Text style={{ fontSize: 13, color: colors.status.success, fontFamily: typography.fonts.bold }}>✓ {t('quiz.correctAnswer', 'Correct Answer')}:</Text>
+                    <Text style={{ fontSize: 14, color: colors.status.success, marginTop: 2, fontFamily: typography.fonts.medium }}>{localizedCorrectOptionText}</Text>
                   </View>
 
                   {explanation ? (
-                    <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' }}>
+                    <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
                       <Text style={{ fontSize: 12, color: colors.text.secondary, fontFamily: typography.fonts.bold }}>💡 {t('quiz.explanation')}:</Text>
                       <Text style={{ fontSize: 14, color: colors.text.primary, marginTop: 2, lineHeight: 20, fontFamily: typography.fonts.regular }}>{explanation}</Text>
                     </View>
@@ -865,7 +870,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
             
             <TouchableOpacity 
               style={styles.nextButton}
-              onPress={() => navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } })}
+              onPress={() => exitQuiz(false)}
               activeOpacity={0.8}
             >
               <LinearGradient
@@ -962,7 +967,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   </Text>
                   
                   {showAsCorrect && (
-                    <Check size={24} color="#00C853" strokeWidth={3} />
+                    <Check size={24} color={colors.status.success} strokeWidth={3} />
                   )}
                   {/* Remove X mark for wrong answers */}
                 </TouchableOpacity>
@@ -981,7 +986,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   <Text style={{ fontSize: 12, fontFamily: typography.fonts.bold, color: '#FF6B6B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     💡 {isPractice ? t('quiz.hint') : t('quiz.explanation')}
                   </Text>
-                  <Text style={{ fontSize: 14, fontFamily: typography.fonts.regular, color: '#555', lineHeight: 20 }}>
+                  <Text style={{ fontSize: 14, fontFamily: typography.fonts.regular, color: colors.text.secondary, lineHeight: 20 }}>
                     {currentQuestion.explanation}
                   </Text>
                 </View>
@@ -1126,7 +1131,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.primary,
   },
   questionCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.background.card,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -1145,7 +1150,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   questionText: {
     fontSize: 17,
     fontFamily: typography.fonts.bold,
-    color: '#1A1A1A',
+    color: colors.text.primary,
     lineHeight: 24,
   },
   optionsContainer: {
@@ -1154,7 +1159,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: colors.background.card,
     borderRadius: 12,
     padding: 12,
     borderWidth: 2,
@@ -1167,11 +1172,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   optionCorrect: {
     backgroundColor: colors.mode === 'dark' ? '#14291B' : '#E8F8EF',
-    borderColor: '#00C853',
+    borderColor: colors.status.success,
   },
   optionWrong: {
     backgroundColor: colors.mode === 'dark' ? '#2D1611' : '#FFEBE6',
-    borderColor: '#FF3D00',
+    borderColor: colors.status.danger,
   },
   optionDimmed: {
     opacity: 0.7,
@@ -1180,26 +1185,26 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 32,
     fontSize: 18,
     fontFamily: typography.fonts.bold,
-    color: '#666',
+    color: colors.text.secondary,
   },
   optionLetterCorrect: {
-    color: '#00C853',
+    color: colors.status.success,
   },
   optionLetterWrong: {
-    color: '#FF3D00',
+    color: colors.status.danger,
   },
   optionText: {
     flex: 1,
     fontSize: 16,
     fontFamily: typography.fonts.medium,
-    color: '#1A1A1A',
+    color: colors.text.primary,
     lineHeight: 22,
   },
   optionTextCorrect: {
-    color: '#00C853',
+    color: colors.status.success,
   },
   optionTextWrong: {
-    color: '#FF3D00',
+    color: colors.status.danger,
   },
   
   // Feedback
@@ -1207,7 +1212,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'column',
     backgroundColor: colors.mode === 'dark' ? '#240F0A' : '#FFF0EE',
     borderWidth: 1.5,
-    borderColor: '#FF3D00',
+    borderColor: colors.status.danger,
     borderRadius: 12,
     padding: 14,
     marginTop: 20,
@@ -1215,12 +1220,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   feedbackText: {
     fontSize: 15,
     fontFamily: typography.fonts.medium,
-    color: '#FF3D00',
+    color: colors.status.danger,
   },
   
   // Coaching
   coachingCard: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.background.subtle,
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
@@ -1228,13 +1233,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   coachingLabel: {
     fontSize: 14,
     fontFamily: typography.fonts.bold,
-    color: '#666',
+    color: colors.text.secondary,
     marginBottom: 6,
   },
   coachingText: {
     fontSize: 15,
     fontFamily: typography.fonts.regular,
-    color: '#333',
+    color: colors.text.primary,
     lineHeight: 22,
   },
   
@@ -1260,7 +1265,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#FFFFFF',
   },
   retryButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.primary.DEFAULT,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -1309,14 +1314,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   resumeTitle: {
     fontSize: 24,
     fontFamily: typography.fonts.bold,
-    color: '#1A1A1A',
+    color: colors.text.primary,
     marginBottom: 16,
     textAlign: 'center',
   },
   resumeMessage: {
     fontSize: 16,
     fontFamily: typography.fonts.regular,
-    color: '#666',
+    color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
@@ -1338,7 +1343,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   resumeButtonSecondary: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: '#CCC',
+    borderColor: colors.border,
   },
   resumeButtonTextPrimary: {
     fontSize: 16,
@@ -1348,14 +1353,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   resumeButtonTextSecondary: {
     fontSize: 16,
     fontFamily: typography.fonts.medium,
-    color: '#666',
+    color: colors.text.secondary,
   },
 
   // Result / Celebration Card styles
   resultScoreText: {
     fontSize: 16,
     fontFamily: typography.fonts.medium,
-    color: '#888',
+    color: colors.text.secondary,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -1368,7 +1373,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   resultSubLabel: {
     fontSize: 13,
     fontFamily: typography.fonts.regular,
-    color: '#888',
+    color: colors.text.secondary,
     textAlign: 'center',
     marginBottom: 8,
     textTransform: 'uppercase',
