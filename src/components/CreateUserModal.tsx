@@ -47,11 +47,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
-  const [vehicleOptions, setVehicleOptions] = useState<{ label: string; value: string }[]>([
-    { label: t('profile.vehicles.generalCargo', 'General Cargo'), value: 'General Cargo' },
-    { label: t('profile.vehicles.containerHaulage', 'Container Haulage'), value: 'Container Haulage' },
-    { label: t('profile.vehicles.boxVan', 'Box Van'), value: 'Box Van' }
-  ]);
+  const [vehicleOptions, setVehicleOptions] = useState<{ label: string; value: string }[]>([]);
 
   useEffect(() => {
     if (visible) {

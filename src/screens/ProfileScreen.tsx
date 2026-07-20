@@ -71,7 +71,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   
   const [age, setAge] = useState('');
   const [vehicleType, setVehicleType] = useState('');
-  const [vehicleTypesList, setVehicleTypesList] = useState<string[]>(['Box Van', 'Container Haulage', 'General Cargo']);
+  const [vehicleTypesList, setVehicleTypesList] = useState<string[]>([]);
   
   // Master Profile State
   const [showMasterDetails, setShowMasterDetails] = useState(false);

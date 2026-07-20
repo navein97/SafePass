@@ -30,11 +30,11 @@ export const PracticeService = {
             });
             
             const sortedCategories = Array.from(categoriesSet).sort();
-            this._vehicleTypesCache = sortedCategories.length > 0 ? sortedCategories : ['Box Van', 'Container Haulage', 'General Cargo'];
+            this._vehicleTypesCache = sortedCategories.length > 0 ? sortedCategories : [];
             return this._vehicleTypesCache;
         } catch (error) {
             console.error('Error fetching vehicle types:', error);
-            return ['Box Van', 'Container Haulage', 'General Cargo'];
+            return [];
         }
     },
 
