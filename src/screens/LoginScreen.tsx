@@ -76,7 +76,7 @@ Manager Email:
 Name: 
 Employee ID: 
 Region: 
-Phone: 
+Phone: +60
 Designation: `;
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/601120616323?text=${encodedMessage}`;
