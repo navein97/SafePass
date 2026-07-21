@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff, Mail, Lock, HelpCircle, Car } from 'lucide-react-native';
+import { Eye, EyeOff, Mail, Lock, HelpCircle, Car, Building } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import CountryFlag from 'react-native-country-flag';
 import { useTheme } from '../context/ThemeContext';
@@ -69,19 +69,7 @@ export const LoginScreen = ({ navigation }: any) => {
     Linking.openURL(whatsappUrl);
   };
 
-  const handleWhatsAppRegistration = () => {
-    const message = `Hi there, I would like to register my company:
-Company Name: 
-Manager Email: 
-Name: 
-Employee ID: 
-Region: 
-Phone: +60
-Designation: `;
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/601120616323?text=${encodedMessage}`;
-    Linking.openURL(whatsappUrl);
-  };
+
 
   const handleLogin = async () => {
     if (!validateForm()) return;
@@ -204,15 +192,17 @@ Designation: `;
                     <Text style={styles.guideButtonText}>New User? View App Guide</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.guideButton, { marginTop: 12, backgroundColor: '#25D36615', borderColor: '#25D366', borderWidth: 1 }]}
-                    onPress={handleWhatsAppRegistration}
-                  >
-                    <Mail size={18} color="#25D366" style={{ marginRight: 8 }} />
-                    <Text style={[styles.guideButtonText, { color: '#25D366', fontFamily: typography.fonts.bold }]}>
-                      {t('auth.registerCompany', 'Request Trial')}
-                    </Text>
-                  </TouchableOpacity>
+                  {Platform.OS === 'web' && (
+                    <TouchableOpacity
+                      style={[styles.guideButton, { marginTop: 12, backgroundColor: colors.primary.DEFAULT + '15', borderColor: colors.primary.DEFAULT, borderWidth: 1 }]}
+                      onPress={() => navigation.navigate('RegisterWorkspace')}
+                    >
+                      <Building size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
+                      <Text style={[styles.guideButtonText, { color: colors.primary.DEFAULT, fontFamily: typography.fonts.bold }]}>
+                        {t('auth.registerWorkspace', 'Register Workspace')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
                   <View style={styles.divider} />
 
