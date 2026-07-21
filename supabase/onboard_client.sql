@@ -18,7 +18,7 @@ DECLARE
   -- Company Info
   v_company_name TEXT        := 'Example Logistics Sdn Bhd';
   v_manager_email TEXT       := 'manager@examplelogistics.com';
-  v_manager_password TEXT    := 'SecureTemporaryPassword123!'; -- Send this to the client securely
+  v_manager_password TEXT    := 'SafePassTemp123!'; -- Send this to the client securely
   v_manager_full_name TEXT   := 'John Doe';
   v_manager_employee_id TEXT := 'MGR-001';     -- This is what they type to log in
   v_manager_region TEXT      := 'MY';          -- 'MY' for Malaysia
