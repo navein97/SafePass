@@ -15,6 +15,7 @@ import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { CompanySettingsService } from '../services/companySettingsService';
 import { WorkspaceService } from '../services/workspaceService';
+import { supabase } from '../lib/supabase';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t, i18n } = useTranslation();
@@ -25,6 +26,7 @@ export const LoginScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({ employeeId: '', password: '', general: '' });
   const [activeLang, setActiveLang] = useState(i18n.language);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
 
   const handleLangSwitch = (lang: string) => {
     i18n.changeLanguage(lang);
@@ -69,7 +71,18 @@ export const LoginScreen = ({ navigation }: any) => {
     Linking.openURL(whatsappUrl);
   };
 
-
+  const handleWhatsAppRegistration = () => {
+    const message = `Hi there, I would like to register my company:
+Company Name: 
+Manager Email: 
+Name: 
+Region: 
+Phone: +60
+Designation: `;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/601120616323?text=${encodedMessage}`;
+    Linking.openURL(whatsappUrl);
+  };
 
   const handleLogin = async () => {
     if (!validateForm()) return;
@@ -91,7 +104,27 @@ export const LoginScreen = ({ navigation }: any) => {
     } else if (session) {
       // If this is a new Master User's first login, create their company
       await WorkspaceService.setupWorkspaceIfNeeded();
+      
+      const userMeta = session.user?.user_metadata;
+      if (userMeta?.role === 'manager' && !userMeta?.data_retention_agreed) {
+        setShowPolicyModal(true);
+      } else {
+        navigation.replace('MainTabs');
+      }
+    }
+  };
+
+  const handleAgreePolicy = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({
+      data: { data_retention_agreed: true }
+    });
+    setLoading(false);
+    if (!error) {
+      setShowPolicyModal(false);
       navigation.replace('MainTabs');
+    } else {
+      Alert.alert("Error", "Could not save agreement.");
     }
   };
 
@@ -204,6 +237,18 @@ export const LoginScreen = ({ navigation }: any) => {
                     </TouchableOpacity>
                   )}
 
+                  {Platform.OS !== 'web' && (
+                    <TouchableOpacity
+                      style={[styles.guideButton, { marginTop: 12, backgroundColor: '#25D36615', borderColor: '#25D366', borderWidth: 1 }]}
+                      onPress={handleWhatsAppRegistration}
+                    >
+                      <Mail size={18} color="#25D366" style={{ marginRight: 8 }} />
+                      <Text style={[styles.guideButtonText, { color: '#25D366', fontFamily: typography.fonts.bold }]}>
+                        {t('auth.registerCompany', 'Request Trial')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
                   <View style={styles.divider} />
 
                   <Text style={styles.linkText}>
@@ -265,6 +310,28 @@ export const LoginScreen = ({ navigation }: any) => {
               </View>
             </View>
           </ScrollView>
+
+          {/* Data Retention Policy Modal */}
+          {showPolicyModal && (
+            <View style={StyleSheet.absoluteFill}>
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>{t('auth.policyTitle', 'Data Retention Policy')}</Text>
+                  <ScrollView style={styles.modalScrollView}>
+                    <Text style={styles.modalText}>
+                      {t('auth.policyFullContent', 'Before continuing, you must agree that this App will securely archive users data even after a user is removed from your active team. This ensures a permanent safety audit trail for your company\'s insurance and compliance requirements. Archived data will not be accessible in your daily management view but remains in our secure database for legal and reporting purposes.')}
+                    </Text>
+                  </ScrollView>
+                  <GlassButton 
+                    title={t('auth.iAgreeTo', 'I Agree')} 
+                    onPress={handleAgreePolicy}
+                    loading={loading}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+
         </KeyboardAvoidingView>
       </SafeAreaView>
     </GradientBackground>
@@ -409,6 +476,43 @@ const createStyles = (colors: any) => StyleSheet.create({
   langButtonTextActive: {
     color: colors.primary.DEFAULT,
     fontFamily: typography.fonts.bold,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: colors.background.card,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: `${colors.primary.DEFAULT}30`,
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: typography.fonts.bold,
+    color: colors.text.primary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalScrollView: {
+    marginBottom: 20,
+  },
+  modalText: {
+    fontSize: 15,
+    lineHeight: 24,
+    fontFamily: typography.fonts.regular,
+    color: colors.text.secondary,
   },
 });
 

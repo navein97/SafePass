@@ -25,9 +25,6 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const [agreedToRetention, setAgreedToRetention] = useState(false);
-  const [showPolicyModal, setShowPolicyModal] = useState(false);
-  
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false); // SUCCESS state
   const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirmPassword: '', companyName: '', phoneNumber: '', general: '' });
@@ -63,11 +60,6 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
       isValid = false;
     }
 
-    if (!agreedToRetention) {
-      newErrors.general = t('auth.agreementRequired', 'You must agree to the Data Retention Policy to continue');
-      isValid = false;
-    }
-
     setErrors(newErrors);
     return isValid;
   };
@@ -85,7 +77,6 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
         phone_number: phoneNumber,
         employeeId: email.split('@')[0],
         region: 'MY',
-        data_retention_agreed: agreedToRetention,
       });
 
       setLoading(false);
@@ -251,60 +242,11 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   }
                 />
 
-                <View style={styles.agreementContainer}>
-                  <TouchableOpacity 
-                    style={styles.checkboxRow} 
-                    onPress={() => setAgreedToRetention(!agreedToRetention)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[
-                      styles.checkbox,
-                      agreedToRetention && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
-                    ]}>
-                      {agreedToRetention && <CheckCircle size={14} color="#FFF" />}
-                    </View>
-                    <Text style={styles.agreementLabel}>
-                      {t('auth.iAgreeTo', 'I agree to the')} <Text onPress={() => setShowPolicyModal(true)} style={styles.linkText}>{t('auth.dataRetentionPolicy', 'Data Retention Policy')}</Text>
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <View style={styles.policyCard}>
-                    <Text style={styles.policyText}>
-                      {t('auth.retentionNoticeShort', 'Users data will be securely archived for compliance even after removal.')}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Data Retention Policy Modal */}
-                <Modal
-                  visible={showPolicyModal}
-                  transparent={true}
-                  animationType="fade"
-                  onRequestClose={() => setShowPolicyModal(false)}
-                >
-                  <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                      <Text style={styles.modalTitle}>{t('auth.policyTitle', 'Data Retention Policy')}</Text>
-                      <ScrollView style={styles.modalScrollView}>
-                        <Text style={styles.modalText}>
-                          {t('auth.policyFullContent', 'By checking this box, you agree that this App will securely archive users data even after a user is removed from your active team. This ensures a permanent safety audit trail for your company\'s insurance and compliance requirements. Archived data will not be accessible in your daily management view but remains in our secure database for legal and reporting purposes.')}
-                        </Text>
-                      </ScrollView>
-                      <GlassButton 
-                        title={t('common.close', 'Close')} 
-                        onPress={() => setShowPolicyModal(false)}
-                        style={styles.closeModalButton}
-                      />
-                    </View>
-                  </View>
-                </Modal>
-
                 <GlassButton
                   title={t('auth.createWorkspace', 'Create Workspace')}
                   onPress={handleRegister}
                   loading={loading}
-                  disabled={!agreedToRetention}
-                  style={[styles.registerButton, !agreedToRetention && { opacity: 0.6 }]}
+                  style={[styles.registerButton]}
                 />
               </View>
             </GlassCard>
@@ -325,86 +267,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   formCard: { width: '100%' },
   form: { gap: 4 },
   registerButton: { marginTop: 20 },
-  agreementContainer: {
-    marginVertical: 16,
-    gap: 8,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.text.tertiary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  agreementLabel: {
-    fontSize: 14,
-    fontFamily: typography.fonts.medium,
-    color: colors.text.primary,
-  },
-  linkText: {
-    color: colors.primary.DEFAULT,
-    fontFamily: typography.fonts.bold,
-  },
-  policyCard: {
-    backgroundColor: colors.background.subtle + '50',
-    padding: 12,
-    borderRadius: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary.DEFAULT,
-  },
-  policyText: {
-    fontSize: 12,
-    fontFamily: typography.fonts.regular,
-    color: colors.text.secondary,
-    lineHeight: 18,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    width: '100%',
-    backgroundColor: colors.background.card,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: `${colors.primary.DEFAULT}30`,
-    maxHeight: '70%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: typography.fonts.bold,
-    color: colors.text.primary,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalScrollView: {
-    marginBottom: 20,
-  },
-  modalText: {
-    fontSize: 15,
-    lineHeight: 24,
-    fontFamily: typography.fonts.regular,
-    color: colors.text.secondary,
-  },
-  closeModalButton: {
-    marginTop: 0,
-  },
   errorBanner: { backgroundColor: 'rgba(255, 59, 48, 0.1)', borderWidth: 1, borderColor: colors.status.danger, borderRadius: 12, padding: 12, marginBottom: 16 },
   errorBannerText: { color: colors.status.danger, fontSize: 14, fontFamily: typography.fonts.medium, textAlign: 'center' },
 
