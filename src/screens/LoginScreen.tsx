@@ -208,6 +208,14 @@ Designation: `;
                   style={styles.loginButton}
                 />
 
+                <Text style={[styles.linkText, { marginTop: 12, fontSize: 11, paddingHorizontal: 10, lineHeight: 16 }]}>
+                  By logging in, you agree to the{' '}
+                  <Text style={styles.linkTextBold} onPress={() => navigation.navigate('Terms')}>
+                    Terms of Service & Intellectual Property Policies
+                  </Text>
+                  {' '}of CNG Synergy (KT0512750V).
+                </Text>
+
                 <TouchableOpacity
                   style={styles.forgotPasswordButton}
                   onPress={() => navigation.navigate('ForgotPassword')}

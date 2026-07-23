@@ -998,6 +998,15 @@ export const QuizScreen = ({ navigation, route }: any) => {
             </View>
           )}
 
+          <View style={{ marginTop: 40, alignItems: 'center', opacity: 0.6 }}>
+            <Text style={{ fontSize: 10, fontFamily: typography.fonts.medium, color: colors.text.tertiary, textAlign: 'center' }}>
+              © 2026 CNG Synergy (KT0512750V). All rights reserved.
+            </Text>
+            <Text style={{ fontSize: 9, fontFamily: typography.fonts.regular, color: colors.text.tertiary, textAlign: 'center', marginTop: 2, paddingHorizontal: 20, lineHeight: 14 }}>
+              The questions and logic presented are proprietary. Unauthorized reproduction is strictly prohibited.
+            </Text>
+          </View>
+
         </ScrollView>
 
         {/* Action Buttons */}
