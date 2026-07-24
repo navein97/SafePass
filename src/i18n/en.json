@@ -109,7 +109,7 @@
     "loginActivateWorkspace": "Log in now to activate your company workspace \"{{companyName}}\" and start managing your team.",
     "goToLogin": "Go to Login",
     "registerSubtitle": "Create your company account to start managing your fleet",
-    "iAgreeTo": "I agree to the",
+    "iAgreeTo": "I agree",
     "dataRetentionPolicy": "Data Retention Policy",
     "retentionNoticeShort": "Users data will be securely archived for compliance even after removal.",
     "policyTitle": "Data Retention Policy",
