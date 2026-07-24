@@ -381,7 +381,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       id: 'q_logout',
       category: 'Account & Setup',
       icon: getCategoryIcon('Account & Setup'),
-      question: 'How do I log out of Driver 360?',
+      question: 'How do I log out of ProDrive 180?',
       roles: ['driver', 'manager', 'master'],
       answer: [
         '1. Open the **Profile** tab.',
