@@ -38,7 +38,7 @@
         }
       ]
     ],
-    "scheme": "driver360",
+    "scheme": "safepass",
     "web": {
       "favicon": "./assets/favicon.png"
     },
