@@ -233,29 +233,15 @@ Designation: `;
                     <Text style={styles.guideButtonText}>New User? View App Guide</Text>
                   </TouchableOpacity>
 
-                  {Platform.OS === 'web' && (
-                    <TouchableOpacity
-                      style={[styles.guideButton, { marginTop: 12, backgroundColor: colors.primary.DEFAULT + '15', borderColor: colors.primary.DEFAULT, borderWidth: 1 }]}
-                      onPress={() => navigation.navigate('RegisterWorkspace')}
-                    >
-                      <Building size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
-                      <Text style={[styles.guideButtonText, { color: colors.primary.DEFAULT, fontFamily: typography.fonts.bold }]}>
-                        {t('auth.registerWorkspace', 'Register Workspace')}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {Platform.OS !== 'web' && (
-                    <TouchableOpacity
-                      style={[styles.guideButton, { marginTop: 12, backgroundColor: '#25D36615', borderColor: '#25D366', borderWidth: 1 }]}
-                      onPress={handleWhatsAppRegistration}
-                    >
-                      <Mail size={18} color="#25D366" style={{ marginRight: 8 }} />
-                      <Text style={[styles.guideButtonText, { color: '#25D366', fontFamily: typography.fonts.bold }]}>
-                        {t('auth.registerCompany', 'Request Trial')}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    style={[styles.guideButton, { marginTop: 12, backgroundColor: '#25D36615', borderColor: '#25D366', borderWidth: 1 }]}
+                    onPress={handleWhatsAppRegistration}
+                  >
+                    <Mail size={18} color="#25D366" style={{ marginRight: 8 }} />
+                    <Text style={[styles.guideButtonText, { color: '#25D366', fontFamily: typography.fonts.bold }]}>
+                      {t('auth.registerCompany', 'Request Trial')}
+                    </Text>
+                  </TouchableOpacity>
 
                   <View style={styles.divider} />
 
@@ -339,6 +325,8 @@ Designation: `;
               </View>
             </View>
           )}
+
+
 
         </KeyboardAvoidingView>
       </SafeAreaView>

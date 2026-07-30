@@ -39,7 +39,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 
 import * as Linking from 'expo-linking';
 
@@ -53,7 +53,7 @@ const linking = {
   config: {
     screens: {
       Login: 'login',
-      RegisterWorkspace: 'register',
+      RegisterWorkspace: 'salsa',
       AuthCallback: 'auth/callback',
       MainTabs: 'home',
       Quiz: 'quiz',
@@ -94,60 +94,62 @@ function AppContent() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <SafeAreaProvider>
-        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background.default} />
-        <NavigationContainer 
-          ref={navigationRef}
-          linking={linking} 
-          theme={{
-          dark: theme === 'dark',
-          colors: {
-            primary: colors.primary.DEFAULT,
-            background: colors.background.default,
-            card: colors.background.card,
-            text: colors.text.primary,
-            border: colors.border,
-            notification: colors.status.info,
-          },
-          fonts: {
-             regular: { fontFamily: 'Inter-Regular', fontWeight: '400' },
-             medium: { fontFamily: 'Inter-Medium', fontWeight: '500' },
-             bold: { fontFamily: 'Inter-Bold', fontWeight: '700' },
-             heavy: { fontFamily: 'Inter-Bold', fontWeight: '900' },
-          }
-        }}>
-          <Stack.Navigator
-            initialRouteName="Login"
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background.default },
-              animation: 'slide_from_right',
-            }}
-          >
-            {/* Auth Stack */}
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="RegisterWorkspace" component={RegisterWorkspaceScreen} />
-            <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-            
-            {/* Main App - Tab Navigator */}
-            <Stack.Screen name="MainTabs" component={MainTabNavigator} />
-            
-            {/* Modal/Detail Screens */}
-            <Stack.Screen name="Quiz" component={QuizScreen} />
-            <Stack.Screen name="Review" component={ReviewScreen} />
-            <Stack.Screen name="ManagerQuickView" component={ManagerQuickViewScreen} />
-            <Stack.Screen name="UserManagement" component={UserManagementScreen} />
-            <Stack.Screen name="Billing" component={BillingScreen} />
-            <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
-            <Stack.Screen name="Terms" component={TermsScreen} />
-            <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <View style={[styles.rootWrapper, { backgroundColor: colors.background.default }]}>
+      <GestureHandlerRootView style={[styles.container, { backgroundColor: colors.background.default }]}>
+        <SafeAreaProvider>
+          <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background.default} />
+          <NavigationContainer 
+            ref={navigationRef}
+            linking={linking} 
+            theme={{
+            dark: theme === 'dark',
+            colors: {
+              primary: colors.primary.DEFAULT,
+              background: colors.background.default,
+              card: colors.background.card,
+              text: colors.text.primary,
+              border: colors.border,
+              notification: colors.status.info,
+            },
+            fonts: {
+               regular: { fontFamily: 'Inter-Regular', fontWeight: '400' },
+               medium: { fontFamily: 'Inter-Medium', fontWeight: '500' },
+               bold: { fontFamily: 'Inter-Bold', fontWeight: '700' },
+               heavy: { fontFamily: 'Inter-Bold', fontWeight: '900' },
+            }
+          }}>
+            <Stack.Navigator
+              initialRouteName="Login"
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background.default },
+                animation: 'slide_from_right',
+              }}
+            >
+              {/* Auth Stack */}
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="RegisterWorkspace" component={RegisterWorkspaceScreen} />
+              <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+              <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+              
+              {/* Main App - Tab Navigator */}
+              <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+              
+              {/* Modal/Detail Screens */}
+              <Stack.Screen name="Quiz" component={QuizScreen} />
+              <Stack.Screen name="Review" component={ReviewScreen} />
+              <Stack.Screen name="ManagerQuickView" component={ManagerQuickViewScreen} />
+              <Stack.Screen name="UserManagement" component={UserManagementScreen} />
+              <Stack.Screen name="Billing" component={BillingScreen} />
+              <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
+              <Stack.Screen name="Terms" component={TermsScreen} />
+              <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </View>
   );
 }
 
@@ -186,8 +188,20 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  rootWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 1000 : undefined,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+    overflow: 'hidden',
   },
 });
 
