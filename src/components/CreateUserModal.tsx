@@ -9,6 +9,7 @@ import { Toast } from './Toast';
 import { X, UserPlus, Eye, EyeOff } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { PracticeService } from '../services/practiceService';
+import { supabase } from '../lib/supabase';
 
 interface CreateUserModalProps {
   visible: boolean;
@@ -34,6 +35,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   const [region, setRegion] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [role, setRole] = useState<'driver' | 'manager'>('driver');
+  const [companyCode, setCompanyCode] = useState('');
 
   // Password Visibility State
   const [showPassword, setShowPassword] = useState(false);
@@ -53,6 +55,16 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     if (visible) {
       const loadOptions = async () => {
         try {
+          const { profile: currentProfile } = await AuthService.getUserProfile();
+          if (currentProfile?.company_id) {
+            const { data: comp } = await supabase
+              .from('companies')
+              .select('code')
+              .eq('id', currentProfile.company_id)
+              .single();
+            if (comp?.code) setCompanyCode(comp.code.toUpperCase());
+          }
+
           const types = await PracticeService.getVehicleTypes();
           if (types && types.length > 0) {
             const opts = types.map(type => {
@@ -114,9 +126,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         
         const { profile: currentProfile } = await AuthService.getUserProfile();
 
+        const rawId = employeeId.trim();
+        const formattedId = (companyCode && !rawId.toUpperCase().startsWith(`${companyCode}-`)) 
+          ? `${companyCode}-${rawId}` 
+          : rawId;
+
         const { error } = await AuthService.signUp({
             fullName: fullName.trim(),
-            employeeId: employeeId.trim(),
+            employeeId: formattedId,
             password,
             age: parseInt(age),
             vehicle_type: vehicleType,
@@ -224,7 +241,9 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                   placeholderTextColor={colors.text.tertiary}
               />
               
-              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.employeeId')}</Text>
+              <Text style={[styles.label, dynamicStyles.label]}>
+                {t('auth.employeeId')} {companyCode ? `(Company Prefix: ${companyCode}-)` : ''}
+              </Text>
               <TextInput 
                   style={[
                       styles.input, 
@@ -236,7 +255,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       setEmployeeId(text);
                       if (text) setErrors(prev => ({ ...prev, employeeId: false }));
                   }}
-                  placeholder={t('auth.employeeIdPlaceholder')}
+                  placeholder={companyCode ? `e.g. 001 (will save as ${companyCode}-001)` : t('auth.employeeIdPlaceholder', 'e.g. 001')}
                   placeholderTextColor={colors.text.tertiary}
                   autoCapitalize="none"
               />

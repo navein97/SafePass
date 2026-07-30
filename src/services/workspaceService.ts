@@ -4,6 +4,7 @@ import { AuthService, SignUpData } from './authService';
 
 export interface RegisterWorkspaceData extends SignUpData {
     companyName: string;
+    companyCode?: string;
 }
 
 export const WorkspaceService = {
@@ -21,6 +22,7 @@ export const WorkspaceService = {
                 manager_level: 1,
                 isPublic: true,
                 company_name: data.companyName, // Stored in metadata for later
+                company_code: data.companyCode ? data.companyCode.trim().toUpperCase() : undefined,
             });
 
             if (signUpResult.error) {
@@ -64,9 +66,10 @@ export const WorkspaceService = {
                 // Get company_name from auth metadata
                 const { data: { user } } = await supabase.auth.getUser();
                 const companyName = user?.user_metadata?.company_name;
+                const companyCode = user?.user_metadata?.company_code;
 
                 console.log('[WorkspaceService] user_metadata:', user?.user_metadata);
-                console.log('[WorkspaceService] companyName:', companyName);
+                console.log('[WorkspaceService] companyName:', companyName, 'companyCode:', companyCode);
 
                 if (!companyName) {
                     console.log('[WorkspaceService] No company_name in metadata, aborting');
@@ -77,7 +80,8 @@ export const WorkspaceService = {
                 console.log('[WorkspaceService] Creating company via RPC...');
                 const { data: companyId, error: companyError } = await supabase
                     .rpc('register_workspace', {
-                        p_company_name: companyName
+                        p_company_name: companyName,
+                        p_company_code: companyCode || null
                     });
 
                 if (companyError) {

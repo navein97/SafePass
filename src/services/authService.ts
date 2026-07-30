@@ -19,6 +19,7 @@ export interface SignUpData {
 export interface SignInData {
     employeeId: string; // Employee ID or email
     password: string;
+    companyCode?: string;
 }
 
 export const AuthService = {
@@ -104,21 +105,26 @@ export const AuthService = {
      */
     async signIn(data: SignInData) {
         try {
-            // Normalize: always lowercase+trim the input
-            const normalizedInput = data.employeeId.trim().toLowerCase();
+            const rawInput = data.employeeId.trim();
+            const companyCode = data.companyCode?.trim().toUpperCase();
+            
+            let lookupInput = rawInput.toLowerCase();
+            if (!rawInput.includes('@') && companyCode) {
+                lookupInput = `${companyCode.toLowerCase()}-${rawInput.toLowerCase()}`;
+            }
             
             // Look up the true email using the new Universal Login RPC
             const { data: trueEmail, error: lookupError } = await supabase.rpc('get_email_for_login', {
-                p_input: normalizedInput
+                p_input: lookupInput
             });
 
             // If the RPC fails (e.g. network error), fallback to the old logic to prevent complete lockout
             let email = trueEmail;
             if (lookupError || !email) {
                 console.warn('Email lookup RPC failed, falling back to dummy format:', lookupError);
-                email = normalizedInput.includes('@')
-                    ? normalizedInput
-                    : `${normalizedInput}@driver360.internal`;
+                email = rawInput.includes('@')
+                    ? rawInput.toLowerCase()
+                    : `${lookupInput}@driver360.internal`;
             }
 
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({

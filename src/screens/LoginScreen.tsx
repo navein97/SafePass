@@ -16,15 +16,17 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { CompanySettingsService } from '../services/companySettingsService';
 import { WorkspaceService } from '../services/workspaceService';
 import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
+  const [companyCode, setCompanyCode] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({ employeeId: '', password: '', general: '' });
+  const [errors, setErrors] = useState({ companyCode: '', employeeId: '', password: '', general: '' });
   const [activeLang, setActiveLang] = useState(i18n.language);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
 
@@ -38,7 +40,17 @@ export const LoginScreen = ({ navigation }: any) => {
 
   React.useEffect(() => {
     loadCompanyInfo();
+    loadSavedCompanyCode();
   }, []);
+
+  const loadSavedCompanyCode = async () => {
+    try {
+      const savedCode = await AsyncStorage.getItem('@safepass_company_code');
+      if (savedCode) setCompanyCode(savedCode);
+    } catch (e) {
+      console.error('Failed to load saved company code', e);
+    }
+  };
 
   const loadCompanyInfo = async () => {
     const info = await CompanySettingsService.getCompanyInfo();
@@ -74,6 +86,7 @@ export const LoginScreen = ({ navigation }: any) => {
   const handleWhatsAppRegistration = () => {
     const message = `Hi there, I would like to register my company:
 Company Name: 
+Preferred Company Code (e.g. PRO, HAYAT): 
 Manager Email: 
 Name: 
 Region: 
@@ -90,7 +103,17 @@ Designation: `;
     setLoading(true);
     setErrors(prev => ({ ...prev, general: '' }));
 
+    const isEmail = employeeId.trim().includes('@');
+    if (!isEmail && companyCode.trim()) {
+      try {
+        await AsyncStorage.setItem('@safepass_company_code', companyCode.trim().toUpperCase());
+      } catch (e) {
+        console.error('Failed to save company code', e);
+      }
+    }
+
     const { session, error } = await AuthService.signIn({
+      companyCode: isEmail ? undefined : companyCode.trim().toUpperCase(),
       employeeId,
       password,
     });
@@ -159,9 +182,26 @@ Designation: `;
                   </View>
                 ) : null}
 
+                {!employeeId.includes('@') && (
+                  <GlassInput
+                    label={t('auth.companyCode', 'Company Code')}
+                    placeholder="e.g. PRO, HAYAT, CNG"
+                    value={companyCode}
+                    onChangeText={(text) => {
+                      setCompanyCode(text.toUpperCase());
+                      if (errors.companyCode) setErrors(prev => ({ ...prev, companyCode: '' }));
+                    }}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    editable={!loading}
+                    error={errors.companyCode}
+                    leftIcon={<Building size={20} color={colors.text.secondary} />}
+                  />
+                )}
+
                 <GlassInput
                   label={t('auth.employeeIdOrEmail', 'Email / Employee ID')}
-                  placeholder={t('auth.employeeIdPlaceholder')}
+                  placeholder={t('auth.employeeIdPlaceholder', 'e.g. 001 or manager@email.com')}
                   value={employeeId}
                   onChangeText={(text) => {
                     setEmployeeId(text);

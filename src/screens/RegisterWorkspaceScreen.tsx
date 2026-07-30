@@ -21,19 +21,20 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [companyCode, setCompanyCode] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false); // SUCCESS state
-  const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirmPassword: '', companyName: '', phoneNumber: '', general: '' });
+  const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirmPassword: '', companyName: '', companyCode: '', phoneNumber: '', general: '' });
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
     let isValid = true;
-    const newErrors = { fullName: '', email: '', password: '', confirmPassword: '', companyName: '', phoneNumber: '', general: '' };
+    const newErrors = { fullName: '', email: '', password: '', confirmPassword: '', companyName: '', companyCode: '', phoneNumber: '', general: '' };
 
     if (!fullName.trim()) {
       newErrors.fullName = t('auth.fullNameRequired', 'Full Name is required');
@@ -55,6 +56,13 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
       newErrors.companyName = t('auth.companyNameRequired', 'Company Name is required');
       isValid = false;
     }
+    if (!companyCode.trim()) {
+      newErrors.companyCode = t('auth.companyCodeRequired', 'Company Code is required (e.g. PRO, HAYAT)');
+      isValid = false;
+    } else if (!/^[A-Za-z0-9]+$/.test(companyCode.trim())) {
+      newErrors.companyCode = t('auth.invalidCompanyCode', 'Company Code must contain letters and numbers only');
+      isValid = false;
+    }
     if (!phoneNumber.trim()) {
       newErrors.phoneNumber = t('auth.phoneRequired', 'Phone number is required');
       isValid = false;
@@ -74,6 +82,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
         email,
         password,
         companyName,
+        companyCode: companyCode.trim().toUpperCase(),
         phone_number: phoneNumber,
         employeeId: email.split('@')[0],
         region: 'MY',
@@ -171,6 +180,16 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   value={companyName}
                   onChangeText={setCompanyName}
                   error={errors.companyName}
+                  leftIcon={<Building size={20} color={colors.text.secondary} />}
+                />
+
+                <GlassInput
+                  label={t('auth.companyCode', 'Company Code (for Driver Logins)')}
+                  placeholder="e.g. PRO, HAYAT, CNG"
+                  value={companyCode}
+                  onChangeText={(val) => setCompanyCode(val.toUpperCase())}
+                  autoCapitalize="characters"
+                  error={errors.companyCode}
                   leftIcon={<Building size={20} color={colors.text.secondary} />}
                 />
 
