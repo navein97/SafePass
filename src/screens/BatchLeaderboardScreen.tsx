@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import { AuthService } from '../services/authService';
 import { BatchService } from '../services/batchService';
 import { ExcelExportService } from '../services/excelExportService';
+import { ManagementActionService } from '../services/managementActionService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { typography } from '../theme/typography';
@@ -334,6 +335,39 @@ export function BatchLeaderboardScreen({ navigation }: any) {
               </View>
             </View>
 
+            {/* Management Intelligence & Action Recommendation */}
+            {(() => {
+              const dpiAnalysis = ManagementActionService.analyzeDPI(entry.componentScores);
+              const isHighRisk = dpiAnalysis.riskLevel === 'High Risk';
+              const isMedRisk = dpiAnalysis.riskLevel === 'Medium Risk';
+              const badgeBg = isHighRisk ? '#FF174420' : isMedRisk ? '#FFD60020' : '#00E67620';
+              const badgeText = isHighRisk ? '#FF1744' : isMedRisk ? '#FFC400' : '#00E676';
+
+              return (
+                <View style={{
+                  marginTop: 12,
+                  padding: 10,
+                  borderRadius: 8,
+                  backgroundColor: colors.mode === 'light' ? '#F4F6F8' : 'rgba(255, 255, 255, 0.05)',
+                  borderWidth: 1,
+                  borderColor: colors.mode === 'light' ? '#E1E8ED' : 'rgba(255, 255, 255, 0.1)',
+                }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mode === 'light' ? '#657786' : '#AAB8C2', textTransform: 'uppercase' }}>
+                      Priority #1 Focus: <Text style={{ color: colors.text.primary }}>{dpiAnalysis.priority1.label}</Text>
+                    </Text>
+                    <View style={{ backgroundColor: badgeBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: badgeText }}>
+                        {dpiAnalysis.riskLevel}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 11, fontStyle: 'italic', color: colors.text.primary, lineHeight: 15 }}>
+                    "{dpiAnalysis.managementAction}"
+                  </Text>
+                </View>
+              );
+            })()}
           </View>
         )}
       </TouchableOpacity>

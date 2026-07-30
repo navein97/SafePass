@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { BatchService } from './batchService';
+import { ManagementActionService } from './managementActionService';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
@@ -79,118 +80,103 @@ export const ExcelExportService = {
     },
 
     /**
-     * Internal helper to create the complex worksheet structure
+     * Internal helper to create the complex worksheet structure (V2.0 Layout - 26 Columns)
      */
     createMasterUserWorksheet(stats: any[]): XLSX.WorkSheet {
         // ROW 1: Merged Group Headers
         const row1 = [
-            '', '', '', '', // Driver Name, Staff ID, Division, Region
-            'Batch 1', '', '', '', '',
-            'Batch 2', '', '', '', '',
-            'Batch 3', '', '', '', '',
-            'Batch 4', '', '', '', '',
-            'Batch 5', '', '', '', '',
-            'Batch 6', '', '', '', '',
-            'Batch 7', '', '', '', '',
-            'Batch 8', '', '', '', '',
-            'DOPD', '', '',
-            'Risk Level'
+            '', '', '', '', // Driver Info (4 cols)
+            'Batch 1', '', 'Batch 2', '', 'Batch 3', '', 'Batch 4', '',
+            'Batch 5', '', 'Batch 6', '', 'Batch 7', '', 'Batch 8', '', // Batch Data (16 cols)
+            'DPI (Latest Completed Batch)', '', '', // DPI (3 cols)
+            'Management Intelligence', '', '' // Management Intelligence (3 cols)
         ];
 
         // ROW 2: Sub-headers
         const row2 = [
             'Driver Name', 'Staff ID', 'Vehicle Type', 'Region',
-            'Marks', 'Target MCQ', 'Accuracy %', 'Attempted', 'Complete %', // Batch 1
-            'Marks', 'Target MCQ', 'Accuracy %', 'Attempted', 'Complete %', // Batch 2
-            'Marks', 'Target MCQ', 'Accuracy %', 'Attempted', 'Complete %', // Batch 3
-            'Marks', 'Target MCQ', 'Accuracy %', 'Attempted', 'Complete %', // Batch 4
-            'Marks', 'Target MCQ', 'Accuracy %', 'Attempted', 'Complete %', // Batch 5
-            'Marks', 'Target MCQ', 'Accuracy %', 'Attempted', 'Complete %', // Batch 6
-            'Marks', 'Target MCQ', 'Accuracy %', 'Attempted', 'Complete %', // Batch 7
-            'Marks', 'Target MCQ', 'Accuracy %', 'Attempted', 'Complete %', // Batch 8
-            'Operational Effectiveness',
-            'Operational Discipline',
-            'Professional Conduct'
+            'B1 Score', 'B1 Status',
+            'B2 Score', 'B2 Status',
+            'B3 Score', 'B3 Status',
+            'B4 Score', 'B4 Status',
+            'B5 Score', 'B5 Status',
+            'B6 Score', 'B6 Status',
+            'B7 Score', 'B7 Status',
+            'B8 Score', 'B8 Status',
+            'Operational Effectiveness (Latest Batch)',
+            'Operational Discipline (Latest Batch)',
+            'Professional Conduct (Latest Batch)',
+            'Priority #1 Focus Area',
+            'Current Risk Level',
+            'Management Action'
         ];
 
         // Prepare data rows
         const dataRows = stats.map(user => {
-            const row = [
+            const row: any[] = [
                 user.userName,
                 user.staffId,
                 user.vehicleType || '-',
                 user.region
             ];
 
-            let totalSafetyScore = 0;
-            let batchCount = 0;
-
-            // Add 8 batches of data
+            // 1. Add Batch Data (16 columns: 8 batches x [Score, Status])
             [1, 2, 3, 4, 5, 6, 7, 8].forEach(num => {
-                const batch = user.batches.find((b: any) => b.batchNumber === num);
+                const batch = user.batches?.find((b: any) => b.batchNumber === num);
                 if (batch && batch.attemptCount > 0) {
-                    const marks = Math.round((batch.averageScore / 100) * 30);
-                    const mcqAttempted = Math.round((batch.completion / 100) * 30); // actual questions they saw
-                    row.push(
-                        marks,
-                        30, // Target MCQ is always 30
-                        `${batch.accuracy}%`,
-                        mcqAttempted,
-                        `${batch.completion}%`
-                    );
-                    totalSafetyScore += batch.averageScore;
-                    batchCount++;
+                    const isCompleted = batch.completion >= 100 || batch.isCompleted;
+                    const statusText = isCompleted ? 'Completed' : `In Progress (${Math.round((batch.completion / 100) * 30)}/30)`;
+                    row.push(`${batch.accuracy}%`, statusText);
                 } else {
-                    row.push('', '', '', '', '');
+                    row.push('-', 'Not Started');
                 }
             });
 
-            // DOPD (Average across all attempted batches)
-            const attemptedBatches = user.batches.filter((b: any) => b.attemptCount > 0);
+            // 2. Determine Latest Completed Batch (or fallback to latest attempted)
+            const completedBatches = user.batches?.filter((b: any) => (b.completion >= 100 || b.isCompleted) && b.componentScores) || [];
+            let latestBatch = completedBatches.length > 0 ? completedBatches[completedBatches.length - 1] : null;
 
-            if (attemptedBatches.length > 0) {
-                const totalComponents = attemptedBatches.reduce((acc: any, batch: any) => ({
-                    operation: acc.operation + batch.componentScores.operation,
-                    discipline: acc.discipline + batch.componentScores.discipline,
-                    professionalism: acc.professionalism + batch.componentScores.professionalism
-                }), { operation: 0, discipline: 0, professionalism: 0 });
-
-                const count = attemptedBatches.length;
-
-                row.push(
-                    `${Math.round(totalComponents.operation / count)}%`,
-                    `${Math.round(totalComponents.discipline / count)}%`,
-                    `${Math.round(totalComponents.professionalism / count)}%`
-                );
-            } else {
-                row.push('0%', '0%', '0%');
+            // Fallback if no completed batch exists yet
+            if (!latestBatch) {
+                const attempted = user.batches?.filter((b: any) => b.attemptCount > 0 && b.componentScores) || [];
+                if (attempted.length > 0) {
+                    latestBatch = attempted[attempted.length - 1];
+                }
             }
 
-            // Risk Level based on average score across batches
-            const safetyIndex = batchCount > 0 ? Math.round(totalSafetyScore / batchCount) : 0;
-            let riskLevel = 'High Risk';
-            if (safetyIndex >= 80) riskLevel = 'Low Risk';
-            else if (safetyIndex >= 60) riskLevel = 'Medium Risk';
-            row.push(riskLevel);
+            // 3. Calculate DPI & Management Intelligence
+            if (latestBatch && latestBatch.componentScores) {
+                const dpiAnalysis = ManagementActionService.analyzeDPI(latestBatch.componentScores);
+                row.push(
+                    `${Math.round(latestBatch.componentScores.operation || 0)}%`,
+                    `${Math.round(latestBatch.componentScores.discipline || 0)}%`,
+                    `${Math.round(latestBatch.componentScores.professionalism || 0)}%`,
+                    dpiAnalysis.priority1.label,
+                    dpiAnalysis.riskLevel,
+                    dpiAnalysis.managementAction
+                );
+            } else {
+                row.push('0%', '0%', '0%', 'N/A', 'High Risk', 'No quiz attempts recorded.');
+            }
 
             return row;
         });
 
         const ws = XLSX.utils.aoa_to_sheet([row1, row2, ...dataRows]);
 
-        // Define Merges
+        // Define Merges for Row 1
         ws['!merges'] = [
-            { s: { r: 0, c: 4 }, e: { r: 0, c: 8 } },   // Batch 1
-            { s: { r: 0, c: 9 }, e: { r: 0, c: 13 } },  // Batch 2
-            { s: { r: 0, c: 14 }, e: { r: 0, c: 18 } }, // Batch 3
-            { s: { r: 0, c: 19 }, e: { r: 0, c: 23 } }, // Batch 4
-            { s: { r: 0, c: 24 }, e: { r: 0, c: 28 } }, // Batch 5
-            { s: { r: 0, c: 29 }, e: { r: 0, c: 33 } }, // Batch 6
-            { s: { r: 0, c: 34 }, e: { r: 0, c: 38 } }, // Batch 7
-            { s: { r: 0, c: 39 }, e: { r: 0, c: 43 } }, // Batch 8
-            { s: { r: 0, c: 44 }, e: { r: 0, c: 46 } }, // DOPD
-            { s: { r: 0, c: 47 }, e: { r: 1, c: 47 } }, // Risk Level
-            // Merge labels in Row 1 & 2 for first 4 columns
+            { s: { r: 0, c: 4 }, e: { r: 0, c: 5 } },   // Batch 1
+            { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } },   // Batch 2
+            { s: { r: 0, c: 8 }, e: { r: 0, c: 9 } },   // Batch 3
+            { s: { r: 0, c: 10 }, e: { r: 0, c: 11 } }, // Batch 4
+            { s: { r: 0, c: 12 }, e: { r: 0, c: 13 } }, // Batch 5
+            { s: { r: 0, c: 14 }, e: { r: 0, c: 15 } }, // Batch 6
+            { s: { r: 0, c: 16 }, e: { r: 0, c: 17 } }, // Batch 7
+            { s: { r: 0, c: 18 }, e: { r: 0, c: 19 } }, // Batch 8
+            { s: { r: 0, c: 20 }, e: { r: 0, c: 22 } }, // DPI
+            { s: { r: 0, c: 23 }, e: { r: 0, c: 25 } }, // Management Intelligence
+            // Merge header & subheader for first 4 columns
             { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
             { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
             { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
@@ -199,12 +185,12 @@ export const ExcelExportService = {
 
         // Column widths
         ws['!cols'] = [
-            { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, // Basic Info
-            ...Array(40).fill({ wch: 11 }), // 8 batches x 5 cols
-            { wch: 18 }, { wch: 18 }, { wch: 18 }, // DOPD
-            { wch: 14 } // Risk Level
+            { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, // Basic Info
+            ...Array(16).fill({ wch: 14 }), // 8 batches x 2 cols
+            { wch: 36 }, { wch: 34 }, { wch: 32 }, // DPI (Latest Batch)
+            { wch: 28 }, { wch: 18 }, { wch: 65 }  // Management Intelligence
         ];
 
         return ws;
-    },
+    }
 };
