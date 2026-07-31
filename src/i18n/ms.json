@@ -339,7 +339,7 @@
       "masterUser": "⭐ Pengguna Utama",
       "manager": "👔 Pengurus"
     },
-    "choosePlanTitle": "Pilih Pelan untuk Bermula!",
+    "choosePlanTitle": "Pilih Pelan untuk Bermula! Atau cuba percubaan percuma selama 3 bulan",
     "choosePlanSubtitle": "Pilih pakej untuk mula menambah pemandu dan pengurus ke pasukan anda.",
     "profileDetails": "Butiran Profil",
     "details": "Butiran Pemandu",
@@ -375,7 +375,7 @@
     "tamperDetected": "USIKAN DIKESAN"
   },
   "user": {
-    "createTitle": "Cipta Pemandu Baru",
+    "createTitle": "Cipta Pengguna Baru",
     "driver": "Pemandu",
     "managerLevel2": "Pengurus (Tahap 2)",
     "department": "Jabatan",

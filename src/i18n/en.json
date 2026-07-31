@@ -339,7 +339,7 @@
       "masterUser": "⭐ Master User",
       "manager": "👔 Manager"
     },
-    "choosePlanTitle": "Choose a Plan to Get Started!",
+    "choosePlanTitle": "Choose a Plan to Get Started! Or try a free trial for 3 months",
     "choosePlanSubtitle": "Select a package to start adding drivers and managers to your team.",
     "profileDetails": "Profile Details",
     "details": "Driver Details",
@@ -375,7 +375,7 @@
     "tamperDetected": "TAMPERING DETECTED"
   },
   "user": {
-    "createTitle": "Create New Driver",
+    "createTitle": "Create New User",
     "driver": "Driver",
     "managerLevel2": "Manager (Level 2)",
     "department": "Department",

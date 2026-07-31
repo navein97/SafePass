@@ -87,6 +87,7 @@ export const AuthService = {
                         manager_level: data.manager_level,
                         company_id: data.companyId,
                         company_name: (data as any).company_name,
+                        company_code: (data as any).company_code,
                     },
                 },
             });
@@ -110,7 +111,11 @@ export const AuthService = {
             
             let lookupInput = rawInput.toLowerCase();
             if (!rawInput.includes('@') && companyCode) {
-                lookupInput = `${companyCode.toLowerCase()}-${rawInput.toLowerCase()}`;
+                const prefix = `${companyCode.toLowerCase()}-`;
+                // Only add the company code prefix if the employee ID doesn't already start with it
+                if (!rawInput.toLowerCase().startsWith(prefix)) {
+                    lookupInput = `${prefix}${rawInput.toLowerCase()}`;
+                }
             }
             
             // Look up the true email using the new Universal Login RPC

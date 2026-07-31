@@ -241,9 +241,19 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                   placeholderTextColor={colors.text.tertiary}
               />
               
-              <Text style={[styles.label, dynamicStyles.label]}>
-                {t('auth.employeeId')} {companyCode ? `(Company Prefix: ${companyCode}-)` : ''}
-              </Text>
+              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.companyCode', 'Company Code')}</Text>
+              <TextInput
+                  style={[
+                      styles.input,
+                      dynamicStyles.input,
+                      styles.disabledInput,
+                  ]}
+                  value={companyCode || t('common.notAvailable', 'N/A')}
+                  editable={false}
+                  selectTextOnFocus={false}
+              />
+
+              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.employeeId')}</Text>
               <TextInput 
                   style={[
                       styles.input, 
@@ -255,9 +265,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       setEmployeeId(text);
                       if (text) setErrors(prev => ({ ...prev, employeeId: false }));
                   }}
-                  placeholder={companyCode ? `e.g. 001 (will save as ${companyCode}-001)` : t('auth.employeeIdPlaceholder', 'e.g. 001')}
+                  placeholder={companyCode ? `e.g. 0001D (will save as ${companyCode}-0001D)` : t('auth.employeeIdPlaceholder', 'e.g. 0001D')}
                   placeholderTextColor={colors.text.tertiary}
-                  autoCapitalize="none"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  textContentType="none"
               />
 
               <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password', 'Password')}</Text>
@@ -498,6 +510,9 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     fontFamily: typography.fonts.regular,
+  },
+  disabledInput: {
+    opacity: 0.55,
   },
   row: {
     flexDirection: 'row',

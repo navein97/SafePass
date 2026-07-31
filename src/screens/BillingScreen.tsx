@@ -44,10 +44,11 @@ export const BillingScreen = ({ navigation }: any) => {
 
       const { data: { user } } = await supabase.auth.getUser();
       const companyName = user?.user_metadata?.company_name;
+      const companyCode = user?.user_metadata?.company_code;
       if (!companyName) return null;
 
       const { data: companyId, error: companyError } = await supabase
-        .rpc('register_workspace', { p_company_name: companyName });
+        .rpc('register_workspace', { p_company_name: companyName, p_company_code: companyCode || null });
 
       if (companyError) return null;
 
