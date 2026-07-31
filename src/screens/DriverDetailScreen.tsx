@@ -224,22 +224,22 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                     <GlassCard style={styles.overviewCard}>
                         <Text style={styles.cardTitle}>{t('profile.details')}</Text>
                         <View style={styles.profileRow}>
-                            <Text style={styles.profileLabel}>Employee ID:</Text>
+                            <Text style={styles.profileLabel}>{t('user.employeeIdLabel', 'Employee ID:')}</Text>
                             <Text style={styles.profileVal}>{driverProfile?.employee_id}</Text>
                         </View>
                         <View style={styles.profileRow}>
-                            <Text style={styles.profileLabel}>Transport Category:</Text>
+                            <Text style={styles.profileLabel}>{t('user.transportCategory', 'Transport Category:')}</Text>
                             <Text style={styles.profileVal}>{driverProfile?.vehicle_type || 'General Cargo'}</Text>
                         </View>
                         <View style={styles.profileRow}>
-                            <Text style={styles.profileLabel}>Current Batch:</Text>
-                            <Text style={styles.profileVal}>Batch {driverProfile?.current_batch}</Text>
+                            <Text style={styles.profileLabel}>{t('user.currentBatch', 'Current Batch:')}</Text>
+                            <Text style={styles.profileVal}>{t('quiz.batchTitle', { number: driverProfile?.current_batch })}</Text>
                         </View>
                     </GlassCard>
 
                     {/* Batch Selection Slider */}
                     <View style={{ marginVertical: 8 }}>
-                        <Text style={styles.sectionLabel}>Batch Management</Text>
+                        <Text style={styles.sectionLabel}>{t('user.batchManagement', 'Batch Management')}</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.batchScroller}>
                             {batchProgress.map(b => (
                                 <TouchableOpacity
@@ -256,7 +256,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                                         selectedBatch === b.batchNumber && styles.batchTabTextActive,
                                         b.passed && selectedBatch !== b.batchNumber && { color: '#00C853' }
                                     ]}>
-                                        Batch {b.batchNumber}
+                                        {t('quiz.batchTitle', { number: b.batchNumber })}
                                     </Text>
                                     {b.passed && <Text style={{ fontSize: 9, color: selectedBatch === b.batchNumber ? '#FFF' : '#00C853' }}>✓</Text>}
                                 </TouchableOpacity>
@@ -268,31 +268,31 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                     {selectedSummary && (
                         <GlassCard style={styles.card}>
                             <View style={styles.batchSummaryHeader}>
-                                <Text style={styles.cardTitle}>Batch {selectedBatch} Summary</Text>
+                                <Text style={styles.cardTitle}>{t('user.batchSummary', 'Batch {{number}} Summary', { number: selectedBatch })}</Text>
                                 <TouchableOpacity
                                     onPress={() => handleResetBatch(selectedBatch, selectedSummary.passed)}
                                     style={styles.resetBatchButton}
                                 >
                                     <RotateCcw size={14} color="#FFF" />
-                                    <Text style={styles.resetBatchText}>Reset Batch</Text>
+                                    <Text style={styles.resetBatchText}>{t('user.resetBatch', 'Reset Batch')}</Text>
                                 </TouchableOpacity>
                             </View>
 
                             <View style={styles.statsGrid}>
                                 <View style={styles.statBox}>
-                                    <Text style={styles.statBoxLabel}>Progress</Text>
+                                    <Text style={styles.statBoxLabel}>{t('user.progress', 'Progress')}</Text>
                                     <Text style={styles.statBoxVal}>{selectedSummary.completedCount}/30</Text>
                                 </View>
                                 <View style={styles.statBox}>
-                                    <Text style={styles.statBoxLabel}>Average Score</Text>
+                                    <Text style={styles.statBoxLabel}>{t('user.averageScore', 'Average Score')}</Text>
                                     <Text style={styles.statBoxVal}>{selectedSummary.averageScore.toFixed(1)}%</Text>
                                 </View>
                                 <View style={styles.statBox}>
-                                    <Text style={styles.statBoxLabel}>Attempts</Text>
+                                    <Text style={styles.statBoxLabel}>{t('user.attempts', 'Attempts')}</Text>
                                     <Text style={styles.statBoxVal}>{selectedSummary.attemptCount}</Text>
                                 </View>
                                 <View style={styles.statBox}>
-                                    <Text style={styles.statBoxLabel}>Auto-Resets</Text>
+                                    <Text style={styles.statBoxLabel}>{t('user.autoResets', 'Auto-Resets')}</Text>
                                     <Text style={[styles.statBoxVal, selectedSummary.resets >= 3 && { color: '#FF3D00' }]}>
                                         {selectedSummary.resets}
                                     </Text>
@@ -303,28 +303,28 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
 
                     {/* Incorrect Questions List (Read-only) */}
                     <Text style={styles.sectionLabel}>
-                        Incorrect Questions ({incorrectQuestions.length})
+                        {t('user.incorrectQuestions', 'Incorrect Questions')} ({incorrectQuestions.length})
                     </Text>
 
                     {incorrectQuestions.length === 0 ? (
                         <GlassCard style={styles.emptyCard}>
                             <Text style={styles.emptyText}>
                                 {progressList.length === 0
-                                    ? 'No questions answered in this batch yet.'
-                                    : '✅ No incorrect questions — great performance!'}
+                                    ? t('user.noQuestionsAnswered', 'No questions answered in this batch yet.')
+                                    : t('user.noIncorrectQuestions', '✅ No incorrect questions — great performance!')}
                             </Text>
                         </GlassCard>
                     ) : (
                         incorrectQuestions.map((q, idx) => (
                             <GlassCard key={q.id} style={styles.questionProgressCard}>
                                 <View style={styles.qHeader}>
-                                    <Text style={styles.qIndex}>Question #{idx + 1}</Text>
+                                    <Text style={styles.qIndex}>{t('quiz.questionNumber', { number: idx + 1 })}</Text>
                                     <View style={styles.badgeIncorrect}>
-                                        <Text style={styles.badgeTextIncorrect}>Incorrect</Text>
+                                        <Text style={styles.badgeTextIncorrect}>{t('quiz.incorrect', 'Incorrect')}</Text>
                                     </View>
                                 </View>
                                 <Text style={styles.qText}>{q.text}</Text>
-                                <Text style={styles.qAttempts}>Attempts: {q.attempts}/2</Text>
+                                <Text style={styles.qAttempts}>{t('mission.attempts', 'Attempts:')} {q.attempts}/2</Text>
                             </GlassCard>
                         ))
                     )}

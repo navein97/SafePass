@@ -107,7 +107,7 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
                     </View>
 
                     <View style={styles.targetInfo}>
-                        <Text style={[styles.label, { color: colors.text.secondary }]}>To:</Text>
+                        <Text style={[styles.label, { color: colors.text.secondary }]}>{t('notification.to', 'To:')}</Text>
                         {preselectedUser ? (
                             <Text style={[styles.targetName, { color: colors.primary.DEFAULT }]}>
                                 {preselectedUser.name}
@@ -129,9 +129,9 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
                                         <CheckSquare size={20} color={colors.primary.DEFAULT} /> : 
                                         <Square size={20} color={colors.text.tertiary} />
                                     }
-                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary, fontFamily: typography.fonts.bold }]}>Everyone</Text>
+                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary, fontFamily: typography.fonts.bold }]}>{t('notification.everyone', 'Everyone')}</Text>
                                 </TouchableOpacity>
-
+ 
                                 <TouchableOpacity 
                                     style={styles.checkboxOption} 
                                     onPress={() => setTargetGroups(prev => ({ ...prev, managers: !prev.managers, everyone: false }))}
@@ -140,7 +140,7 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
                                         <CheckSquare size={20} color={colors.primary.DEFAULT} /> : 
                                         <Square size={20} color={colors.text.tertiary} />
                                     }
-                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary }]}>All Managers</Text>
+                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary }]}>{t('notification.allManagers', 'All Managers')}</Text>
                                 </TouchableOpacity>
                                 
                                 <TouchableOpacity 
@@ -151,7 +151,7 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
                                         <CheckSquare size={20} color={colors.primary.DEFAULT} /> : 
                                         <Square size={20} color={colors.text.tertiary} />
                                     }
-                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary }]}>All Drivers</Text>
+                                    <Text style={[styles.checkboxLabel, { color: colors.text.primary }]}>{t('notification.allDrivers', 'All Drivers')}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}

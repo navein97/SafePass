@@ -574,7 +574,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                         <Text style={styles.inputLabel}>{t('profile.address')}</Text>
                         <TextInput 
                             style={styles.textInput}
-                            placeholder="Full Address"
+                            placeholder={t('profile.addressPlaceholder', 'Full Address')}
                             placeholderTextColor={colors.text.tertiary}
                             value={address}
                             onChangeText={setAddress}
@@ -810,11 +810,11 @@ export const ProfileScreen = ({ navigation }: any) => {
                  </LinearGradient>
                </View>
                <Text style={styles.statValue}>
-                 {profile?.total_batches_completed === 8 ? 'Complete' : `Batch ${profile?.current_batch || 1}`}
+                 {profile?.total_batches_completed === 8 ? t('profile.statusComplete', 'Complete') : t('quiz.batchTitle', { number: profile?.current_batch || 1 })}
                </Text>
-               <Text style={styles.statLabel}>Current Progress</Text>
+               <Text style={styles.statLabel}>{t('profile.currentProgress', 'Current Progress')}</Text>
                <Text style={[styles.statLabel, { marginTop: 8, color: colors.status.success }]}>
-                 {profile?.total_batches_completed || 0} / 8 Batches Completed
+                 {t('profile.batchesCompleted', { count: profile?.total_batches_completed || 0 })}
                </Text>
              </GlassCard>
              

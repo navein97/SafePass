@@ -30,6 +30,11 @@ export const LoginScreen = ({ navigation }: any) => {
   const [activeLang, setActiveLang] = useState(i18n.language);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
 
+  const termsTextParts = useMemo(() => {
+    const agreementText = t('auth.termsAgreement', 'By logging in, you agree to the {{terms}} of CNG Synergy (KT0512750V).');
+    return agreementText.split('{{terms}}');
+  }, [t]);
+
   const handleLangSwitch = (lang: string) => {
     i18n.changeLanguage(lang);
     setActiveLang(lang);
@@ -62,7 +67,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const validateForm = () => {
     let isValid = true;
-    const newErrors = { employeeId: '', password: '', general: '' };
+    const newErrors = { companyCode: '', employeeId: '', password: '', general: '' };
 
     if (!employeeId.trim()) {
       newErrors.employeeId = t('auth.employeeIdRequired', 'Employee ID is required');
@@ -147,7 +152,7 @@ Designation: `;
       setShowPolicyModal(false);
       navigation.replace('MainTabs');
     } else {
-      Alert.alert("Error", "Could not save agreement.");
+      Alert.alert(t('common.error'), t('auth.couldNotSaveAgreement', 'Could not save agreement.'));
     }
   };
 
@@ -249,11 +254,11 @@ Designation: `;
                 />
 
                 <Text style={[styles.linkText, { marginTop: 12, fontSize: 11, paddingHorizontal: 10, lineHeight: 16 }]}>
-                  By logging in, you agree to the{' '}
+                  {termsTextParts[0]}
                   <Text style={styles.linkTextBold} onPress={() => navigation.navigate('Terms')}>
-                    Terms of Service & Intellectual Property Policies
+                    {t('auth.termsLinkText', 'Terms of Service & Intellectual Property Policies')}
                   </Text>
-                  {' '}of CNG Synergy (KT0512750V).
+                  {termsTextParts[1]}
                 </Text>
 
                 <TouchableOpacity
@@ -270,7 +275,7 @@ Designation: `;
                     onPress={() => navigation.navigate('HelpCenter')}
                   >
                     <HelpCircle size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
-                    <Text style={styles.guideButtonText}>New User? View App Guide</Text>
+                    <Text style={styles.guideButtonText}>{t('auth.newUserGuide', 'New User? View App Guide')}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity

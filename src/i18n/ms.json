@@ -131,7 +131,16 @@
     "employeeIdOrEmail": "E-mel / ID Pekerja",
     "needHelp": "Perlukan bantuan?",
     "contactSupport": "Hubungi Sokongan",
-    "companyName": "Nama Syarikat"
+    "companyName": "Nama Syarikat",
+    "companyCode": "Kod Syarikat",
+    "companyCodeRequired": "Kod Syarikat diperlukan (cth. PRO, HAYAT)",
+    "invalidCompanyCode": "Kod Syarikat mestilah mengandungi huruf dan nombor sahaja",
+    "registerCompany": "Mohon Percubaan",
+    "newUserGuide": "Pengguna Baharu? Lihat Panduan Aplikasi",
+    "termsAgreement": "Dengan log masuk, anda bersetuju dengan {{terms}} CNG Synergy (KT0512750V).",
+    "termsLinkText": "Syarat Perkhidmatan & Polisi Harta Intelek",
+    "fullNamePlaceholder": "John Doe",
+    "couldNotSaveAgreement": "Tidak dapat menyimpan persetujuan."
   },
   "leaderboard": {
     "title": "Papan Pendahulu",
@@ -151,7 +160,8 @@
     "exportSuccess": "Fail Excel berjaya dieksport!",
     "exportFailed": "Gagal mengeksport fail Excel",
     "attempt": "percubaan",
-    "attempts": "percubaan"
+    "attempts": "percubaan",
+    "inProgress": "Dalam Proses"
   },
   "notifications": {
     "title": "Notifikasi",
@@ -193,7 +203,9 @@
     "tapToStart": "Ketik untuk mula →",
     "lockMessage": "🔒 Lengkapkan Kelompok {{number}} dengan purata ≥60% untuk buka",
     "comingSoon": "Akan Datang",
-    "howItWorks": "Cara ia berfungsi:"
+    "howItWorks": "Cara ia berfungsi:",
+    "inProgress": "Dalam Proses",
+    "progress": "Kemajuan"
   },
   "manager": {
     "dashboardTitle": "Papan Pemuka Pengurusan",
@@ -275,7 +287,13 @@
     "dailySessionCompleteTitle": "Sesi Selesai!",
     "dailySessionCompleteMessage": "Bagus! Anda telah menjawab {{count}}/30 soalan dalam kelompok ini. Kembali esok untuk meneruskan kemajuan anda.",
     "reviewIncorrect": "Semak Jawapan Salah",
-    "failedReviewTitle": "Semakan Jawapan Salah"
+    "failedReviewTitle": "Semakan Jawapan Salah",
+    "batchLockedTitle": "Kelompok Terkunci",
+    "completed": "selesai",
+    "failedReviewDesc": "Sila semak penjelasan di bawah sebelum menduduki semula kelompok ini.",
+    "questionNumber": "Soalan {{number}}",
+    "restartBatch": "Kembali & Mula Semula Kelompok",
+    "tryAgain": "Cuba Lagi"
   },
   "profile": {
     "title": "Profil",
@@ -337,7 +355,8 @@
     "batchesCompleted": "{{count}} / 8 Kelompok Selesai",
     "statusComplete": "Lengkap",
     "difficultySumError": "Peratusan kesukaran mestilah berjumlah 100% (Semasa: {{total}}%)",
-    "userNotFound": "Profil pengguna tidak ditemu"
+    "userNotFound": "Profil pengguna tidak ditemu",
+    "addressPlaceholder": "Alamat Penuh"
   },
   "navigation": {
     "profile": "Profil",
@@ -393,7 +412,20 @@
     "deleteSuccess": "Pengguna berjaya dipadamkan",
     "deleteTitle": "Padam Akaun Pemandu",
     "deleteConfirmText": "Adakah anda pasti? Tindakan ini tidak boleh diundurkan. Semua sejarah kuiz dan log pematuhan untuk pengguna ini akan dipadamkan secara kekal.",
-    "deleteVerifyLabel": "Untuk mengesahkan, taip \"{{username}}\" dalam kotak di bawah"
+    "deleteVerifyLabel": "Untuk mengesahkan, taip \"{{username}}\" dalam kotak di bawah",
+    "employeeIdLabel": "ID Pekerja:",
+    "transportCategory": "Kategori Pengangkutan:",
+    "currentBatch": "Kelompok Semasa:",
+    "batchManagement": "Pengurusan Kelompok",
+    "resetBatch": "Set Semula Kelompok",
+    "progress": "Kemajuan",
+    "averageScore": "Purata Markah",
+    "attempts": "Percubaan",
+    "autoResets": "Set Semula Automatik",
+    "batchSummary": "Ringkasan Kelompok {{number}}",
+    "incorrectQuestions": "Soalan Salah",
+    "noQuestionsAnswered": "Tiada soalan dijawab dalam kelompok ini lagi.",
+    "noIncorrectQuestions": "✅ Tiada soalan salah — prestasi cemerlang!"
   },
   "company": {
     "settings": "Tetapan Syarikat",
@@ -444,7 +476,21 @@
     "centerTitle": "Pusat Bantuan",
     "welcome": "Panduan Pengguna & Soalan Lazim",
     "intro": "Ketahui cara memaksimumkan prestasi keselamatan dan mengurus ruang kerja anda dengan berkesan.",
-    "footer": "Perlukan bantuan lagi? Hubungi pentadbir atau sokongan anda."
+    "footer": "Perlukan bantuan lagi? Hubungi pentadbir atau sokongan anda.",
+    "helpSupport": "Bantuan & Sokongan",
+    "allTopics": "Semua Topik",
+    "noResults": "Tiada keputusan ditemui",
+    "adjustSearch": "Cuba laraskan istilah carian anda.",
+    "cantFind": "Tidak menemui apa yang anda cari?",
+    "supportReady": "Pasukan sokongan kami bersedia untuk membantu anda.",
+    "chatWithSupport": "Sembang dengan Sokongan",
+    "searchPlaceholder": "Cari bantuan (cth: kata laluan, kelompok)",
+    "supportHours": "Tersedia Isnin-Jumaat, 9 pagi - 6 petang (MYT)",
+    "accountSetup": "Akaun & Persediaan",
+    "driverTraining": "Latihan Pemandu",
+    "managerTools": "Alatan Pengurus",
+    "billingPlans": "Pengebilan & Pelan",
+    "notifications": "Notifikasi"
   },
   "billing": {
     "title": "Bil & Pelan",
@@ -496,6 +542,26 @@
   },
   "notification": {
     "sendMessage": "Hantar Mesej",
-    "messagePlaceholder": "Taip mesej anda di sini..."
+    "messagePlaceholder": "Taip mesej anda di sini...",
+    "to": "Kepada:",
+    "everyone": "Semua Orang",
+    "allManagers": "Semua Pengurus",
+    "allDrivers": "Semua Pemandu"
+  },
+  "terms": {
+    "title": "Syarat Perkhidmatan & Polisi Harta Intelek",
+    "lastUpdated": "Kemas Kini Terakhir: {{date}}",
+    "section1Title": "1. Penerimaan Syarat",
+    "section1Text": "Dengan mengakses dan menggunakan aplikasi ini (\"Platform\"), anda bersetuju untuk terikat dengan terma dan ketentuan perjanjian ini. Jika anda tidak bersetuju untuk mematuhi terma ini, sila jangan gunakan Platform ini.",
+    "section2Title": "2. Hak Harta Intelek",
+    "section2Text1": "Semua hak harta intelek dalam Platform, termasuk tetapi tidak terhad kepada kod perisian, reka bentuk, teks, grafik, kandungan soal selidik, model pelaziman tingkah laku, dan struktur data, adalah dimiliki secara eksklusif oleh CNG Synergy (KT0512750V).",
+    "section2Text2": "Akses anda kepada aplikasi web ini memberikan lesen terhad, bukan eksklusif, dan tidak boleh dipindahkan untuk menggunakan platform ini semata-mata untuk tujuan latihan dan penilaian yang dimaksudkan.",
+    "section3Title": "3. Penggunaan yang Dilarang",
+    "section3Text": "Anda tidak dibenarkan membuat kejuruteraan undur, menyalin, mengekstrak, menghasilkan semula, merekod, atau menggunakan semula mana-mana bahagian sistem, logik, atau kandungan penilaiannya tanpa kebenaran bertulis terlebih dahulu daripada CNG Synergy (KT0512750V). Penggunaan tanpa kebenaran modul latihan dan algoritma proprietari Platform adalah dilarang sama sekali.",
+    "section4Title": "4. Penyimpanan Data",
+    "section4Text": "Platform boleh menyimpan rekod latihan dan data penilaian untuk tujuan pematuhan, audit undang-undang, dan penjejakan sejarah walaupun selepas akses langsung pekerja ditamatkan, tertakluk kepada Dasar Privasi kami.",
+    "section5Title": "5. Penafian Waranti",
+    "section5Text": "Platform ini disediakan \"seperti adanya\" tanpa sebarang representasi atau waranti, sama ada nyata atau tersirat. Kami tidak membuat sebarang representasi atau waranti berkaitan Platform ini atau maklumat serta bahan yang disediakan di dalamnya.",
+    "copyright": "© 2026 CNG Synergy (KT0512750V). Hak cipta terpelihara."
   }
 }

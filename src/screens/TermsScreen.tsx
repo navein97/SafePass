@@ -23,7 +23,7 @@ export const TermsScreen = ({ navigation }: any) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Terms of Service & IP Policy</Text>
+          <Text style={styles.headerTitle}>{t('terms.title', 'Terms of Service & IP Policy')}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -33,38 +33,38 @@ export const TermsScreen = ({ navigation }: any) => {
           bounces={true}
         >
           <GlassCard style={styles.card}>
-            <Text style={styles.lastUpdated}>Last Updated: {new Date().toLocaleDateString()}</Text>
+            <Text style={styles.lastUpdated}>{t('terms.lastUpdated', 'Last Updated: {{date}}', { date: new Date().toLocaleDateString() })}</Text>
 
-            <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
+            <Text style={styles.sectionTitle}>{t('terms.section1Title', '1. Acceptance of Terms')}</Text>
             <Text style={styles.paragraph}>
-              By accessing and using this application (the "Platform"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by these terms, please do not use this Platform.
+              {t('terms.section1Text', 'By accessing and using this application (the "Platform"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by these terms, please do not use this Platform.')}
             </Text>
 
-            <Text style={styles.sectionTitle}>2. Intellectual Property Rights</Text>
+            <Text style={styles.sectionTitle}>{t('terms.section2Title', '2. Intellectual Property Rights')}</Text>
             <Text style={styles.paragraph}>
-              All intellectual property rights in the Platform, including but not limited to software code, design, text, graphics, questionnaire content, behavioral conditioning models, and data structures, are owned exclusively by CNG Synergy (KT0512750V).
+              {t('terms.section2Text1', 'All intellectual property rights in the Platform, including but not limited to software code, design, text, graphics, questionnaire content, behavioral conditioning models, and data structures, are owned exclusively by CNG Synergy (KT0512750V).')}
             </Text>
             <Text style={styles.paragraph}>
-              Your access to the web application grants you a non-exclusive, non-transferable, limited license to use the platform solely for its intended training and evaluation purposes.
-            </Text>
-
-            <Text style={styles.sectionTitle}>3. Prohibited Uses</Text>
-            <Text style={styles.paragraph}>
-              You may not reverse-engineer, copy, extract, reproduce, record, or reuse any part of the system, its logic, or its assessment content without prior written consent from CNG Synergy (KT0512750V). Unauthorized use of the Platform's proprietary training modules and algorithms is strictly prohibited.
+              {t('terms.section2Text2', 'Your access to the web application grants you a non-exclusive, non-transferable, limited license to use the platform solely for its intended training and evaluation purposes.')}
             </Text>
 
-            <Text style={styles.sectionTitle}>4. Data Retention</Text>
+            <Text style={styles.sectionTitle}>{t('terms.section3Title', '3. Prohibited Uses')}</Text>
             <Text style={styles.paragraph}>
-              The Platform may retain training records and assessment data for compliance, legal auditing, and historical tracking purposes even after an employee's direct access is terminated, subject to our Privacy Policy.
+              {t('terms.section3Text', 'You may not reverse-engineer, copy, extract, reproduce, record, or reuse any part of the system, its logic, or its assessment content without prior written consent from CNG Synergy (KT0512750V). Unauthorized use of the Platform\'s proprietary training modules and algorithms is strictly prohibited.')}
             </Text>
 
-            <Text style={styles.sectionTitle}>5. Disclaimer of Warranties</Text>
+            <Text style={styles.sectionTitle}>{t('terms.section4Title', '4. Data Retention')}</Text>
             <Text style={styles.paragraph}>
-              The Platform is provided "as is" without any representations or warranties, express or implied. We make no representations or warranties in relation to this Platform or the information and materials provided on it.
+              {t('terms.section4Text', 'The Platform may retain training records and assessment data for compliance, legal auditing, and historical tracking purposes even after an employee\'s direct access is terminated, subject to our Privacy Policy.')}
+            </Text>
+
+            <Text style={styles.sectionTitle}>{t('terms.section5Title', '5. Disclaimer of Warranties')}</Text>
+            <Text style={styles.paragraph}>
+              {t('terms.section5Text', 'The Platform is provided "as is" without any representations or warranties, express or implied. We make no representations or warranties in relation to this Platform or the information and materials provided on it.')}
             </Text>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>© 2026 CNG Synergy (KT0512750V). All rights reserved.</Text>
+              <Text style={styles.footerText}>{t('terms.copyright', '© 2026 CNG Synergy (KT0512750V). All rights reserved.')}</Text>
             </View>
           </GlassCard>
         </ScrollView>

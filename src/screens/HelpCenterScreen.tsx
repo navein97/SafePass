@@ -54,6 +54,17 @@ export const HelpCenterScreen = ({ navigation }: any) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  const getCategoryKey = (category: string) => {
+    switch (category) {
+      case 'Account & Setup': return 'help.accountSetup';
+      case 'Driver Training': return 'help.driverTraining';
+      case 'Manager Tools': return 'help.managerTools';
+      case 'Billing & Plans': return 'help.billingPlans';
+      case 'Notifications': return 'help.notifications';
+      default: return category;
+    }
+  };
+
   const getCategoryIcon = (category: string, size = 20) => {
     switch (category) {
       case 'Account & Setup': return <BookOpen size={size} color={colors.primary.DEFAULT} />;
@@ -66,7 +77,6 @@ export const HelpCenterScreen = ({ navigation }: any) => {
   };
 
   const faqData: FAQ[] = [
-    // --- ACCOUNT & SETUP ---
     {
       id: 'q1',
       category: 'Account & Setup',
@@ -148,8 +158,6 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         '2. Your Manager can go to **Profile > Team Management**, find your name, and reset your password instantly.'
       ]
     },
-
-    // --- DRIVER TRAINING ---
     {
       id: 'q5',
       category: 'Driver Training',
@@ -181,220 +189,175 @@ export const HelpCenterScreen = ({ navigation }: any) => {
       ]
     },
     {
-      id: 'q_batch_reset',
-      category: 'Driver Training',
-      icon: getCategoryIcon('Driver Training'),
-      question: 'What happens if I fail a Batch (score below 70%)?',
-      roles: ['driver', 'manager', 'master'],
-      answer: [
-        'If you complete a batch and score below 70%:',
-        '1. The system **automatically resets** the entire batch for a new attempt.',
-        '2. You will see a detailed **Incorrect Answers Review** screen first so you can study your mistakes.',
-        '3. The daily limit is **automatically waived** for the retake—meaning you can answer all 30 questions immediately without waiting!',
-        '4. On retaking, the questions and choice positions are **shuffled** to ensure you learn the safety principles rather than memorizing the order.'
-      ]
-    },
-    {
       id: 'q6',
       category: 'Driver Training',
       icon: getCategoryIcon('Driver Training'),
-      question: 'What is Practice Mode (Trial Mode)?',
+      question: 'What is Practice Mode?',
       roles: ['driver', 'manager', 'master'],
       answer: [
-        'Practice Mode (Trial Mode) allows you to study without affecting your score.',
-        '1. In the **Mission** tab, select a Batch and tap **Practice Mode**.',
-        '2. You have **unlimited attempts** per question and no marks are recorded.',
-        '3. Questions are drawn from the same pool as Live Mode but do not affect your official progress.'
+        'Practice Mode lets you study without safety score consequences.',
+        '1. Select any batch and tap **Practice Mode**.',
+        '2. You will be given **30 questions** in a row.',
+        '3. You get immediate explanations for wrong answers.',
+        '4. Your progress does NOT count towards Safety Shield or compliance metrics.'
       ]
     },
     {
-      id: 'q_review',
+      id: 'q7',
       category: 'Driver Training',
       icon: getCategoryIcon('Driver Training'),
-      question: 'Can I review my past mistakes?',
+      question: 'How do I unlock the next batch?',
       roles: ['driver', 'manager', 'master'],
       answer: [
-        'Yes! After completing a batch, you can see your final score and progress details.',
-        'If you fail the batch, the app will present a scrollable **Review screen** highlighting all questions you missed, the correct answers, and detailed explanations.'
+        'To prevent rushing, the system locks advanced batches.',
+        '1. You must complete the previous batch (e.g., Batch 1).',
+        '2. Your **average score** for that batch must be **60% or higher** (minimum 18.0 marks).',
+        '3. Once met, the next batch unlocks automatically.'
       ]
     },
-
+    {
+      id: 'q_daily_streaks',
+      category: 'Driver Training',
+      icon: getCategoryIcon('Driver Training'),
+      question: 'What is the Weekly Streak?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        '1. The weekly streak tracks consecutive days you log in and complete your daily training.',
+        '2. Maintaining a streak boosts your profile visibility on the team leaderboard.'
+      ]
+    },
+    {
+      id: 'q_safety_shield',
+      category: 'Driver Training',
+      icon: getCategoryIcon('Driver Training'),
+      question: 'What is the Safety Shield?',
+      roles: ['driver', 'manager', 'master'],
+      answer: [
+        'The Safety Shield is a visual compliance status shown on your profile.',
+        '- **Strong (Green):** You are fully compliant and keep up with daily training.',
+        '- **Needs Attention (Yellow):** You have missed a few days of daily training.',
+        '- **Critically Low (Red):** You have not completed training for an extended period. Log in and do your missions to restore it!'
+      ]
+    },
     {
       id: 'q8',
-      category: 'Driver Training',
-      icon: getCategoryIcon('Driver Training'),
-      question: 'How does the Leaderboard work?',
-      roles: ['driver', 'manager', 'master'],
+      category: 'Manager Tools',
+      icon: getCategoryIcon('Manager Tools'),
+      question: 'How do I add a new Driver to my team?',
+      roles: ['manager', 'master'],
       answer: [
-        'The Leaderboard ranks everyone in your company based on their Total Score.',
-        '1. Tap the **Leaderboard** tab.',
-        '2. You can filter the rankings by specific **Batches** using the dropdown at the top.',
-        '3. Top performers earn medals (Gold, Silver, Bronze) and the title of Safety Champion.'
+        '1. Tap the **Team** tab at the bottom of the screen.',
+        '2. Tap the **+ Add User** button at the top right.',
+        '3. Fill in their Full Name, Employee ID, Department, Area, and select their Vehicle Type.',
+        '4. The system automatically sets a default password: **123456**.',
+        '5. Share the Employee ID and password with your driver.'
       ]
     },
-
-    // --- MANAGER TOOLS ---
     {
       id: 'q9',
       category: 'Manager Tools',
       icon: getCategoryIcon('Manager Tools'),
-      question: 'How do I create a new Driver or Manager account?',
+      question: 'How do I reset a Driver password?',
       roles: ['manager', 'master'],
       answer: [
-        '1. Go to the **Profile** tab and tap **Team Management**.',
-        '2. Tap the **Add User** button at the bottom.',
-        '3. Fill in the required details (Full Name, Employee ID, Password, Age, Vehicle Type, etc.).',
-        '4. Tap **Create User**. They can now log in using the Employee ID and password you set.'
-      ]
-    },
-    {
-      id: 'q_delete_user',
-      category: 'Manager Tools',
-      icon: getCategoryIcon('Manager Tools'),
-      question: 'How do I delete or remove a user?',
-      roles: ['manager', 'master'],
-      answer: [
-        '1. Go to the **Profile** tab and tap **Team Management**.',
-        '2. Find the user you want to remove in the list.',
-        '3. Tap the red **Trash Can** icon next to their name.',
-        '4. Confirm the deletion. Note: This action is permanent and frees up space in your Driver Quota.'
-      ]
-    },
-    {
-      id: 'q_reset_driver',
-      category: 'Manager Tools',
-      icon: getCategoryIcon('Manager Tools'),
-      question: 'Can I reset a driver\'s progress?',
-      roles: ['manager', 'master'],
-      answer: [
-        '1. Go to the **Team** tab and tap on a specific driver to view their details.',
-        '2. You can manually reset a specific **Batch** if a driver experienced technical issues or needs a fresh start on that batch.',
-        '3. For compliance and safety auditing reasons, you **cannot** waive their 3-question daily limit, unlock future batches prematurely, or delete their entire historical profile progress.'
+        'If a driver forgets their password, you can reset it instantly:',
+        '1. Go to the **Team** tab.',
+        '2. Tap on the driver name to open their profile details.',
+        '3. Tap the **Reset Password** button (key icon).',
+        '4. Enter the new password and tap **Save**.'
       ]
     },
     {
       id: 'q10',
       category: 'Manager Tools',
       icon: getCategoryIcon('Manager Tools'),
-      question: 'How do I track if my drivers completed their training?',
+      question: 'How do I send notifications or messages to Drivers?',
       roles: ['manager', 'master'],
       answer: [
-        'The Manager Quick View is a dashboard that gives you an immediate overview of your team’s weekly compliance.',
-        'It shows which drivers are **COMPLIANT** (finished their daily quotas) and which are **OVERDUE**.',
-        'You can access it by tapping the **Team** tab at the bottom of the screen.'
+        'You can send custom messages to individual drivers or the whole team:',
+        '• **Direct Message:** Go to the **Team** tab -> Tap the Bell icon next to a driver name -> Type your message and send.',
+        '• **Broadcast:** Tap the Loudspeaker icon at the top of the Team tab -> Compose your message and select the target group (Everyone, Managers, Drivers).'
+      ]
+    },
+    {
+      id: 'q_performance_dashboard',
+      category: 'Manager Tools',
+      icon: getCategoryIcon('Manager Tools'),
+      question: 'How do I view team safety reports?',
+      roles: ['manager', 'master'],
+      answer: [
+        '1. Tap the **Team** tab.',
+        '2. The main dashboard shows average compliance, total active drivers, and a performance chart.',
+        '3. You can click on any driver to see their individual batch progress and incorrect answers.'
+      ]
+    },
+    {
+      id: 'q_export_reports',
+      category: 'Manager Tools',
+      icon: getCategoryIcon('Manager Tools'),
+      question: 'How do I export data to Excel?',
+      roles: ['manager', 'master'],
+      answer: [
+        '1. Tap the **Leaderboard** tab.',
+        '2. Tap **Export** at the top right.',
+        '3. The system will compile safety scores, attempts, and compliance status into an `.xlsx` file and download it.'
       ]
     },
     {
       id: 'q11',
-      category: 'Manager Tools',
-      icon: getCategoryIcon('Manager Tools'),
-      question: 'How do I export training reports to Excel?',
-      roles: ['manager', 'master'],
+      category: 'Billing & Plans',
+      icon: getCategoryIcon('Billing & Plans'),
+      question: 'How do I upgrade my driver quota?',
+      roles: ['master'],
       answer: [
-        '1. Open the **Team** tab (Manager Quick View).',
-        '2. Tap the **Download** icon in the top right corner.',
-        '3. A comprehensive Excel file (.xlsx) will be generated and saved to your device, containing scores, accuracy, and status.'
+        '1. Go to the **Profile** tab and tap **Billing & Plans**.',
+        '2. Choose between **Standard** or **Enterprise** plans.',
+        '3. Use the slider to select the exact number of driver slots you need.',
+        '4. Tap **Upgrade** and complete your payment securely via Stripe.',
+        '5. Your driver quota will update immediately.'
       ]
     },
     {
       id: 'q12',
-      category: 'Manager Tools',
-      icon: getCategoryIcon('Manager Tools'),
-      question: 'How do I send notifications to my team?',
-      roles: ['manager', 'master'],
-      answer: [
-        '1. Go to **Profile > Team Management**.',
-        '2. To message everyone, tap the **Megaphone icon** at the top right.',
-        '3. To message a specific driver, tap the **Bell icon** next to their name.',
-        '4. Type your message (e.g., "Please complete your training today") and send. They will receive it in their Notifications tab.'
-      ]
-    },
-
-    // --- BILLING & ACCOUNT ---
-    {
-      id: 'q13',
       category: 'Billing & Plans',
       icon: getCategoryIcon('Billing & Plans'),
-      question: 'How do I upgrade my company\'s subscription?',
+      question: 'How are subscription costs calculated?',
       roles: ['master'],
       answer: [
-        'Only the Master User can manage billing.',
-        '1. Go to the **Profile** tab and tap **Billing & Plans**.',
-        '2. Here you will see your current plan and driver quota.',
-        '3. Select a new plan (e.g., Standard or Enterprise) to unlock more drivers and all training batches.',
-        '4. You will be securely redirected to Stripe to complete the payment.'
+        'Subscriptions are billed annually per driver slot:',
+        '- Standard: **RM 99 / driver / year**.',
+        '- Enterprise: **RM 149 / driver / year**.',
+        'You also get complimentary Manager accounts based on your driver count (e.g. 1 manager per 5 drivers).'
       ]
     },
     {
-      id: 'q14',
+      id: 'q_free_trial',
       category: 'Billing & Plans',
       icon: getCategoryIcon('Billing & Plans'),
-      question: 'What happens if I reach my Driver Quota limit?',
-      roles: ['manager', 'master'],
+      question: 'Is there a free trial?',
+      roles: ['master'],
       answer: [
-        'Your subscription determines how many active drivers you can have.',
-        'If you reach the limit, you will not be able to add new users in Team Management.',
-        'You must either delete inactive users to free up space, or the Master User must upgrade the plan in the Billing section.'
+        'Yes! All new workspaces start with a **3-Month Free Trial**.',
+        '- Access is limited to Batch 1 (30 questions) and a maximum of 5 drivers.',
+        '- You can upgrade to a paid plan at any time to unlock all 8 batches and expand your team.'
       ]
     },
-
-    // --- NOTIFICATIONS ---
     {
-
-      id: 'q15',
+      id: 'q13',
       category: 'Notifications',
       icon: getCategoryIcon('Notifications'),
-      question: 'Where can I find my alerts and messages?',
+      question: 'Where do I view my notifications?',
       roles: ['driver', 'manager', 'master'],
       answer: [
-        '1. Tap the **Notifications** tab (the Bell icon at the bottom of the main screen).',
-        '2. Here you will see system alerts and direct messages from your managers.',
-        '3. Unread messages will have a highlight. Tap a message to mark it as read.'
+        '1. Tap the **Notifications** tab (Bell icon) at the bottom navigation bar.',
+        '2. You will see direct messages from your manager, system announcements, and automated weekly reminders.'
       ]
     },
-    // --- ADDITIONAL TOPICS ---
-    {
-      id: 'q_theme',
-      category: 'Account & Setup',
-      icon: getCategoryIcon('Account & Setup'),
-      question: 'How do I toggle Dark/Light mode?',
-      roles: ['driver', 'manager', 'master'],
-      answer: [
-        '1. Open the **Profile** tab.',
-        '2. Tap the **Theme** toggle button (Sun/Moon icon) at the top right.',
-        '3. The app will instantly switch between Light and Dark themes.'
-      ]
-    },
-    {
-      id: 'q_language',
-      category: 'Account & Setup',
-      icon: getCategoryIcon('Account & Setup'),
-      question: 'How do I change the app language?',
-      roles: ['driver', 'manager', 'master'],
-      answer: [
-        '1. Open the **Profile** tab.',
-        '2. Tap the **Language** button.',
-        '3. Select **English** or **Malay**. The interface will update immediately.'
-      ]
-    },
-    {
-      id: 'q_logout',
-      category: 'Account & Setup',
-      icon: getCategoryIcon('Account & Setup'),
-      question: 'How do I log out of ProDrive 180?',
-      roles: ['driver', 'manager', 'master'],
-      answer: [
-        '1. Open the **Profile** tab.',
-        '2. Scroll down and tap the **Logout** button.',
-        '3. Confirm the logout prompt. You will be returned to the Login screen.'
-      ]
-    },
-
     {
       id: 'q_performance_chart',
       category: 'Driver Training',
       icon: getCategoryIcon('Driver Training'),
-      question: 'How do I view my performance chart?',
+      question: 'How do I see my performance chart?',
       roles: ['driver', 'manager', 'master'],
       answer: [
         '1. Open the **Profile** tab.',
@@ -414,10 +377,8 @@ export const HelpCenterScreen = ({ navigation }: any) => {
     }
   ];
 
-
-  // Formatting helper: Make text between ** ** bold
   const renderFormattedText = (text: string, index: number) => {
-    if (text === '') return <View key={index} style={{ height: 8 }} />; // Empty line spacer
+    if (text === '') return <View key={index} style={{ height: 8 }} />;
 
     const parts = text.split(/(\*\*.*?\*\*)/g);
     return (
@@ -436,17 +397,14 @@ export const HelpCenterScreen = ({ navigation }: any) => {
     );
   };
 
-  // Filter logic
   const filteredFAQs = useMemo(() => {
     let result = faqData;
 
-    // Filter by role if logged in
     if (profile) {
       const userRole = profile.manager_level === 1 ? 'master' : profile.role;
       result = result.filter(faq => faq.roles.includes(userRole));
     }
 
-    // Filter by search query
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       result = result.filter(faq =>
@@ -454,7 +412,6 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         faq.answer.some(a => a.toLowerCase().includes(query))
       );
     }
-    // Filter by selected category (only if not searching)
     else if (selectedCategory) {
       result = result.filter(faq => faq.category === selectedCategory);
     }
@@ -484,17 +441,16 @@ export const HelpCenterScreen = ({ navigation }: any) => {
           >
             <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-          <Text style={styles.title}>Help & Support</Text>
+          <Text style={styles.title}>{t('help.helpSupport', 'Help & Support')}</Text>
           <View style={{ width: 44 }} />
         </View>
 
-        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <GlassCard contentStyle={styles.searchBar}>
             <Search size={20} color={colors.text.tertiary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search for help (e.g., password, batches)"
+              placeholder={t('help.searchPlaceholder', 'Search for help (e.g., password, batches)')}
               placeholderTextColor={colors.text.tertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -507,7 +463,6 @@ export const HelpCenterScreen = ({ navigation }: any) => {
           </GlassCard>
         </View>
 
-        {/* Category Pills (Only show if not searching) */}
         {searchQuery.length === 0 && (
           <View style={styles.categoriesContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesScroll}>
@@ -518,13 +473,11 @@ export const HelpCenterScreen = ({ navigation }: any) => {
                   setSelectedCategory(null);
                 }}
               >
-                <Text style={[styles.categoryPillText, !selectedCategory && styles.categoryPillTextActive]}>All Topics</Text>
+                <Text style={[styles.categoryPillText, !selectedCategory && styles.categoryPillTextActive]}>{t('help.allTopics', 'All Topics')}</Text>
               </TouchableOpacity>
 
               {categories.map(cat => {
-                // Hide billing category if user is not master
                 if (cat === 'Billing & Plans' && profile?.manager_level !== 1) return null;
-                // Hide manager tools if user is driver
                 if (cat === 'Manager Tools' && profile?.role === 'driver') return null;
 
                 const isActive = selectedCategory === cat;
@@ -537,7 +490,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
                       setSelectedCategory(cat);
                     }}
                   >
-                    <Text style={[styles.categoryPillText, isActive && styles.categoryPillTextActive]}>{cat}</Text>
+                    <Text style={[styles.categoryPillText, isActive && styles.categoryPillTextActive]}>{t(getCategoryKey(cat), cat)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -552,8 +505,8 @@ export const HelpCenterScreen = ({ navigation }: any) => {
           {filteredFAQs.length === 0 ? (
             <View style={styles.emptyState}>
               <Search size={48} color={colors.text.tertiary} style={{ marginBottom: 16 }} />
-              <Text style={styles.emptyTitle}>No results found</Text>
-              <Text style={styles.emptyText}>Try adjusting your search terms.</Text>
+              <Text style={styles.emptyTitle}>{t('help.noResults', 'No results found')}</Text>
+              <Text style={styles.emptyText}>{t('help.adjustSearch', 'Try adjusting your search terms.')}</Text>
             </View>
           ) : (
             filteredFAQs.map((faq) => {
@@ -569,7 +522,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
                       {faq.icon}
                     </View>
                     <View style={styles.faqTitleContainer}>
-                      <Text style={styles.faqCategory}>{faq.category}</Text>
+                      <Text style={styles.faqCategory}>{t(getCategoryKey(faq.category), faq.category)}</Text>
                       <Text style={styles.faqQuestion}>{faq.question}</Text>
                     </View>
                     {isExpanded ? (
@@ -590,18 +543,18 @@ export const HelpCenterScreen = ({ navigation }: any) => {
           )}
 
           <View style={styles.footer}>
-            <Text style={styles.footerTitle}>Can't find what you're looking for?</Text>
-            <Text style={styles.footerSubtitle}>Our support team is ready to assist you.</Text>
+            <Text style={styles.footerTitle}>{t('help.cantFind', "Can't find what you're looking for?")}</Text>
+            <Text style={styles.footerSubtitle}>{t('help.supportReady', 'Our support team is ready to assist you.')}</Text>
 
             <GlassButton
-              title="Chat with Support"
+              title={t('help.chatWithSupport', 'Chat with Support')}
               onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20need%20help%20with%20Driver%20360.')}
               icon={<MessageCircle size={20} color="#FFF" />}
               style={styles.supportButton}
             />
 
             <Text style={styles.footerHours}>
-              Available Mon-Fri, 9am - 6pm (MYT)
+              {t('help.supportHours', 'Available Mon-Fri, 9am - 6pm (MYT)')}
             </Text>
           </View>
         </ScrollView>

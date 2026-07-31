@@ -176,7 +176,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
 
                 <GlassInput
                   label={t('auth.companyName', 'Company Name')}
-                  placeholder="ACME Logistics"
+                  placeholder={t('company.namePlaceholder', 'ACME Logistics')}
                   value={companyName}
                   onChangeText={setCompanyName}
                   error={errors.companyName}
@@ -195,7 +195,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
 
                 <GlassInput
                   label={t('auth.fullName', 'Your Full Name')}
-                  placeholder="John Doe"
+                  placeholder={t('auth.fullNamePlaceholder', 'John Doe')}
                   value={fullName}
                   onChangeText={setFullName}
                   error={errors.fullName}

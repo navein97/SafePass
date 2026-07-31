@@ -724,7 +724,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   </Text>
                   
                   <View style={{ backgroundColor: colors.background.subtle, paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '90%', alignSelf: 'center' }}>
-                    <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Progress</Text>
+                    <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('profile.currentProgress', 'Current Progress')}</Text>
                     <Text style={{ fontSize: 28, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{(resultData as any).completedCount}/30</Text>
                   </View>
                 </>

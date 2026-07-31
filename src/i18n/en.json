@@ -131,7 +131,16 @@
     "employeeIdOrEmail": "Email / Employee ID",
     "needHelp": "Need help?",
     "contactSupport": "Contact Support",
-    "companyName": "Company Name"
+    "companyName": "Company Name",
+    "companyCode": "Company Code",
+    "companyCodeRequired": "Company Code is required (e.g. PRO, HAYAT)",
+    "invalidCompanyCode": "Company Code must contain letters and numbers only",
+    "registerCompany": "Request Trial",
+    "newUserGuide": "New User? View App Guide",
+    "termsAgreement": "By logging in, you agree to the {{terms}} of CNG Synergy (KT0512750V).",
+    "termsLinkText": "Terms of Service & Intellectual Property Policies",
+    "fullNamePlaceholder": "John Doe",
+    "couldNotSaveAgreement": "Could not save agreement."
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -151,7 +160,8 @@
     "exportSuccess": "Excel file exported successfully!",
     "exportFailed": "Failed to export Excel file",
     "attempt": "attempt",
-    "attempts": "attempts"
+    "attempts": "attempts",
+    "inProgress": "In Progress"
   },
   "notifications": {
     "title": "Notifications",
@@ -193,7 +203,9 @@
     "tapToStart": "Tap to start →",
     "lockMessage": "🔒 Complete Batch {{number}} with ≥60% average to unlock",
     "comingSoon": "Coming Soon",
-    "howItWorks": "How it works:"
+    "howItWorks": "How it works:",
+    "inProgress": "In Progress",
+    "progress": "Progress"
   },
   "manager": {
     "dashboardTitle": "Management Dashboard",
@@ -275,7 +287,13 @@
     "dailySessionCompleteTitle": "Session Complete!",
     "dailySessionCompleteMessage": "Great work! You've answered {{count}}/30 questions in this batch. Come back tomorrow to continue your progress.",
     "reviewIncorrect": "Review Incorrect Answers",
-    "failedReviewTitle": "Incorrect Answers Review"
+    "failedReviewTitle": "Incorrect Answers Review",
+    "batchLockedTitle": "Batch Locked",
+    "completed": "completed",
+    "failedReviewDesc": "Please review the explanations below before retaking this batch.",
+    "questionNumber": "Question {{number}}",
+    "restartBatch": "Return & Restart Batch",
+    "tryAgain": "Try Again"
   },
   "profile": {
     "title": "Profile",
@@ -337,7 +355,8 @@
     "batchesCompleted": "{{count}} / 8 Batches Completed",
     "statusComplete": "Complete",
     "difficultySumError": "Difficulty percentages must sum to 100% (Current: {{total}}%)",
-    "userNotFound": "User profile not found"
+    "userNotFound": "User profile not found",
+    "addressPlaceholder": "Full Address"
   },
   "navigation": {
     "profile": "Profile",
@@ -393,7 +412,20 @@
     "deleteSuccess": "User deleted successfully",
     "deleteTitle": "Delete Driver Account",
     "deleteConfirmText": "Are you sure? This action cannot be undone. All quiz history and compliance logs for this user will be permanently deleted.",
-    "deleteVerifyLabel": "To confirm, type \"{{username}}\" in the box below"
+    "deleteVerifyLabel": "To confirm, type \"{{username}}\" in the box below",
+    "employeeIdLabel": "Employee ID:",
+    "transportCategory": "Transport Category:",
+    "currentBatch": "Current Batch:",
+    "batchManagement": "Batch Management",
+    "resetBatch": "Reset Batch",
+    "progress": "Progress",
+    "averageScore": "Average Score",
+    "attempts": "Attempts",
+    "autoResets": "Auto-Resets",
+    "batchSummary": "Batch {{number}} Summary",
+    "incorrectQuestions": "Incorrect Questions",
+    "noQuestionsAnswered": "No questions answered in this batch yet.",
+    "noIncorrectQuestions": "✅ No incorrect questions — great performance!"
   },
   "company": {
     "settings": "Company Settings",
@@ -444,7 +476,21 @@
     "centerTitle": "Help Center",
     "welcome": "User Guide & FAQ",
     "intro": "Learn how to navigate the app and use its features effectively.",
-    "footer": "Need more help? Contact your administrator or support."
+    "footer": "Need more help? Contact your administrator or support.",
+    "helpSupport": "Help & Support",
+    "allTopics": "All Topics",
+    "noResults": "No results found",
+    "adjustSearch": "Try adjusting your search terms.",
+    "cantFind": "Can't find what you're looking for?",
+    "supportReady": "Our support team is ready to assist you.",
+    "chatWithSupport": "Chat with Support",
+    "searchPlaceholder": "Search for help (e.g., password, batches)",
+    "supportHours": "Available Mon-Fri, 9am - 6pm (MYT)",
+    "accountSetup": "Account & Setup",
+    "driverTraining": "Driver Training",
+    "managerTools": "Manager Tools",
+    "billingPlans": "Billing & Plans",
+    "notifications": "Notifications"
   },
   "billing": {
     "title": "Billing & Plans",
@@ -496,6 +542,26 @@
   },
   "notification": {
     "sendMessage": "Send Message",
-    "messagePlaceholder": "Type your message here..."
+    "messagePlaceholder": "Type your message here...",
+    "to": "To:",
+    "everyone": "Everyone",
+    "allManagers": "All Managers",
+    "allDrivers": "All Drivers"
+  },
+  "terms": {
+    "title": "Terms of Service & IP Policy",
+    "lastUpdated": "Last Updated: {{date}}",
+    "section1Title": "1. Acceptance of Terms",
+    "section1Text": "By accessing and using this application (the \"Platform\"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by these terms, please do not use this Platform.",
+    "section2Title": "2. Intellectual Property Rights",
+    "section2Text1": "All intellectual property rights in the Platform, including but not limited to software code, design, text, graphics, questionnaire content, behavioral conditioning models, and data structures, are owned exclusively by CNG Synergy (KT0512750V).",
+    "section2Text2": "Your access to the web application grants you a non-exclusive, non-transferable, limited license to use the platform solely for its intended training and evaluation purposes.",
+    "section3Title": "3. Prohibited Uses",
+    "section3Text": "You may not reverse-engineer, copy, extract, reproduce, record, or reuse any part of the system, its logic, or its assessment content without prior written consent from CNG Synergy (KT0512750V). Unauthorized use of the Platform's proprietary training modules and algorithms is strictly prohibited.",
+    "section4Title": "4. Data Retention",
+    "section4Text": "The Platform may retain training records and assessment data for compliance, legal auditing, and historical tracking purposes even after an employee's direct access is terminated, subject to our Privacy Policy.",
+    "section5Title": "5. Disclaimer of Warranties",
+    "section5Text": "The Platform is provided \"as is\" without any representations or warranties, express or implied. We make no representations or warranties in relation to this Platform or the information and materials provided on it.",
+    "copyright": "© 2026 CNG Synergy (KT0512750V). All rights reserved."
   }
 }
