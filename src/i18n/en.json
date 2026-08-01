@@ -425,7 +425,12 @@
     "batchSummary": "Batch {{number}} Summary",
     "incorrectQuestions": "Incorrect Questions",
     "noQuestionsAnswered": "No questions answered in this batch yet.",
-    "noIncorrectQuestions": "✅ No incorrect questions — great performance!"
+    "noIncorrectQuestions": "✅ No incorrect questions — great performance!",
+    "deactivateDriver": "Deactivate Driver",
+    "deactivateConfirmTitle": "Deactivate Driver Account",
+    "deactivateConfirmMessage": "Are you sure you want to deactivate {{name}}? The driver will no longer be able to log in or appear on the team management page.",
+    "driverDeactivatedSuccess": "Driver account deactivated successfully.",
+    "errorDeactivate": "Failed to deactivate driver account"
   },
   "company": {
     "settings": "Company Settings",

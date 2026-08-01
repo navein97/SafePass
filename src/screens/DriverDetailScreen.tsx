@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { ChevronLeft, RotateCcw, AlertTriangle } from 'lucide-react-native';
+import { ChevronLeft, RotateCcw, AlertTriangle, UserX } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { BatchService } from '../services/batchService';
 import { GradientBackground } from '../components/ui/GradientBackground';
@@ -171,6 +171,67 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
         }
     };
 
+    const handleDeactivateDriver = () => {
+        const deactivateAction = async () => {
+            try {
+                setActionLoading(true);
+                const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+                const updatePayload: any = {
+                    status: 'inactive',
+                    deactivated_at: new Date().toISOString()
+                };
+                if (currentUser?.id) {
+                    updatePayload.deactivated_by = currentUser.id;
+                }
+
+                const { error } = await supabase
+                    .from('profiles')
+                    .update(updatePayload)
+                    .eq('id', userId);
+
+                if (error) throw error;
+
+                const successMsg = t('user.driverDeactivatedSuccess', 'Driver account deactivated successfully.');
+                if (Platform.OS === 'web') {
+                    window.alert(successMsg);
+                } else {
+                    Alert.alert(t('common.success', 'Success'), successMsg);
+                }
+                navigation.goBack();
+            } catch (error: any) {
+                const errorMsg = error.message || t('user.errorDeactivate', 'Failed to deactivate driver account');
+                if (Platform.OS === 'web') {
+                    window.alert(errorMsg);
+                } else {
+                    Alert.alert(t('common.error', 'Error'), errorMsg);
+                }
+            } finally {
+                setActionLoading(false);
+            }
+        };
+
+        const msg = t('user.deactivateConfirmMessage', {
+            name: driverProfile?.full_name || 'this driver',
+            defaultValue: `Are you sure you want to deactivate ${driverProfile?.full_name || 'this driver'}? The driver will no longer be able to log in or appear on the team management page.`
+        });
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(msg)) {
+                deactivateAction();
+            }
+        } else {
+            Alert.alert(
+                t('user.deactivateConfirmTitle', 'Deactivate Driver Account'),
+                msg,
+                [
+                    { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+                    { text: t('user.deactivateDriver', 'Deactivate Driver'), style: 'destructive', onPress: deactivateAction }
+                ]
+            );
+        }
+    };
+
     const selectedSummary = useMemo(() => {
         return batchProgress.find(b => b.batchNumber === selectedBatch);
     }, [batchProgress, selectedBatch]);
@@ -222,7 +283,17 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                     {/* Driver Profile Summary */}
                     <GlassCard style={styles.overviewCard}>
-                        <Text style={styles.cardTitle}>{t('profile.details')}</Text>
+                        <View style={styles.cardHeaderRow}>
+                            <Text style={styles.cardTitle}>{t('profile.details')}</Text>
+                            <TouchableOpacity
+                                onPress={handleDeactivateDriver}
+                                style={styles.deactivateBtn}
+                                disabled={actionLoading}
+                            >
+                                <UserX size={14} color="#FFF" />
+                                <Text style={styles.deactivateBtnText}>{t('user.deactivateDriver', 'Deactivate Driver')}</Text>
+                            </TouchableOpacity>
+                        </View>
                         <View style={styles.profileRow}>
                             <Text style={styles.profileLabel}>{t('user.employeeIdLabel', 'Employee ID:')}</Text>
                             <Text style={styles.profileVal}>{driverProfile?.employee_id}</Text>
@@ -369,6 +440,26 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     overviewCard: {
         padding: 16,
     },
+    cardHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    deactivateBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FF3D00',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        gap: 4,
+    },
+    deactivateBtnText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontFamily: typography.fonts.bold,
+    },
     card: {
         padding: 16,
     },
@@ -376,7 +467,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
         fontSize: 15,
         fontFamily: typography.fonts.bold,
         color: colors.text.primary,
-        marginBottom: 12,
     },
     profileRow: {
         flexDirection: 'row',

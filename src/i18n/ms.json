@@ -425,7 +425,12 @@
     "batchSummary": "Ringkasan Kelompok {{number}}",
     "incorrectQuestions": "Soalan Salah",
     "noQuestionsAnswered": "Tiada soalan dijawab dalam kelompok ini lagi.",
-    "noIncorrectQuestions": "✅ Tiada soalan salah — prestasi cemerlang!"
+    "noIncorrectQuestions": "✅ Tiada soalan salah — prestasi cemerlang!",
+    "deactivateDriver": "Nyahaktifkan Pemandu",
+    "deactivateConfirmTitle": "Nyahaktifkan Akaun Pemandu",
+    "deactivateConfirmMessage": "Adakah anda pasti mahu menyahaktifkan {{name}}? Pemandu ini tidak lagi boleh log masuk atau muncul di halaman pengurusan pasukan.",
+    "driverDeactivatedSuccess": "Akaun pemandu berjaya dinyahaktifkan.",
+    "errorDeactivate": "Gagal menyahaktifkan akaun pemandu"
   },
   "company": {
     "settings": "Tetapan Syarikat",
