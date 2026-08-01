@@ -426,6 +426,7 @@
     "incorrectQuestions": "Incorrect Questions",
     "noQuestionsAnswered": "No questions answered in this batch yet.",
     "noIncorrectQuestions": "✅ No incorrect questions — great performance!",
+    "deactivate": "Deactivate",
     "deactivateDriver": "Deactivate Driver",
     "deactivateConfirmTitle": "Deactivate Driver Account",
     "deactivateConfirmMessage": "Are you sure you want to deactivate {{name}}? The driver will no longer be able to log in or appear on the team management page.",

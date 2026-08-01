@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -61,6 +62,12 @@ export const UserManagementScreen = ({ navigation }: any) => {
     useEffect(() => {
         loadData();
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadUsers();
+        }, [])
+    );
 
     const loadData = async () => {
         setLoading(true);

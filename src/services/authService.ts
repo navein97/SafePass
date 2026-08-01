@@ -273,7 +273,7 @@ export const AuthService = {
             let query = supabase
                 .from('profiles')
                 .select('*')
-                .eq('status', 'active') // Only show active users by default
+                .neq('status', 'inactive') // Only show active users (exclude inactive)
                 .order('created_at', { ascending: false });
 
             // Filter by company if user has one

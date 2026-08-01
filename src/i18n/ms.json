@@ -426,6 +426,7 @@
     "incorrectQuestions": "Soalan Salah",
     "noQuestionsAnswered": "Tiada soalan dijawab dalam kelompok ini lagi.",
     "noIncorrectQuestions": "✅ Tiada soalan salah — prestasi cemerlang!",
+    "deactivate": "Nyahaktifkan",
     "deactivateDriver": "Nyahaktifkan Pemandu",
     "deactivateConfirmTitle": "Nyahaktifkan Akaun Pemandu",
     "deactivateConfirmMessage": "Adakah anda pasti mahu menyahaktifkan {{name}}? Pemandu ini tidak lagi boleh log masuk atau muncul di halaman pengurusan pasukan.",

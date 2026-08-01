@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { ChevronLeft, RotateCcw, AlertTriangle, UserX } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, RotateCcw, AlertTriangle, UserX } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { BatchService } from '../services/batchService';
 import { GradientBackground } from '../components/ui/GradientBackground';
@@ -23,6 +23,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
     const [batchQuestions, setBatchQuestions] = useState<any[]>([]);
     const [progressList, setProgressList] = useState<any[]>([]);
     const [actionLoading, setActionLoading] = useState(false);
+    const [incorrectPage, setIncorrectPage] = useState<number>(1);
 
     const styles = useMemo(() => createStyles(colors, theme), [colors, theme]);
 
@@ -35,6 +36,10 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             loadBatchQuestionProgress();
         }
     }, [driverProfile, selectedBatch]);
+
+    useEffect(() => {
+        setIncorrectPage(1);
+    }, [selectedBatch, userId]);
 
     const loadDriverData = async () => {
         try {
@@ -175,20 +180,11 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
         const deactivateAction = async () => {
             try {
                 setActionLoading(true);
-                const { data: { user: currentUser } } = await supabase.auth.getUser();
-
-                const updatePayload: any = {
-                    status: 'inactive',
-                    deactivated_at: new Date().toISOString()
-                };
-                if (currentUser?.id) {
-                    updatePayload.deactivated_by = currentUser.id;
-                }
-
-                const { error } = await supabase
-                    .from('profiles')
-                    .update(updatePayload)
-                    .eq('id', userId);
+                
+                // Use RPC to bypass RLS and securely deactivate
+                const { error } = await supabase.rpc('deactivate_user', {
+                    target_user_id: userId
+                });
 
                 if (error) throw error;
 
@@ -252,6 +248,13 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             .filter(q => q.answered && !q.isCorrect);
     }, [batchQuestions, progressList]);
 
+    const INCORRECT_PER_PAGE = 10;
+    const incorrectTotalPages = Math.ceil(incorrectQuestions.length / INCORRECT_PER_PAGE);
+    const pagedIncorrectQuestions = incorrectQuestions.slice(
+        (incorrectPage - 1) * INCORRECT_PER_PAGE,
+        incorrectPage * INCORRECT_PER_PAGE
+    );
+
     if (loading) {
         return (
             <GradientBackground>
@@ -283,17 +286,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                     {/* Driver Profile Summary */}
                     <GlassCard style={styles.overviewCard}>
-                        <View style={styles.cardHeaderRow}>
-                            <Text style={styles.cardTitle}>{t('profile.details')}</Text>
-                            <TouchableOpacity
-                                onPress={handleDeactivateDriver}
-                                style={styles.deactivateBtn}
-                                disabled={actionLoading}
-                            >
-                                <UserX size={14} color="#FFF" />
-                                <Text style={styles.deactivateBtnText}>{t('user.deactivateDriver', 'Deactivate Driver')}</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <Text style={styles.cardTitle}>{t('profile.details')}</Text>
                         <View style={styles.profileRow}>
                             <Text style={styles.profileLabel}>{t('user.employeeIdLabel', 'Employee ID:')}</Text>
                             <Text style={styles.profileVal}>{driverProfile?.employee_id}</Text>
@@ -372,7 +365,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         </GlassCard>
                     )}
 
-                    {/* Incorrect Questions List (Read-only) */}
+                    {/* Incorrect Questions List (Read-only, paginated) */}
                     <Text style={styles.sectionLabel}>
                         {t('user.incorrectQuestions', 'Incorrect Questions')} ({incorrectQuestions.length})
                     </Text>
@@ -386,21 +379,57 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                             </Text>
                         </GlassCard>
                     ) : (
-                        incorrectQuestions.map((q, idx) => (
-                            <GlassCard key={q.id} style={styles.questionProgressCard}>
-                                <View style={styles.qHeader}>
-                                    <Text style={styles.qIndex}>{t('quiz.questionNumber', { number: idx + 1 })}</Text>
-                                    <View style={styles.badgeIncorrect}>
-                                        <Text style={styles.badgeTextIncorrect}>{t('quiz.incorrect', 'Incorrect')}</Text>
+                        <>
+                            {pagedIncorrectQuestions.map((q, idx) => (
+                                <GlassCard key={q.id} style={styles.questionProgressCard}>
+                                    <View style={styles.qHeader}>
+                                        <Text style={styles.qIndex}>{t('quiz.questionNumber', { number: (incorrectPage - 1) * INCORRECT_PER_PAGE + idx + 1 })}</Text>
+                                        <View style={styles.badgeIncorrect}>
+                                            <Text style={styles.badgeTextIncorrect}>{t('quiz.incorrect', 'Incorrect')}</Text>
+                                        </View>
                                     </View>
+                                    <Text style={styles.qText}>{q.text}</Text>
+                                    <Text style={styles.qAttempts}>{t('mission.attempts', 'Attempts:')} {q.attempts}/2</Text>
+                                </GlassCard>
+                            ))}
+
+                            {/* Pagination Controls */}
+                            {incorrectTotalPages > 1 && (
+                                <View style={styles.paginationRow}>
+                                    <TouchableOpacity
+                                        style={[styles.pageBtn, incorrectPage === 1 && styles.pageBtnDisabled]}
+                                        onPress={() => setIncorrectPage(p => Math.max(1, p - 1))}
+                                        disabled={incorrectPage === 1}
+                                    >
+                                        <ChevronLeft size={16} color={incorrectPage === 1 ? colors.text.tertiary : colors.text.primary} />
+                                    </TouchableOpacity>
+                                    <Text style={styles.pageLabel}>
+                                        {incorrectPage} / {incorrectTotalPages}
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={[styles.pageBtn, incorrectPage === incorrectTotalPages && styles.pageBtnDisabled]}
+                                        onPress={() => setIncorrectPage(p => Math.min(incorrectTotalPages, p + 1))}
+                                        disabled={incorrectPage === incorrectTotalPages}
+                                    >
+                                        <ChevronRight size={16} color={incorrectPage === incorrectTotalPages ? colors.text.tertiary : colors.text.primary} />
+                                    </TouchableOpacity>
                                 </View>
-                                <Text style={styles.qText}>{q.text}</Text>
-                                <Text style={styles.qAttempts}>{t('mission.attempts', 'Attempts:')} {q.attempts}/2</Text>
-                            </GlassCard>
-                        ))
+                            )}
+                        </>
                     )}
 
+                    {/* Deactivate Button — below Incorrect Questions */}
+                    <TouchableOpacity
+                        onPress={handleDeactivateDriver}
+                        style={styles.deactivateBtn}
+                        disabled={actionLoading}
+                    >
+                        <UserX size={16} color="#FFF" />
+                        <Text style={styles.deactivateBtnText}>{t('user.deactivate', 'Deactivate')}</Text>
+                    </TouchableOpacity>
+
                 </ScrollView>
+
             </SafeAreaView>
         </GradientBackground>
     );
@@ -440,24 +469,18 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     overviewCard: {
         padding: 16,
     },
-    cardHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
     deactivateBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FF3D00',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        gap: 4,
+        justifyContent: 'center',
+        backgroundColor: '#FF6B6B',
+        paddingVertical: 14,
+        borderRadius: 12,
+        gap: 8,
     },
     deactivateBtnText: {
         color: '#FFF',
-        fontSize: 12,
+        fontSize: 15,
         fontFamily: typography.fonts.bold,
     },
     card: {
@@ -467,6 +490,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
         fontSize: 15,
         fontFamily: typography.fonts.bold,
         color: colors.text.primary,
+        marginBottom: 12,
     },
     profileRow: {
         flexDirection: 'row',
@@ -641,5 +665,29 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
-    }
+    },
+    paginationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 20,
+        paddingVertical: 8,
+    },
+    pageBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pageBtnDisabled: {
+        opacity: 0.3,
+    },
+    pageLabel: {
+        fontSize: 14,
+        fontFamily: typography.fonts.bold,
+        color: colors.text.primary,
+    },
 });
