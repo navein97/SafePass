@@ -53,29 +53,29 @@ export const PracticeService = {
                 .eq('id', userId)
                 .single();
 
-            let query = supabase
+            const { data: dbData, error: dbError } = await supabase
                 .from('questions')
                 .select('*');
 
-            let vType = profile?.vehicle_type;
-            const validTypes = await this.getVehicleTypes();
-            
-            // Failsafe: Default to first valid vehicle type if their vehicle type is old/invalid
-            if (vType && !validTypes.includes(vType)) {
-                vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
-            }
-
-            if (vType) {
-                query = query.contains('driver_categories', [vType]);
-            }
-
-            let { data: dbData, error: dbError } = await query;
-
             if (dbError) throw dbError;
 
+            const rawQuestions = dbData || [];
+            let vType = profile?.vehicle_type;
+            let allQuestions: any[] = rawQuestions;
 
-
-            const allQuestions: any[] = dbData || [];
+            if (vType && rawQuestions.length > 0) {
+                const matching = rawQuestions.filter(q => {
+                    if (!q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) {
+                        return true;
+                    }
+                    return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
+                });
+                if (matching.length > 0) {
+                    allQuestions = matching;
+                } else {
+                    console.log(`[PracticeService] No questions matched vehicle type "${vType}" or "All". Falling back to all questions.`);
+                }
+            }
 
             if (!allQuestions || allQuestions.length === 0) return [];
 
@@ -160,27 +160,26 @@ export const PracticeService = {
             vType = profile.vehicle_type;
         }
 
-        let query = supabase
+        const { data: dbData, error: dbError } = await supabase
             .from('questions')
             .select('*');
-        const validTypes = await this.getVehicleTypes();
-        
-        // Failsafe: Default to first valid vehicle type if their vehicle type is old/invalid
-        if (vType && !validTypes.includes(vType)) {
-            vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
-        }
-
-        if (vType) {
-            query = query.contains('driver_categories', [vType]);
-        }
-
-        let { data: dbData, error: dbError } = await query;
 
         if (dbError) throw dbError;
 
+        const rawQuestions = dbData || [];
+        let allQuestions: any[] = rawQuestions;
 
-
-        const allQuestions: any[] = dbData || [];
+        if (vType && rawQuestions.length > 0) {
+            const matching = rawQuestions.filter(q => {
+                if (!q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) {
+                    return true;
+                }
+                return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
+            });
+            if (matching.length > 0) {
+                allQuestions = matching;
+            }
+        }
 
         this.shuffleArray(allQuestions);
         return allQuestions.slice(0, limit).map(q => this.mapToQuestionModel(q));
@@ -226,6 +225,7 @@ export const PracticeService = {
             imageUrl: q.image_url || q.imageUrl,
             difficulty: q.difficulty || 'intermediate',
             componentWeights: q.component_weights || q.componentWeights,
+            driverCategories: q.driver_categories || q.driverCategories,
         } as Question;
     }
 };

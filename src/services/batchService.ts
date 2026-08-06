@@ -45,33 +45,45 @@ export const BatchService = {
             .eq('id', userId)
             .single();
 
-        let query = supabase
+        let { data: dbData, error } = await supabase
             .from('questions')
             .select('*')
             .eq('batch_number', batchNumber);
-
-        let vType = profile?.vehicle_type;
-        const validTypes = await PracticeService.getVehicleTypes();
-        
-        // Failsafe: Default to first valid vehicle type so the app doesn't break
-        if (vType && !validTypes.includes(vType)) {
-            vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
-        }
-
-        if (vType) {
-            query = query.contains('driver_categories', [vType]);
-        }
-
-        let { data: dbData, error } = await query;
 
         if (error) {
             console.error('Error fetching batch questions from Supabase:', error);
             throw error;
         }
 
+        const rawQuestions = dbData || [];
+        let vType = profile?.vehicle_type;
+        let batchData = rawQuestions;
 
+        console.log(`[BatchService] Profile vehicle_type: "${vType}"`);
+        console.log(`[BatchService] Raw questions from DB for batch ${batchNumber}: ${rawQuestions.length}`);
 
-        const batchData = dbData || [];
+        if (vType && rawQuestions.length > 0) {
+            const matching = rawQuestions.filter(q => {
+                if (!q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) {
+                    return true;
+                }
+                return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
+            });
+            console.log(`[BatchService] Matching questions for vehicle type "${vType}": ${matching.length}`);
+            if (matching.length > 0) {
+                batchData = matching;
+            } else {
+                console.log(`[BatchService] No questions matched vehicle type "${vType}" or "All" for batch ${batchNumber}. Falling back to all batch questions.`);
+            }
+        }
+
+        // Failsafe: If the batch has no questions at all in DB, fallback to any available questions
+        if (!batchData || batchData.length === 0) {
+            console.log(`[BatchService] No questions in batch ${batchNumber}. Falling back to general questions pool.`);
+            const { data: fallbackDb, error: fallbackErr } = await supabase.from('questions').select('*').limit(30);
+            console.log(`[BatchService] General pool fallback returned: ${fallbackDb?.length ?? 0} questions, error: ${fallbackErr?.message ?? 'none'}`);
+            batchData = fallbackDb || [];
+        }
 
         // Fetch question progress for this user & batch
         const { data: progressData, error: progressError } = await supabase
@@ -101,8 +113,12 @@ export const BatchService = {
             return !prog.is_correct && prog.attempts < 2;
         });
 
-        // Shuffle remaining uncompleted questions
-        const shuffledData = [...uncompletedData];
+        // Failsafe: If all questions in this batch have already been completed or attempted,
+        // use all batch questions so the driver can retake/review the batch.
+        const pool = (uncompletedData && uncompletedData.length > 0) ? uncompletedData : batchData;
+
+        // Shuffle remaining questions
+        const shuffledData = [...pool];
         for (let i = shuffledData.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffledData[i], shuffledData[j]] = [shuffledData[j], shuffledData[i]];

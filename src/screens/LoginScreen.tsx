@@ -40,7 +40,7 @@ export const LoginScreen = ({ navigation }: any) => {
     setActiveLang(lang);
   };
 
-  const [companyName, setCompanyName] = useState('ProDrive 180');
+  const [companyName, setCompanyName] = useState('ProHayat 180');
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
   React.useEffect(() => {

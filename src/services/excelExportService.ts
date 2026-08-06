@@ -20,7 +20,7 @@ export const ExcelExportService = {
 
             // Generate filename
             const timestamp = new Date().toISOString().split('T')[0];
-            const filename = `ProDrive180_Report_${timestamp}.xlsx`;
+            const filename = `ProHayat180_Report_${timestamp}.xlsx`;
 
             if (Platform.OS === 'web') {
                 XLSX.writeFile(wb, filename);

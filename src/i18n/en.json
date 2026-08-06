@@ -55,7 +55,7 @@
     "login": "Login",
     "employeeId": "Employee ID",
     "password": "Password",
-    "welcome": "Welcome to ProDrive 180",
+    "welcome": "Welcome to ProHayat 180",
     "welcomeTo": "Welcome to",
     "logout": "Logout",
     "logoutConfirm": "Are you sure you want to logout?",
@@ -140,7 +140,10 @@
     "termsAgreement": "By logging in, you agree to the {{terms}} of CNG Synergy (KT0512750V).",
     "termsLinkText": "Terms of Service & Intellectual Property Policies",
     "fullNamePlaceholder": "John Doe",
-    "couldNotSaveAgreement": "Could not save agreement."
+    "couldNotSaveAgreement": "Could not save agreement.",
+    "phoneNumber": "Phone Number",
+    "age": "Age",
+    "vehicleType": "Vehicle Type"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -190,7 +193,7 @@
     "liveModeDescription": "Records results and counts toward the Safety Score and Daily Goal (3 questions per batch).",
     "practiceModeTitle": "Practice Mode",
     "practiceModeDescription": "30 questions, no results recorded, and no impact on the Safety Score.",
-    "trainingTitle": "ProDrive 180 Training",
+    "trainingTitle": "ProHayat 180 Training",
     "trainingSubtitle": "Select a batch to continue your training",
     "changeMode": "Change Mode",
     "trainingCourse": "Training Course",
@@ -436,7 +439,7 @@
   "company": {
     "settings": "Company Settings",
     "name": "Company Name",
-    "namePlaceholder": "E.g. ProDrive 180 Logistics",
+    "namePlaceholder": "E.g. ProHayat 180 Logistics",
     "logo": "Logo (Optional)",
     "logoPlaceholder": "https://example.com/logo.png",
     "helperText": "This name and logo will appear on the dashboard for all your drivers.",

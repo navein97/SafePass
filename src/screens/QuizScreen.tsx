@@ -80,10 +80,10 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
       setLoadingStatus(t('common.fetchingProfile'));
       
-      // Add timeout to prevent infinite hang
+      // Add timeout to prevent infinite hang (25s to account for slow mobile network / dev server)
       const profilePromise = AuthService.getUserProfile();
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 25000)
       );
       
       const result = await Promise.race([profilePromise, timeoutPromise]) as any;

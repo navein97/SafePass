@@ -36,13 +36,13 @@ export const CompanySettingsService = {
 
             if (error) {
                 console.warn('Error fetching company info:', error.message);
-                return { name: 'ProDrive 180', logo_url: null };
+                return { name: 'ProHayat 180', logo_url: null };
             }
 
-            return data?.value || { name: 'ProDrive 180', logo_url: null };
+            return data?.value || { name: 'ProHayat 180', logo_url: null };
         } catch (error) {
             console.error('CompanySettingsService error:', error);
-            return { name: 'ProDrive 180', logo_url: null };
+            return { name: 'ProHayat 180', logo_url: null };
         }
     },
 
