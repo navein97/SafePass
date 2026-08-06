@@ -180,6 +180,43 @@ export const AuthService = {
     },
 
     /**
+     * Update a user account (Manager only)
+     */
+    async updateCompanyUser(data: {
+        userId: string;
+        fullName: string;
+        employeeId: string;
+        region: string;
+        age?: number;
+        vehicle_type?: string;
+        phone_number?: string;
+    }) {
+        try {
+            const normalizedEmployeeId = data.employeeId.trim().toLowerCase();
+            const email = `${normalizedEmployeeId}@driver360.internal`;
+            
+            const { data: result, error } = await supabase.rpc('update_company_user', {
+                target_user_id: data.userId,
+                p_email: email,
+                p_full_name: data.fullName.trim(),
+                p_employee_id: data.employeeId.trim(),
+                p_region: data.region,
+                p_age: data.age || null,
+                p_vehicle_type: data.vehicle_type || null,
+                p_phone_number: data.phone_number?.trim() || null
+            });
+
+            if (error) throw error;
+            if (result && result.success === false) throw new Error(result.error || 'Failed to update user');
+            
+            return { success: true, error: null };
+        } catch (error: any) {
+            console.error('Update company user error:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    /**
      * Sign out current user
      */
     async signOut() {

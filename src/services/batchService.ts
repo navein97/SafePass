@@ -62,12 +62,14 @@ export const BatchService = {
             query = query.contains('driver_categories', [vType]);
         }
 
-        const { data: dbData, error } = await query;
+        let { data: dbData, error } = await query;
 
         if (error) {
             console.error('Error fetching batch questions from Supabase:', error);
             throw error;
         }
+
+
 
         const batchData = dbData || [];
 
@@ -921,19 +923,27 @@ export const BatchService = {
 
             const processedBatches = new Set<number>();
             attempts.forEach(a => {
-                if (!processedBatches.has(a.batch_number) && a.component_scores) {
-                    opTotal += a.component_scores.operation || 0;
-                    discTotal += a.component_scores.discipline || 0;
-                    profTotal += a.component_scores.professionalism || 0;
-                    count++;
+                if (!processedBatches.has(a.batch_number)) {
                     processedBatches.add(a.batch_number);
+                    // Only add to component score totals if this row actually has component data
+                    if (a.component_scores) {
+                        opTotal += a.component_scores.operation || 0;
+                        discTotal += a.component_scores.discipline || 0;
+                        profTotal += a.component_scores.professionalism || 0;
+                        count++;
+                    }
                 }
             });
 
-            const componentScores = {
-                operation: count > 0 ? Math.round(opTotal / count) : 0,
-                discipline: count > 0 ? Math.round(discTotal / count) : 0,
-                professionalism: count > 0 ? Math.round(profTotal / count) : 0,
+            // If no attempt had component_scores (e.g. all old data), derive from safety_index as approximation
+            const componentScores = count > 0 ? {
+                operation: Math.round(opTotal / count),
+                discipline: Math.round(discTotal / count),
+                professionalism: Math.round(profTotal / count),
+            } : {
+                operation: avgSafetyIndex,
+                discipline: avgSafetyIndex,
+                professionalism: avgSafetyIndex,
             };
 
             let passedBatchesCount = 0;

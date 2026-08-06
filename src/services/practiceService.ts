@@ -69,9 +69,12 @@ export const PracticeService = {
                 query = query.contains('driver_categories', [vType]);
             }
 
-            const { data: dbData, error: dbError } = await query;
+            let { data: dbData, error: dbError } = await query;
 
             if (dbError) throw dbError;
+
+
+
             const allQuestions: any[] = dbData || [];
 
             if (!allQuestions || allQuestions.length === 0) return [];
@@ -171,9 +174,12 @@ export const PracticeService = {
             query = query.contains('driver_categories', [vType]);
         }
 
-        const { data: dbData, error: dbError } = await query;
+        let { data: dbData, error: dbError } = await query;
 
         if (dbError) throw dbError;
+
+
+
         const allQuestions: any[] = dbData || [];
 
         this.shuffleArray(allQuestions);

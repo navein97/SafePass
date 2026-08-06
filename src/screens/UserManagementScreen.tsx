@@ -5,11 +5,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { ChevronLeft, UserPlus, Search, Trash2, Key, MoreVertical, X } from 'lucide-react-native';
+import { ChevronLeft, UserPlus, Search, Trash2, Key, MoreVertical, X, Edit2 } from 'lucide-react-native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
 import { CreateUserModal } from '../components/CreateUserModal';
+import { EditUserModal } from '../components/EditUserModal';
 import { NotificationSenderModal } from '../components/NotificationSenderModal';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
@@ -38,6 +39,8 @@ export const UserManagementScreen = ({ navigation }: any) => {
     const [currentUserProfile, setCurrentUserProfile] = useState<any>(null); // Store current user profile
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [selectedUserForEdit, setSelectedUserForEdit] = useState<UserProfile | null>(null);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
 
     const [selectedUserForNotification, setSelectedUserForNotification] = useState<UserProfile | null>(null);
@@ -224,6 +227,14 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     </TouchableOpacity>
                 )}
                 {item.manager_level !== 1 && (
+                    <TouchableOpacity onPress={() => {
+                        setSelectedUserForEdit(item);
+                        setShowEditModal(true);
+                    }} style={styles.actionButton}>
+                        <Edit2 size={14} color={colors.primary.DEFAULT} />
+                    </TouchableOpacity>
+                )}
+                {item.manager_level !== 1 && (
                     <TouchableOpacity onPress={() => handleDeletePress(item)} style={styles.actionButton}>
                         <Trash2 size={14} color={colors.status.danger} />
                     </TouchableOpacity>
@@ -393,6 +404,20 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     onUserCreated={() => {
                         setShowCreateModal(false);
                         loadData(); // Reload both users AND quota stats
+                    }}
+                />
+
+                <EditUserModal 
+                    visible={showEditModal}
+                    onClose={() => {
+                        setShowEditModal(false);
+                        setSelectedUserForEdit(null);
+                    }}
+                    userToEdit={selectedUserForEdit}
+                    onUserUpdated={() => {
+                        setShowEditModal(false);
+                        setSelectedUserForEdit(null);
+                        loadData(); 
                     }}
                 />
 

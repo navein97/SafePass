@@ -291,7 +291,6 @@ export const ProfileScreen = ({ navigation }: any) => {
         const { error } = await AuthService.updateProfile(profile.id, {
             full_name: fullName.trim(),
             age: parseInt(age) || null,
-            vehicle_type: vehicleType,
             designation: designation.trim(),
             company_name: companyName,
             address: address,
@@ -462,6 +461,19 @@ export const ProfileScreen = ({ navigation }: any) => {
                         </Text>
                       </View>
                   )}
+                  {!isManager && vehicleType ? (
+                    <View style={[
+                      styles.regionBadge,
+                      { 
+                        backgroundColor: 'rgba(100, 255, 180, 0.15)',
+                        borderColor: 'rgba(100, 255, 180, 0.35)',
+                      }
+                    ]}>
+                      <Text style={[styles.regionText, { color: '#4CAF96' }]}>
+                        🚛 {vehicleType}
+                      </Text>
+                    </View>
+                  ) : null}
                   {isManager && profile?.subscription_tier && (
                     <View style={[
                       styles.regionBadge,
@@ -589,7 +601,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                             onChangeText={setContactNumber}
                         />
 
-                        {/* Age and Vehicle Type - shown for all users inside Profile Details */}
+                        {/* Age - shown for all users inside Profile Details */}
                         {!isManager && (
                           <>
                             <Text style={styles.inputLabel}>{t('profile.age')}</Text>
@@ -601,35 +613,6 @@ export const ProfileScreen = ({ navigation }: any) => {
                                value={age}
                                onChangeText={handleAgeChange}
                             />
-
-                            <Text style={styles.inputLabel}>{t('profile.vehicleType')}</Text>
-                             <View style={styles.vehicleOptions}>
-                                {vehicleTypesList.map((type) => {
-                                  const toCamelCase = (str: string) => {
-                                      return str
-                                          .toLowerCase()
-                                          .replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
-                                  };
-                                  const labelKey = `profile.vehicles.${toCamelCase(type)}`;
-                                  const label = t(labelKey, type);
-                                  
-                                  return (
-                                    <TouchableOpacity
-                                      key={type}
-                                      style={[
-                                        styles.vehicleOption,
-                                        vehicleType === type && styles.vehicleOptionSelected
-                                      ]}
-                                      onPress={() => handleVehicleSelect(type)}
-                                    >
-                                       <Text style={[
-                                         styles.vehicleText,
-                                         vehicleType === type && styles.vehicleTextSelected
-                                       ]}>{label}</Text>
-                                    </TouchableOpacity>
-                                  );
-                                })}
-                             </View>
                           </>
                         )}
                     </View>

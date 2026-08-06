@@ -168,17 +168,16 @@ export function MissionScreen() {
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
     const batch = batchStatuses.find(b => b.batchNumber === batchNumber);
     
-    // [TESTING] Daily limit gate disabled — re-enable for production
-    // if (selectedMode === 'live' && batch && (batch.dailyCount >= 3 || batch.passed)) {
-    //   const title = t('quiz.batchCompleted') || 'Goal Done';
-    //   const message = t('quiz.goalDoneMessage') || `Batch Goal Completed! Try Practice Mode for more study.`;
-    //   if (Platform.OS === 'web') {
-    //     window.alert(`${title}\n\n${message}`);
-    //   } else {
-    //     Alert.alert(title, message);
-    //   }
-    //   return;
-    // }
+    if (selectedMode === 'live' && batch && (batch.dailyCount >= 3 || batch.passed)) {
+      const title = t('quiz.batchCompleted') || 'Goal Done';
+      const message = t('quiz.goalDoneMessage') || `Batch Goal Completed! Try Practice Mode for more study.`;
+      if (Platform.OS === 'web') {
+        window.alert(`${title}\n\n${message}`);
+      } else {
+        Alert.alert(title, message);
+      }
+      return;
+    }
 
     // Check general access (locked batch)
     if (!canAccess && selectedMode === 'live') {
