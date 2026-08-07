@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert, ActivityIndicator, RefreshControl, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { ChevronLeft, UserPlus, Search, Trash2, Key, MoreVertical, X, Edit2 } from 'lucide-react-native';
+import { ChevronLeft, UserPlus, Search, Trash2, Key, MoreVertical, X, Edit2, MessageCircle } from 'lucide-react-native';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -15,6 +15,7 @@ import { NotificationSenderModal } from '../components/NotificationSenderModal';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { DeleteUserModal } from '../components/DeleteUserModal';
+import { InviteUserModal } from '../components/InviteUserModal';
 import { AuthService } from '../services/authService';
 import { CompanySettingsService, CompanyStats } from '../services/companySettingsService';
 import { ExcelExportService } from '../services/excelExportService';
@@ -44,6 +45,10 @@ export const UserManagementScreen = ({ navigation }: any) => {
     const [showNotificationModal, setShowNotificationModal] = useState(false);
 
     const [selectedUserForNotification, setSelectedUserForNotification] = useState<UserProfile | null>(null);
+
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [selectedUserForInvite, setSelectedUserForInvite] = useState<UserProfile | null>(null);
+    const [invitePassword, setInvitePassword] = useState('');
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -184,6 +189,11 @@ export const UserManagementScreen = ({ navigation }: any) => {
         setShowChangePasswordModal(true);
     };
 
+    const handleInviteWhatsApp = (user: UserProfile) => {
+        setSelectedUserForInvite(user);
+        setShowInviteModal(true);
+    };
+
     const renderUserItem = ({ item }: { item: UserProfile }) => (
         <View style={styles.userCard}>
             <TouchableOpacity 
@@ -221,6 +231,11 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 }} style={styles.actionButton}>
                     <Text style={{fontSize: 14}}>🔔</Text>
                 </TouchableOpacity>
+                {item.manager_level !== 1 && (
+                    <TouchableOpacity onPress={() => handleInviteWhatsApp(item)} style={styles.actionButton}>
+                        <MessageCircle size={14} color="#25D366" />
+                    </TouchableOpacity>
+                )}
                 {item.manager_level !== 1 && (
                     <TouchableOpacity onPress={() => handleChangePasswordPress(item)} style={styles.actionButton}>
                         <Key size={14} color={colors.text.secondary} />
@@ -401,9 +416,13 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     visible={showCreateModal}
                     onClose={() => setShowCreateModal(false)}
                     currentUserLevel={currentUserProfile?.manager_level || 2}
-                    onUserCreated={() => {
-                        setShowCreateModal(false);
-                        loadData(); // Reload both users AND quota stats
+                    onUserCreated={(newUser, passwordCreated) => {
+                        loadData();
+                        if (newUser) {
+                            setSelectedUserForInvite(newUser);
+                            setInvitePassword(passwordCreated || '');
+                            setTimeout(() => setShowInviteModal(true), 400);
+                        }
                     }}
                 />
 
@@ -428,6 +447,18 @@ export const UserManagementScreen = ({ navigation }: any) => {
                         id: selectedUserForNotification.id,
                         name: selectedUserForNotification.full_name
                     } : null}
+                />
+
+                <InviteUserModal 
+                    visible={showInviteModal}
+                    onClose={() => {
+                        setShowInviteModal(false);
+                        setSelectedUserForInvite(null);
+                        setInvitePassword('');
+                    }}
+                    user={selectedUserForInvite}
+                    companyId={currentUserProfile?.company_id || null}
+                    initialPassword={invitePassword}
                 />
 
                 <ChangePasswordModal

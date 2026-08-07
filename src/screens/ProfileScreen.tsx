@@ -22,7 +22,7 @@ import { CompanySettingsModal } from '../components/CompanySettingsModal';
 import { CompanySettingsService } from '../services/companySettingsService';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { MilestoneTracker } from '../components/MilestoneTracker';
-import { Building, BookOpen, UserPlus } from 'lucide-react-native';
+import { Building, BookOpen } from 'lucide-react-native';
 import { QuizAttempt } from '../types/models';
 import { SubscriptionService } from '../services/subscriptionService';
 
@@ -626,44 +626,33 @@ export const ProfileScreen = ({ navigation }: any) => {
           </GlassCard>
 
           {/* Manager Settings */}
-          {isManager ? (
+          {isManager && profile?.managerLevel === 1 ? (
             <GlassCard style={styles.inputCard}>
-            
                {/* Level 1 Specific: Company Settings */}
-               {profile?.managerLevel === 1 && (
-                  <TouchableOpacity style={styles.companySettingsButton} onPress={() => setShowCompanySettings(true)}>
-                     <Building size={24} color={colors.text.primary} />
-                     <Text style={styles.companySettingsText}>{t('profile.companySettings')}</Text>
-                  </TouchableOpacity>
-               )}
+               <TouchableOpacity style={styles.companySettingsButton} onPress={() => setShowCompanySettings(true)}>
+                  <Building size={24} color={colors.text.primary} />
+                  <Text style={styles.companySettingsText}>{t('profile.companySettings')}</Text>
+               </TouchableOpacity>
 
-                 {/* Manage Users Button - For all Managers */}
-                 <TouchableOpacity style={styles.manageUsersButton} onPress={() => navigation.navigate('UserManagement')}>
-                    <UserPlus size={24} color={colors.mode === 'light' ? '#FFFFFF' : '#000000'} />
-                    <Text style={styles.manageUsersText}>{t('profile.teamManagement')}</Text>
-                 </TouchableOpacity>
-
-                 {/* Billing & Subscription - For Level 1 Master Users */}
-                 {profile?.managerLevel === 1 && (
-                    <TouchableOpacity 
-                      style={[
-                        styles.manageUsersButton, 
-                        { 
-                          marginTop: 12, 
-                          backgroundColor: colors.mode === 'light' ? 'rgba(37, 99, 235, 0.1)' : 'rgba(96, 165, 250, 0.15)', 
-                          borderWidth: 1, 
-                          borderColor: colors.mode === 'light' ? 'rgba(37, 99, 235, 0.3)' : 'rgba(96, 165, 250, 0.4)' 
-                        }
-                      ]} 
-                      onPress={() => navigation.navigate('Billing')}
-                    >
-                       <CreditCard size={24} color={colors.mode === 'light' ? '#2563EB' : '#60A5FA'} />
-                       <Text style={[styles.manageUsersText, { color: colors.mode === 'light' ? '#2563EB' : '#60A5FA' }]}>{t('profile.billing', 'Billing & Plans')}</Text>
-                    </TouchableOpacity>
-                 )}
-
+               {/* Billing & Subscription - For Level 1 Master Users */}
+               <TouchableOpacity 
+                 style={[
+                   styles.manageUsersButton, 
+                   { 
+                     marginTop: 0, 
+                     marginBottom: 0,
+                     backgroundColor: colors.mode === 'light' ? 'rgba(37, 99, 235, 0.1)' : 'rgba(96, 165, 250, 0.15)', 
+                     borderWidth: 1, 
+                     borderColor: colors.mode === 'light' ? 'rgba(37, 99, 235, 0.3)' : 'rgba(96, 165, 250, 0.4)' 
+                   }
+                 ]} 
+                 onPress={() => navigation.navigate('Billing')}
+               >
+                  <CreditCard size={24} color={colors.mode === 'light' ? '#2563EB' : '#60A5FA'} />
+                  <Text style={[styles.manageUsersText, { color: colors.mode === 'light' ? '#2563EB' : '#60A5FA' }]}>{t('profile.billing', 'Billing & Plans')}</Text>
+               </TouchableOpacity>
             </GlassCard>
-          ) : (
+          ) : !isManager ? (
             <View>
 
              {/* Driver Performance Dashboard */}
@@ -802,7 +791,7 @@ export const ProfileScreen = ({ navigation }: any) => {
              </GlassCard>
              
              </View>
-          )}
+          ) : null}
 
           {/* Help Center */}
           <GlassButton

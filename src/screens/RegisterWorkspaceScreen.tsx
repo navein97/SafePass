@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkspaceService } from '../services/workspaceService';
+import { Validation } from '../utils/validation';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -63,8 +64,12 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
       newErrors.companyCode = t('auth.invalidCompanyCode', 'Company Code must contain letters and numbers only');
       isValid = false;
     }
+    const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
     if (!phoneNumber.trim()) {
       newErrors.phoneNumber = t('auth.phoneRequired', 'Phone number is required');
+      isValid = false;
+    } else if (!Validation.hasCountryCode(formattedPhone)) {
+      newErrors.phoneNumber = t('auth.phoneCountryCodeRequired', 'Please include country code (e.g. +60123456789) for WhatsApp compatibility');
       isValid = false;
     }
 
@@ -77,13 +82,14 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
 
     setLoading(true);
     try {
+      const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
       const result = await WorkspaceService.registerWorkspace({
         fullName,
         email,
         password,
         companyName,
         companyCode: companyCode.trim().toUpperCase(),
-        phone_number: phoneNumber,
+        phone_number: formattedPhone,
         employeeId: email.split('@')[0],
         region: 'MY',
       });

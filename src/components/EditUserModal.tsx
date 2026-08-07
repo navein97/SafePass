@@ -9,6 +9,7 @@ import { Toast } from './Toast';
 import { X, UserCheck } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { PracticeService } from '../services/practiceService';
+import { Validation } from '../utils/validation';
 import { supabase } from '../lib/supabase';
 
 interface EditUserModalProps {
@@ -108,6 +109,15 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
         return;
     }
 
+    const formattedPhone = Validation.formatPhoneNumber(phoneNumber, region || 'MY');
+    if (!Validation.hasCountryCode(formattedPhone)) {
+        setToastMessage(t('auth.phoneCountryCodeRequired', 'Please include country code (e.g. +60123456789) for WhatsApp compatibility'));
+        setToastType('error');
+        setToastVisible(true);
+        setErrors(prev => ({ ...prev, phoneNumber: true }));
+        return;
+    }
+
     try {
         setLoading(true);
 
@@ -123,7 +133,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
             age: parseInt(age),
             vehicle_type: vehicleType,
             region,
-            phone_number: phoneNumber.trim()
+            phone_number: formattedPhone
         });
         
         if (error) throw new Error(error);
@@ -249,6 +259,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
                   placeholderTextColor={colors.text.tertiary}
                   keyboardType="phone-pad"
               />
+              {errors.phoneNumber && (
+                  <Text style={[styles.errorText, { color: colors.status?.danger || '#FF3B30', marginTop: -12, marginBottom: 12 }]}>
+                      {phoneNumber.trim() ? t('auth.phoneCountryCodeRequired') : t('auth.phoneRequired')}
+                  </Text>
+              )}
 
               <Text style={[styles.label, dynamicStyles.label]}>{t('auth.age')}</Text>
               <TextInput 
@@ -320,8 +335,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
                   <GlassButton 
                       title={t('common.cancel')} 
                       onPress={onClose} 
+                      variant="secondary"
                       style={styles.cancelButton}
-                      textStyle={{ color: colors.text.secondary }}
                   />
                   <GlassButton 
                       title={t('common.update', 'Update')} 
@@ -418,11 +433,13 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
       flex: 1,
-      backgroundColor: 'transparent',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
   },
   submitButton: {
       flex: 2,
+  },
+  errorText: {
+      fontSize: 12,
+      fontFamily: typography.fonts.regular,
+      marginLeft: 4,
   }
 });

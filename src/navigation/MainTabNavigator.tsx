@@ -4,7 +4,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { 
   User, 
   Users, 
-  Target, 
   Bell, 
   Trophy 
 } from 'lucide-react-native';
@@ -17,6 +16,7 @@ import { MissionScreen } from '../screens/MissionScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { BatchLeaderboardScreen } from '../screens/BatchLeaderboardScreen';
 import { ManagerQuickViewScreen } from '../screens/ManagerQuickViewScreen';
+import { UserManagementScreen } from '../screens/UserManagementScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -101,11 +101,11 @@ export function MainTabNavigator() {
 
       <Tab.Screen
         name="Mission"
-        component={role === 'manager' ? ManagerQuickViewScreen : MissionScreen}
+        component={role === 'manager' ? UserManagementScreen : MissionScreen}
         options={{
           tabBarLabel: role === 'manager' ? t('navigation.team') : t('navigation.quiz'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Target color={color} size={size} />
+            <Users color={color} size={size} />
           ),
         }}
       />
@@ -121,7 +121,7 @@ export function MainTabNavigator() {
       />
       <Tab.Screen
         name="Leaderboard"
-        component={BatchLeaderboardScreen}
+        component={role === 'manager' ? ManagerQuickViewScreen : BatchLeaderboardScreen}
         options={{
           tabBarLabel: t('navigation.leaderboard'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (

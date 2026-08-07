@@ -81,6 +81,10 @@
     "creatingAccount": "Creating Account...",
     "phoneRequired": "Phone number is required",
     "invalidPhone": "Please enter a valid phone number",
+    "phoneCountryCodeRequired": "Please include country code (e.g. +60123456789) for WhatsApp compatibility",
+    "ageRequired": "Age is required",
+    "regionRequired": "Region is required",
+    "vehicleTypeRequired": "Vehicle type is required",
     "unexpectedError": "An unexpected error occurred. Please try again.",
     "checkYourEmail": "Check Your Email",
     "emailSentInstructions": "We've sent password reset instructions to your email (Please check your Spam/Junk folder if not found):",
@@ -434,7 +438,13 @@
     "deactivateConfirmTitle": "Deactivate Driver Account",
     "deactivateConfirmMessage": "Are you sure you want to deactivate {{name}}? The driver will no longer be able to log in or appear on the team management page.",
     "driverDeactivatedSuccess": "Driver account deactivated successfully.",
-    "errorDeactivate": "Failed to deactivate driver account"
+    "errorDeactivate": "Failed to deactivate driver account",
+    "inviteWhatsAppMessage": "🚛 Let's start the day with ProHayat 180!\nPlease download the app via the following link:\nhttps://play.google.com/store/apps/details?id=com.cngsynergy.training\nLog in using:\n🏢 Company Code: {{companyCode}}\n👤 User ID: {{userId}}\n🔑 Password: {{password}}\nSpend a few minutes each day to complete 3 quizzes. Step by step, we improve our knowledge, safety, and professionalism on the road together. 👍\nThank you for your cooperation and all the best! 😊",
+    "inviteDriver": "Invite Driver",
+    "inviteUser": "Invite User",
+    "inviteViaWhatsApp": "Invite via WhatsApp",
+    "inviteDriverDescription": "Send an invitation via WhatsApp with the login details and download link.",
+    "inviteUserDescription": "Send an invitation via WhatsApp with the login details and download link."
   },
   "company": {
     "settings": "Company Settings",

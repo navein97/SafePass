@@ -9,6 +9,7 @@ import { Toast } from './Toast';
 import { X, UserPlus, Eye, EyeOff } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { PracticeService } from '../services/practiceService';
+import { Validation } from '../utils/validation';
 import { supabase } from '../lib/supabase';
 
 interface CreateUserModalProps {
@@ -16,12 +17,13 @@ interface CreateUserModalProps {
   onClose: () => void;
   currentUserLevel: 1 | 2;
   currentUserDepartment?: string;
-  onUserCreated?: () => void;
+  onUserCreated?: (newUser: any, passwordCreated: string) => void;
 }
 
 export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClose, currentUserLevel, currentUserDepartment, onUserCreated }) => {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { t, i18n } = useTranslation();
+  const { colors, theme } = useTheme();
+  const isDark = theme === 'dark';
   
   const [loading, setLoading] = useState(false);
   
@@ -121,6 +123,15 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         return;
     }
 
+    const formattedPhone = Validation.formatPhoneNumber(phoneNumber, region || 'MY');
+    if (!Validation.hasCountryCode(formattedPhone)) {
+        setToastMessage(t('auth.phoneCountryCodeRequired', 'Please include country code (e.g. +60123456789) for WhatsApp compatibility'));
+        setToastType('error');
+        setToastVisible(true);
+        setErrors(prev => ({ ...prev, phoneNumber: true }));
+        return;
+    }
+
     try {
         setLoading(true);
         
@@ -131,14 +142,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
           ? `${companyCode}-${rawId}` 
           : rawId;
 
-        const { error } = await AuthService.signUp({
+        const { user: signedUpUser, error } = await AuthService.signUp({
             fullName: fullName.trim(),
             employeeId: formattedId,
             password,
             age: parseInt(age),
             vehicle_type: vehicleType,
             region,
-            phone_number: phoneNumber.trim(),
+            phone_number: formattedPhone,
             role: role,
             manager_level: role === 'manager' ? 2 : undefined,
             companyId: currentProfile?.company_id
@@ -147,42 +158,49 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         if (error) throw new Error(error);
 
         // Show success toast
-        setToastMessage(t('user.userCreated', { fullName }));
+        setToastMessage(t('user.userCreatedSuccessfully', 'User created successfully'));
         setToastType('success');
         setToastVisible(true);
-        
-        // Reset form and close after a delay
+
+        const createdUserObj = {
+            id: signedUpUser?.id || '',
+            full_name: fullName.trim(),
+            employee_id: formattedId,
+            phone_number: formattedPhone,
+            region: region,
+            role: role
+        };
+
+        // Delay closing slightly so user sees success toast
         setTimeout(() => {
-            if (onUserCreated) onUserCreated();
-            onClose();
-            setFullName('');
-            setEmployeeId('');
-            setPassword('');
-            setConfirmPassword('');
-            setAge('');
-            setVehicleType('');
-            setRegion('');
-            setPhoneNumber('');
-            setRole('driver');
-            setErrors({});
-        }, 4000); // Give user time to see the success message
+            resetAndClose();
+            if (onUserCreated) onUserCreated(createdUserObj, password);
+        }, 1500);
         
     } catch (error: any) {
         let errorMessage = error.message || t('user.errorCreate');
         
         // Handle duplicate or quota errors specifically
-        if (errorMessage.includes('already registered') || errorMessage.includes('duplicate')) {
-            errorMessage = t('user.errorDuplicate');
-        } else if (errorMessage.toLowerCase().includes('quota exceeded')) {
-            errorMessage = role === 'manager' ? t('user.errorQuotaExceededManager') : t('user.errorQuotaExceeded');
-        }
-        
         setToastMessage(errorMessage);
         setToastType('error');
         setToastVisible(true);
     } finally {
         setLoading(false);
     }
+  };
+
+  const resetAndClose = () => {
+    setFullName('');
+    setEmployeeId('');
+    setPassword('');
+    setConfirmPassword('');
+    setAge('');
+    setVehicleType('');
+    setRegion('');
+    setPhoneNumber('');
+    setRole('driver');
+    setErrors({});
+    onClose();
   };
 
   const dynamicStyles = {
@@ -200,7 +218,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={resetAndClose}>
       <Toast 
         visible={toastVisible} 
         message={toastMessage} 
@@ -220,7 +238,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                     <UserPlus size={24} color={colors.primary.DEFAULT} style={{ marginRight: 10 }} />
                     <Text style={[styles.title, dynamicStyles.title]}>{t('user.createTitle', 'Create New User')}</Text>
                   </View>
-                  <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                  <TouchableOpacity onPress={resetAndClose} style={styles.closeButton}>
                       <X size={20} color={colors.text.primary} />
                   </TouchableOpacity>
               </View>
@@ -265,81 +283,65 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       setEmployeeId(text);
                       if (text) setErrors(prev => ({ ...prev, employeeId: false }));
                   }}
-                  placeholder={companyCode ? `e.g. 0001D (will save as ${companyCode}-0001D)` : t('auth.employeeIdPlaceholder', 'e.g. 0001D')}
+                  placeholder={t('auth.employeeId')}
                   placeholderTextColor={colors.text.tertiary}
-                  autoCapitalize="characters"
-                  autoComplete="off"
-                  textContentType="none"
+                  autoCapitalize="none"
               />
-
-              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password', 'Password')}</Text>
-              <View>
-                  <TextInput 
-                      style={[
-                          styles.input, 
-                          dynamicStyles.input,
-                          errors.password && dynamicStyles.errorBorder,
-                          { paddingRight: 50 }
-                      ]}
-                      value={password}
-                      onChangeText={(text) => {
-                          setPassword(text);
-                          if (text) setErrors(prev => ({ ...prev, password: false }));
-                      }}
-                      placeholder={t('auth.passwordPlaceholder', 'Enter password')}
-                      placeholderTextColor={colors.text.tertiary}
-                      secureTextEntry={!showPassword}
-                  />
-                  <TouchableOpacity 
-                      style={styles.eyeIcon} 
-                      onPress={() => setShowPassword(!showPassword)}
-                  >
-                      {showPassword ? (
-                          <EyeOff size={20} color={colors.text.tertiary} />
-                      ) : (
-                          <Eye size={20} color={colors.text.tertiary} />
-                      )}
-                  </TouchableOpacity>
-              </View>
-
-              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.confirmPassword', 'Confirm Password')}</Text>
-              <View>
-                  <TextInput 
-                      style={[
-                          styles.input, 
-                          dynamicStyles.input,
-                          errors.confirmPassword && dynamicStyles.errorBorder,
-                          { paddingRight: 50 }
-                      ]}
-                      value={confirmPassword}
-                      onChangeText={(text) => {
-                          setConfirmPassword(text);
-                          if (text) setErrors(prev => ({ ...prev, confirmPassword: false }));
-                      }}
-                      placeholder={t('auth.confirmPasswordPlaceholder', 'Re-enter password')}
-                      placeholderTextColor={colors.text.tertiary}
-                      secureTextEntry={!showConfirmPassword}
-                  />
-                  <TouchableOpacity 
-                      style={styles.eyeIcon} 
-                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                      {showConfirmPassword ? (
-                          <EyeOff size={20} color={colors.text.tertiary} />
-                      ) : (
-                          <Eye size={20} color={colors.text.tertiary} />
-                      )}
-                  </TouchableOpacity>
-              </View>
-              {errors.confirmPassword && password !== confirmPassword && (
-                  <Text style={[styles.errorText, { color: colors.status?.danger || '#FF3B30' }]}>
-                      {t('auth.passwordsDoNotMatch', 'Passwords do not match')}
-                  </Text>
-              )}
 
               <View style={styles.row}>
                 <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={[styles.label, dynamicStyles.label]}>{t('profile.age', 'Age')}</Text>
+                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password')}</Text>
+                  <View style={{ justifyContent: 'center' }}>
+                    <TextInput 
+                        style={[
+                            styles.input, 
+                            dynamicStyles.input,
+                            errors.password && dynamicStyles.errorBorder
+                        ]}
+                        value={password}
+                        onChangeText={(text) => {
+                            setPassword(text);
+                            if (text) setErrors(prev => ({ ...prev, password: false }));
+                        }}
+                        placeholder={t('auth.password')}
+                        placeholderTextColor={colors.text.tertiary}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                    />
+                    <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.confirmPassword')}</Text>
+                  <View style={{ justifyContent: 'center' }}>
+                    <TextInput 
+                        style={[
+                            styles.input, 
+                            dynamicStyles.input,
+                            errors.confirmPassword && dynamicStyles.errorBorder
+                        ]}
+                        value={confirmPassword}
+                        onChangeText={(text) => {
+                            setConfirmPassword(text);
+                            if (text) setErrors(prev => ({ ...prev, confirmPassword: false }));
+                        }}
+                        placeholder={t('auth.confirmPassword')}
+                        placeholderTextColor={colors.text.tertiary}
+                        secureTextEntry={!showConfirmPassword}
+                        autoCapitalize="none"
+                    />
+                    <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                      {showConfirmPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.row}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.age')}</Text>
                   <TextInput 
                       style={[
                           styles.input, 
@@ -348,10 +350,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       ]}
                       value={age}
                       onChangeText={(text) => {
-                          setAge(text);
+                          setAge(text.replace(/[^0-9]/g, ''));
                           if (text) setErrors(prev => ({ ...prev, age: false }));
                       }}
-                      placeholder="25"
+                      placeholder={t('auth.age')}
                       placeholderTextColor={colors.text.tertiary}
                       keyboardType="numeric"
                   />
@@ -373,6 +375,11 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       placeholderTextColor={colors.text.tertiary}
                       keyboardType="phone-pad"
                   />
+                  {errors.phoneNumber && (
+                      <Text style={[styles.errorText, { color: colors.status?.danger || '#FF3B30', marginTop: 4 }]}>
+                          {phoneNumber.trim() ? t('auth.phoneCountryCodeRequired') : t('auth.phoneRequired')}
+                      </Text>
+                  )}
                 </View>
               </View>
 
@@ -385,7 +392,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       styles.optionChip,
                       { borderColor: colors.border },
                       region === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
-                      errors.region && !region && { borderColor: colors.status?.danger || '#FF3B30' }
+                      errors.region && !region && { borderColor: colors.status?.danger || '#FF3B30', borderWidth: 1.5 }
                     ]}
                     onPress={() => {
                         setRegion(opt.value);
@@ -401,7 +408,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                 ))}
               </View>
 
-              <Text style={[styles.label, dynamicStyles.label]}>{t('profile.vehicleType', 'Vehicle Type')}</Text>
+              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.vehicleType')}</Text>
               <View style={styles.optionsWrap}>
                 {vehicleOptions.map((opt) => (
                   <TouchableOpacity
@@ -410,7 +417,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       styles.optionChip,
                       { borderColor: colors.border },
                       vehicleType === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
-                      errors.vehicleType && !vehicleType && { borderColor: colors.status?.danger || '#FF3B30' }
+                      errors.vehicleType && !vehicleType && { borderColor: colors.status?.danger || '#FF3B30', borderWidth: 1.5 }
                     ]}
                     onPress={() => {
                         setVehicleType(opt.value);
@@ -489,6 +496,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontFamily: typography.fonts.bold,
+  },
+  successContainer: {
+    paddingVertical: 10,
   },
   closeButton: {
     width: 36,

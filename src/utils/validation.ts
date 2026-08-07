@@ -9,6 +9,51 @@ export const Validation = {
     },
 
     /**
+     * Formats local phone numbers (e.g. 0123456789 -> +60123456789) based on region code.
+     */
+    formatPhoneNumber: (phone: string, region: string = 'MY'): string => {
+        let trimmed = phone.trim();
+        if (!trimmed) return trimmed;
+        
+        // If starts with 0 (e.g. 0123456789 in MY)
+        if (trimmed.startsWith('0')) {
+            const countryCode = region === 'TH' ? '+66' : region === 'SG' ? '+65' : '+60';
+            return `${countryCode}${trimmed.substring(1)}`;
+        }
+        
+        // If user typed e.g. 60123456789 without +
+        if (/^(60|66|65)\d+/.test(trimmed)) {
+            return `+${trimmed}`;
+        }
+
+        return trimmed;
+    },
+
+    /**
+     * Checks if phone number contains a valid country code for WhatsApp compatibility (+60, +66, +65, etc.)
+     */
+    hasCountryCode: (phone: string): boolean => {
+        const trimmed = phone.trim();
+        if (!trimmed) return false;
+        const digitsOnly = trimmed.replace(/[^0-9]/g, '');
+        if (digitsOnly.length < 8) return false;
+        return trimmed.startsWith('+') || /^(60|66|65|1|44)\d+/.test(digitsOnly);
+    },
+
+    /**
+     * Normalizes phone number into digits-only format starting with country code for WhatsApp URL scheme wa.me / whatsapp://
+     */
+    toWhatsAppPhone: (phone: string, region: string = 'MY'): string => {
+        let formatted = Validation.formatPhoneNumber(phone, region);
+        let digits = formatted.replace(/[^0-9]/g, '');
+        if (digits.startsWith('0')) {
+            const cc = region === 'TH' ? '66' : region === 'SG' ? '65' : '60';
+            digits = `${cc}${digits.substring(1)}`;
+        }
+        return digits;
+    },
+
+    /**
      * Maps technical Supabase errors to user-friendly messages
      */
     getFriendlyErrorMessage: (error: string): string => {
