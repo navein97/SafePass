@@ -43,8 +43,8 @@ export const darkColors = {
   },
   text: {
     primary: '#FFFFFF',
-    secondary: 'rgba(255, 255, 255, 0.7)',
-    tertiary: 'rgba(255, 255, 255, 0.4)',
+    secondary: 'rgba(255, 255, 255, 0.8)',
+    tertiary: 'rgba(255, 255, 255, 0.55)',
     inverse: '#FFFFFF',
     accent: '#E1257C',
   },
@@ -84,8 +84,8 @@ export const lightColors = {
   },
   text: {
     primary: '#1A1A1A', // Nearly black
-    secondary: 'rgba(0, 0, 0, 0.6)',
-    tertiary: 'rgba(0, 0, 0, 0.4)',
+    secondary: 'rgba(0, 0, 0, 0.75)',
+    tertiary: 'rgba(0, 0, 0, 0.55)',
     inverse: '#FFFFFF', // White text on pink/black
     accent: '#A11A58',  // Dark Pink for light mode readability
   },

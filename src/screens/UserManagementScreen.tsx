@@ -158,7 +158,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
             
             Alert.alert(t('common.success'), t('user.userDeleted'));
             setShowFinalDeleteConfirm(false);
-            loadUsers(); // Refresh the list
+            loadData(); // Refresh the list AND quota stats
         } catch (err: any) {
             Alert.alert(t('common.error'), err.message || t('user.errorDelete'));
         } finally {

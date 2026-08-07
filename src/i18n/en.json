@@ -106,7 +106,7 @@
     "passwordsDoNotMatch": "Passwords do not match",
     "passwordUpdateSuccess": "✅ Your password has been updated successfully.",
     "enterNewPasswordError": "Please enter a new password",
-    "employeeIdPlaceholder": "jane@example.com or MY-001",
+    "employeeIdPlaceholder": "jane@example.com or MY001",
     "languageLabel": "Language / Bahasa:",
     "registrationSuccessful": "Registration Successful! 🎉",
     "accountCreatedWithEmail": "Your account has been created with the email:",

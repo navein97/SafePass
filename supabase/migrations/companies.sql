@@ -121,12 +121,14 @@ DECLARE
     v_driver_quota INTEGER;
     v_manager_quota INTEGER;
 BEGIN
-    -- Get Counts
+    -- Get Counts (exclude deactivated/inactive users)
     SELECT COUNT(*) INTO v_driver_count FROM public.profiles 
-    WHERE company_id = p_company_id AND role = 'driver';
+    WHERE company_id = p_company_id AND role = 'driver'
+    AND (status IS NULL OR status != 'inactive');
     
     SELECT COUNT(*) INTO v_manager_count FROM public.profiles 
-    WHERE company_id = p_company_id AND role = 'manager';
+    WHERE company_id = p_company_id AND role = 'manager'
+    AND (status IS NULL OR status != 'inactive');
 
     -- Get Quotas
     SELECT quota_drivers, quota_managers INTO v_driver_quota, v_manager_quota 
