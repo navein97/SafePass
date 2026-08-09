@@ -391,6 +391,7 @@
     "areaPlaceholder": "North Region, etc.",
     "defaultPasswordNote": "Default password will be set to: 123456",
     "creating": "Creating...",
+    "createNewUser": "Create New User",
     "createUser": "Create User",
     "errorRequired": "Please fill in required fields",
     "success": "Success",

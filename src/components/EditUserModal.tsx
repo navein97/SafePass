@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -181,14 +181,16 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
         type={toastType} 
         onHide={() => setToastVisible(false)} 
       />
-      <View style={styles.modalOverlay}>
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <GlassCard style={styles.modalContent}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContainer}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <TouchableWithoutFeedback>
+                  <GlassCard style={styles.modalContent}>
               <View style={styles.header}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <UserCheck size={24} color={colors.primary.DEFAULT} style={{ marginRight: 10 }} />
@@ -345,9 +347,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
                       style={styles.submitButton}
                   />
               </View>
-          </GlassCard>
-        </ScrollView>
-      </View>
+                  </GlassCard>
+              </TouchableWithoutFeedback>
+            </ScrollView>
+          </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

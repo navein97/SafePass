@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Modal, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Modal, Alert, ScrollView, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -82,14 +82,16 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-          bounces={true}
-          keyboardShouldPersistTaps="handled"
-        >
-          <GlassCard style={styles.modalContent}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <ScrollView 
+              contentContainerStyle={styles.scrollContainer}
+              showsVerticalScrollIndicator={false}
+              bounces={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              <TouchableWithoutFeedback>
+                  <GlassCard style={styles.modalContent}>
               <View style={styles.header}>
                   <Text style={[styles.title, dynamicStyles.title]}>{t('company.settings')}</Text>
                   <TouchableOpacity 
@@ -120,9 +122,11 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
                       disabled={loading}
                   />
               </View>
-          </GlassCard>
-        </ScrollView>
-      </View>
+                  </GlassCard>
+              </TouchableWithoutFeedback>
+            </ScrollView>
+          </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

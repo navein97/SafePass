@@ -519,7 +519,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 8,
         borderRadius: 12,
         gap: 12,
     },
@@ -529,6 +529,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         color: colors.text.primary,
         fontFamily: typography.fonts.medium,
         fontSize: 16,
+        paddingVertical: 4,
     },
     broadcastButton: {
         padding: 8,
@@ -541,7 +542,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     listContent: {
         padding: 20,
-        paddingBottom: 100,
+        paddingBottom: 20,
     },
     userCard: {
         flexDirection: 'row',
@@ -624,7 +625,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 10,
         gap: 16,
-        marginBottom: 80, // Space for FAB
+        marginBottom: 70, // Space for FAB
     },
     pageButton: {
         padding: 8,

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Toast } from './Toast';
-import { X, UserPlus, Eye, EyeOff } from 'lucide-react-native';
+import { ChevronLeft, UserPlus, Eye, EyeOff } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { PracticeService } from '../services/practiceService';
 import { Validation } from '../utils/validation';
@@ -24,9 +24,9 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
   const isDark = theme === 'dark';
-  
+
   const [loading, setLoading] = useState(false);
-  
+
   // Form State
   const [fullName, setFullName] = useState('');
   const [employeeId, setEmployeeId] = useState('');
@@ -45,7 +45,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 
   // Error State
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
-  
+
   // Toast State
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -72,8 +72,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
             const opts = types.map(type => {
               const toCamelCase = (str: string) => {
                 return str
-                    .toLowerCase()
-                    .replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+                  .toLowerCase()
+                  .replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
               };
               const labelKey = `profile.vehicles.${toCamelCase(type)}`;
               return {
@@ -102,7 +102,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     ...(currentUserLevel === 1 ? [{ label: t('user.manager', 'Manager'), value: 'manager' }] : [])
   ];
 
-    const handleCreateUser = async () => {
+  const handleCreateUser = async () => {
     // Validate fields
     const newErrors: { [key: string]: boolean } = {};
     if (!fullName.trim()) newErrors.fullName = true;
@@ -110,8 +110,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     if (!password) newErrors.password = true;
     if (!confirmPassword) newErrors.confirmPassword = true;
     if (password !== confirmPassword) {
-        newErrors.password = true;
-        newErrors.confirmPassword = true;
+      newErrors.password = true;
+      newErrors.confirmPassword = true;
     }
     if (!age) newErrors.age = true;
     if (!vehicleType) newErrors.vehicleType = true;
@@ -119,73 +119,73 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     if (!phoneNumber.trim()) newErrors.phoneNumber = true;
 
     if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        return;
+      setErrors(newErrors);
+      return;
     }
 
     const formattedPhone = Validation.formatPhoneNumber(phoneNumber, region || 'MY');
     if (!Validation.hasCountryCode(formattedPhone)) {
-        setToastMessage(t('auth.phoneCountryCodeRequired', 'Please include country code (e.g. +60123456789) for WhatsApp compatibility'));
-        setToastType('error');
-        setToastVisible(true);
-        setErrors(prev => ({ ...prev, phoneNumber: true }));
-        return;
+      setToastMessage(t('auth.phoneCountryCodeRequired', 'Please include country code (e.g. +60123456789) for WhatsApp compatibility'));
+      setToastType('error');
+      setToastVisible(true);
+      setErrors(prev => ({ ...prev, phoneNumber: true }));
+      return;
     }
 
     try {
-        setLoading(true);
-        
-        const { profile: currentProfile } = await AuthService.getUserProfile();
+      setLoading(true);
 
-        const rawId = employeeId.trim();
-        const formattedId = (companyCode && !rawId.toUpperCase().startsWith(`${companyCode}-`)) 
-          ? `${companyCode}-${rawId}` 
-          : rawId;
+      const { profile: currentProfile } = await AuthService.getUserProfile();
 
-        const { user: signedUpUser, error } = await AuthService.signUp({
-            fullName: fullName.trim(),
-            employeeId: formattedId,
-            password,
-            age: parseInt(age),
-            vehicle_type: vehicleType,
-            region,
-            phone_number: formattedPhone,
-            role: role,
-            manager_level: role === 'manager' ? 2 : undefined,
-            companyId: currentProfile?.company_id
-        });
-        
-        if (error) throw new Error(error);
+      const rawId = employeeId.trim();
+      const formattedId = (companyCode && !rawId.toUpperCase().startsWith(`${companyCode}-`))
+        ? `${companyCode}-${rawId}`
+        : rawId;
 
-        // Show success toast
-        setToastMessage(t('user.userCreatedSuccessfully', 'User created successfully'));
-        setToastType('success');
-        setToastVisible(true);
+      const { user: signedUpUser, error } = await AuthService.signUp({
+        fullName: fullName.trim(),
+        employeeId: formattedId,
+        password,
+        age: parseInt(age),
+        vehicle_type: vehicleType,
+        region,
+        phone_number: formattedPhone,
+        role: role,
+        manager_level: role === 'manager' ? 2 : undefined,
+        companyId: currentProfile?.company_id
+      });
 
-        const createdUserObj = {
-            id: signedUpUser?.id || '',
-            full_name: fullName.trim(),
-            employee_id: formattedId,
-            phone_number: formattedPhone,
-            region: region,
-            role: role
-        };
+      if (error) throw new Error(error);
 
-        // Delay closing slightly so user sees success toast
-        setTimeout(() => {
-            resetAndClose();
-            if (onUserCreated) onUserCreated(createdUserObj, password);
-        }, 1500);
-        
+      // Show success toast
+      setToastMessage(t('user.userCreatedSuccessfully', 'User created successfully'));
+      setToastType('success');
+      setToastVisible(true);
+
+      const createdUserObj = {
+        id: signedUpUser?.id || '',
+        full_name: fullName.trim(),
+        employee_id: formattedId,
+        phone_number: formattedPhone,
+        region: region,
+        role: role
+      };
+
+      // Delay closing slightly so user sees success toast
+      setTimeout(() => {
+        resetAndClose();
+        if (onUserCreated) onUserCreated(createdUserObj, password);
+      }, 1500);
+
     } catch (error: any) {
-        let errorMessage = error.message || t('user.errorCreate');
-        
-        // Handle duplicate or quota errors specifically
-        setToastMessage(errorMessage);
-        setToastType('error');
-        setToastVisible(true);
+      let errorMessage = error.message || t('user.errorCreate');
+
+      // Handle duplicate or quota errors specifically
+      setToastMessage(errorMessage);
+      setToastType('error');
+      setToastVisible(true);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -200,6 +200,8 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     setPhoneNumber('');
     setRole('driver');
     setErrors({});
+    setToastVisible(false);
+    setToastMessage('');
     onClose();
   };
 
@@ -207,264 +209,268 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     title: { color: colors.text.primary },
     label: { color: colors.text.secondary },
     input: {
-        backgroundColor: colors.background.subtle,
-        color: colors.text.primary,
-        borderColor: colors.border,
+      backgroundColor: colors.background.subtle,
+      color: colors.text.primary,
+      borderColor: colors.border,
     },
     errorBorder: {
-        borderColor: colors.status?.danger || '#FF3B30', // Fallback red
-        borderWidth: 1.5,
+      borderColor: colors.status?.danger || '#FF3B30', // Fallback red
+      borderWidth: 1.5,
     }
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={resetAndClose}>
-      <Toast 
-        visible={toastVisible} 
-        message={toastMessage} 
-        type={toastType} 
-        onHide={() => setToastVisible(false)} 
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setToastVisible(false)}
       />
-      <View style={styles.modalOverlay}>
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <GlassCard style={styles.modalContent}>
-              <View style={styles.header}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <UserPlus size={24} color={colors.primary.DEFAULT} style={{ marginRight: 10 }} />
-                    <Text style={[styles.title, dynamicStyles.title]}>{t('user.createTitle', 'Create New User')}</Text>
-                  </View>
-                  <TouchableOpacity onPress={resetAndClose} style={styles.closeButton}>
-                      <X size={20} color={colors.text.primary} />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.modalOverlay}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <TouchableWithoutFeedback>
+              <GlassCard style={styles.modalContent}>
+                <View style={styles.header}>
+                  <TouchableOpacity onPress={resetAndClose} style={styles.backButton}>
+                    <ChevronLeft size={24} color={colors.text.primary} />
                   </TouchableOpacity>
-              </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <UserPlus size={24} color={colors.primary.DEFAULT} style={{ marginRight: 10 }} />
+                    <Text style={[styles.title, dynamicStyles.title]}>{t('user.createNewUser', 'Create New User')}</Text>
+                  </View>
+                </View>
 
-              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.fullName')}</Text>
-              <TextInput 
+                <Text style={[styles.label, dynamicStyles.label]}>{t('auth.fullName')}</Text>
+                <TextInput
                   style={[
-                      styles.input, 
-                      dynamicStyles.input,
-                      errors.fullName && dynamicStyles.errorBorder
+                    styles.input,
+                    dynamicStyles.input,
+                    errors.fullName && dynamicStyles.errorBorder
                   ]}
                   value={fullName}
                   onChangeText={(text) => {
-                      setFullName(text);
-                      if (text) setErrors(prev => ({ ...prev, fullName: false }));
+                    setFullName(text);
+                    if (text) setErrors(prev => ({ ...prev, fullName: false }));
                   }}
                   placeholder={t('auth.fullName')}
                   placeholderTextColor={colors.text.tertiary}
-              />
-              
-              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.companyCode', 'Company Code')}</Text>
-              <TextInput
+                />
+
+                <Text style={[styles.label, dynamicStyles.label]}>{t('auth.companyCode', 'Company Code')}</Text>
+                <TextInput
                   style={[
-                      styles.input,
-                      dynamicStyles.input,
-                      styles.disabledInput,
+                    styles.input,
+                    dynamicStyles.input,
+                    styles.disabledInput,
                   ]}
                   value={companyCode || t('common.notAvailable', 'N/A')}
                   editable={false}
                   selectTextOnFocus={false}
-              />
+                />
 
-              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.employeeId')}</Text>
-              <TextInput 
+                <Text style={[styles.label, dynamicStyles.label]}>{t('auth.employeeId')}</Text>
+                <TextInput
                   style={[
-                      styles.input, 
-                      dynamicStyles.input,
-                      errors.employeeId && dynamicStyles.errorBorder
+                    styles.input,
+                    dynamicStyles.input,
+                    errors.employeeId && dynamicStyles.errorBorder
                   ]}
                   value={employeeId}
                   onChangeText={(text) => {
-                      setEmployeeId(text);
-                      if (text) setErrors(prev => ({ ...prev, employeeId: false }));
+                    setEmployeeId(text);
+                    if (text) setErrors(prev => ({ ...prev, employeeId: false }));
                   }}
                   placeholder={t('auth.employeeId')}
                   placeholderTextColor={colors.text.tertiary}
                   autoCapitalize="none"
-              />
+                />
 
-              <View style={styles.row}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password')}</Text>
-                  <View style={{ justifyContent: 'center' }}>
-                    <TextInput 
+                <View style={styles.row}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password')}</Text>
+                    <View style={{ justifyContent: 'center' }}>
+                      <TextInput
                         style={[
-                            styles.input, 
-                            dynamicStyles.input,
-                            errors.password && dynamicStyles.errorBorder
+                          styles.input,
+                          dynamicStyles.input,
+                          errors.password && dynamicStyles.errorBorder
                         ]}
                         value={password}
                         onChangeText={(text) => {
-                            setPassword(text);
-                            if (text) setErrors(prev => ({ ...prev, password: false }));
+                          setPassword(text);
+                          if (text) setErrors(prev => ({ ...prev, password: false }));
                         }}
                         placeholder={t('auth.password')}
                         placeholderTextColor={colors.text.tertiary}
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
-                    />
-                    <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
-                      {showPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
-                    </TouchableOpacity>
+                      />
+                      <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-                <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.confirmPassword')}</Text>
-                  <View style={{ justifyContent: 'center' }}>
-                    <TextInput 
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={[styles.label, dynamicStyles.label]}>{t('auth.confirmPassword')}</Text>
+                    <View style={{ justifyContent: 'center' }}>
+                      <TextInput
                         style={[
-                            styles.input, 
-                            dynamicStyles.input,
-                            errors.confirmPassword && dynamicStyles.errorBorder
+                          styles.input,
+                          dynamicStyles.input,
+                          errors.confirmPassword && dynamicStyles.errorBorder
                         ]}
                         value={confirmPassword}
                         onChangeText={(text) => {
-                            setConfirmPassword(text);
-                            if (text) setErrors(prev => ({ ...prev, confirmPassword: false }));
+                          setConfirmPassword(text);
+                          if (text) setErrors(prev => ({ ...prev, confirmPassword: false }));
                         }}
                         placeholder={t('auth.confirmPassword')}
                         placeholderTextColor={colors.text.tertiary}
                         secureTextEntry={!showConfirmPassword}
                         autoCapitalize="none"
-                    />
-                    <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                      {showConfirmPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
-                    </TouchableOpacity>
+                      />
+                      <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                        {showConfirmPassword ? <EyeOff size={20} color={colors.text.secondary} /> : <Eye size={20} color={colors.text.secondary} />}
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              </View>
 
-              <View style={styles.row}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.age')}</Text>
-                  <TextInput 
+                <View style={styles.row}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={[styles.label, dynamicStyles.label]}>{t('auth.age')}</Text>
+                    <TextInput
                       style={[
-                          styles.input, 
-                          dynamicStyles.input,
-                          errors.age && dynamicStyles.errorBorder
+                        styles.input,
+                        dynamicStyles.input,
+                        errors.age && dynamicStyles.errorBorder
                       ]}
                       value={age}
                       onChangeText={(text) => {
-                          setAge(text.replace(/[^0-9]/g, ''));
-                          if (text) setErrors(prev => ({ ...prev, age: false }));
+                        setAge(text.replace(/[^0-9]/g, ''));
+                        if (text) setErrors(prev => ({ ...prev, age: false }));
                       }}
                       placeholder={t('auth.age')}
                       placeholderTextColor={colors.text.tertiary}
                       keyboardType="numeric"
-                  />
-                </View>
-                <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={[styles.label, dynamicStyles.label]}>{t('auth.phone', 'Phone No.')}</Text>
-                  <TextInput 
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Text style={[styles.label, dynamicStyles.label]}>{t('auth.phone', 'Phone No.')}</Text>
+                    <TextInput
                       style={[
-                          styles.input, 
-                          dynamicStyles.input,
-                          errors.phoneNumber && dynamicStyles.errorBorder
+                        styles.input,
+                        dynamicStyles.input,
+                        errors.phoneNumber && dynamicStyles.errorBorder
                       ]}
                       value={phoneNumber}
                       onChangeText={(text) => {
-                          setPhoneNumber(text);
-                          if (text) setErrors(prev => ({ ...prev, phoneNumber: false }));
+                        setPhoneNumber(text);
+                        if (text) setErrors(prev => ({ ...prev, phoneNumber: false }));
                       }}
                       placeholder="+60..."
                       placeholderTextColor={colors.text.tertiary}
                       keyboardType="phone-pad"
-                  />
-                  {errors.phoneNumber && (
+                    />
+                    {errors.phoneNumber && (
                       <Text style={[styles.errorText, { color: colors.status?.danger || '#FF3B30', marginTop: 4 }]}>
-                          {phoneNumber.trim() ? t('auth.phoneCountryCodeRequired') : t('auth.phoneRequired')}
+                        {phoneNumber.trim() ? t('auth.phoneCountryCodeRequired') : t('auth.phoneRequired')}
                       </Text>
-                  )}
+                    )}
+                  </View>
                 </View>
-              </View>
 
-              <Text style={[styles.label, dynamicStyles.label]}>{t('profile.region', 'Region')}</Text>
-              <View style={styles.optionsGrid}>
-                {regionOptions.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.optionChip,
-                      { borderColor: colors.border },
-                      region === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
-                      errors.region && !region && { borderColor: colors.status?.danger || '#FF3B30', borderWidth: 1.5 }
-                    ]}
-                    onPress={() => {
+                <Text style={[styles.label, dynamicStyles.label]}>{t('profile.region', 'Region')}</Text>
+                <View style={styles.optionsGrid}>
+                  {regionOptions.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[
+                        styles.optionChip,
+                        { borderColor: colors.border },
+                        region === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
+                        errors.region && !region && { borderColor: colors.status?.danger || '#FF3B30', borderWidth: 1.5 }
+                      ]}
+                      onPress={() => {
                         setRegion(opt.value);
                         setErrors(prev => ({ ...prev, region: false }));
-                    }}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      { color: colors.text.secondary },
-                      region === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
-                    ]}>{opt.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                      }}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        { color: colors.text.secondary },
+                        region === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
+                      ]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-              <Text style={[styles.label, dynamicStyles.label]}>{t('auth.vehicleType')}</Text>
-              <View style={styles.optionsWrap}>
-                {vehicleOptions.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.optionChip,
-                      { borderColor: colors.border },
-                      vehicleType === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
-                      errors.vehicleType && !vehicleType && { borderColor: colors.status?.danger || '#FF3B30', borderWidth: 1.5 }
-                    ]}
-                    onPress={() => {
+                <Text style={[styles.label, dynamicStyles.label]}>{t('auth.vehicleType')}</Text>
+                <View style={styles.optionsWrap}>
+                  {vehicleOptions.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[
+                        styles.optionChip,
+                        { borderColor: colors.border },
+                        vehicleType === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
+                        errors.vehicleType && !vehicleType && { borderColor: colors.status?.danger || '#FF3B30', borderWidth: 1.5 }
+                      ]}
+                      onPress={() => {
                         setVehicleType(opt.value);
                         setErrors(prev => ({ ...prev, vehicleType: false }));
-                    }}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      { color: colors.text.secondary },
-                      vehicleType === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
-                    ]}>{opt.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                      }}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        { color: colors.text.secondary },
+                        vehicleType === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
+                      ]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-              <Text style={[styles.label, dynamicStyles.label]}>{t('user.role', 'Role')}</Text>
-              <View style={styles.optionsGrid}>
-                {roleOptions.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.optionChip,
-                      { borderColor: colors.border },
-                      role === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
-                    ]}
-                    onPress={() => setRole(opt.value as 'driver' | 'manager')}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      { color: colors.text.secondary },
-                      role === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
-                    ]}>{opt.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                <Text style={[styles.label, dynamicStyles.label]}>{t('user.role', 'Role')}</Text>
+                <View style={styles.optionsGrid}>
+                  {roleOptions.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[
+                        styles.optionChip,
+                        { borderColor: colors.border },
+                        role === opt.value && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
+                      ]}
+                      onPress={() => setRole(opt.value as 'driver' | 'manager')}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        { color: colors.text.secondary },
+                        role === opt.value && { color: '#FFF', fontFamily: typography.fonts.bold }
+                      ]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-              <View style={{ marginTop: 24, marginBottom: 10 }}>
-                  <GlassButton 
-                      title={loading ? t('user.creating') : t('user.createUser')}
-                      onPress={handleCreateUser}
-                      variant="primary"
-                      disabled={loading}
+                <View style={{ marginTop: 24, marginBottom: 10 }}>
+                  <GlassButton
+                    title={loading ? t('user.creating') : t('user.createNewUser')}
+                    onPress={handleCreateUser}
+                    variant="primary"
+                    disabled={loading}
                   />
-              </View>
-          </GlassCard>
-        </ScrollView>
-      </View>
+                </View>
+              </GlassCard>
+            </TouchableWithoutFeedback>
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
@@ -488,10 +494,12 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+  backButton: {
+    padding: 4,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
   },
   title: {
     fontSize: 22,

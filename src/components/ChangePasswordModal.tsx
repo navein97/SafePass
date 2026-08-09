@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { typography } from '../theme/typography';
@@ -49,8 +49,10 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                <GlassCard style={styles.container}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <TouchableWithoutFeedback>
+                        <GlassCard style={styles.container}>
                     <View style={styles.header}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                             <Key size={24} color={colors.primary.DEFAULT} />
@@ -84,8 +86,10 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
                         disabled={loading}
                         style={{ marginTop: 20 }}
                     />
-                </GlassCard>
-            </View>
+                        </GlassCard>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
         </Modal>
     );
 };

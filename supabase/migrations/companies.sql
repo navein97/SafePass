@@ -85,7 +85,7 @@ BEGIN
     IF NEW.role = 'driver' THEN
         SELECT quota_drivers INTO v_quota_limit FROM public.companies WHERE id = v_company_id;
         SELECT COUNT(*) INTO v_current_count FROM public.profiles 
-        WHERE company_id = v_company_id AND role = 'driver' AND id != NEW.id;
+        WHERE company_id = v_company_id AND role = 'driver' AND id != NEW.id AND (status IS NULL OR status != 'inactive');
         
         IF v_current_count >= v_quota_limit THEN
             RAISE EXCEPTION 'Driver quota exceeded for this company. Limit: %', v_quota_limit;
@@ -94,7 +94,7 @@ BEGIN
     ELSIF NEW.role = 'manager' THEN
         SELECT quota_managers INTO v_quota_limit FROM public.companies WHERE id = v_company_id;
         SELECT COUNT(*) INTO v_current_count FROM public.profiles 
-        WHERE company_id = v_company_id AND role = 'manager' AND id != NEW.id;
+        WHERE company_id = v_company_id AND role = 'manager' AND id != NEW.id AND (status IS NULL OR status != 'inactive');
         
         IF v_current_count >= v_quota_limit THEN
             RAISE EXCEPTION 'Manager quota exceeded for this company. Limit: %', v_quota_limit;

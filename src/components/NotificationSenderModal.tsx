@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -95,8 +95,10 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <View style={styles.overlay}>
-                <GlassCard style={styles.container}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={styles.overlay}>
+                    <TouchableWithoutFeedback>
+                        <GlassCard style={styles.container}>
                     <View style={styles.header}>
                         <Text style={[styles.title, { color: colors.text.primary }]}>
                             {t('notification.sendMessage', 'Send Message')}
@@ -178,8 +180,10 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
                         disabled={loading}
                         style={{ marginTop: 16 }}
                     />
-                </GlassCard>
-            </View>
+                        </GlassCard>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
         </Modal>
     );
 };

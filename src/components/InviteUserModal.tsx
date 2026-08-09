@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Linking, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Linking, Alert, TextInput, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -107,9 +107,11 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContainer}>
-                    <GlassCard style={styles.modalContent}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={styles.modalOverlay}>
+                    <TouchableWithoutFeedback>
+                        <View style={styles.modalContainer}>
+                            <GlassCard style={styles.modalContent}>
                         <View style={styles.header}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                 <MessageCircle size={24} color="#25D366" style={{ marginRight: 10 }} />
@@ -194,9 +196,11 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                                 variant="secondary"
                             />
                         </View>
-                    </GlassCard>
+                            </GlassCard>
+                        </View>
+                    </TouchableWithoutFeedback>
                 </View>
-            </View>
+            </TouchableWithoutFeedback>
         </Modal>
     );
 };

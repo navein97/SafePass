@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { typography } from '../theme/typography';
@@ -13,10 +13,10 @@ interface DeleteUserModalProps {
     loading?: boolean;
 }
 
-export const DeleteUserModal = ({ 
-    visible, 
-    onClose, 
-    onConfirm, 
+export const DeleteUserModal = ({
+    visible,
+    onClose,
+    onConfirm,
     loading = false
 }: DeleteUserModalProps) => {
     const { colors } = useTheme();
@@ -26,71 +26,75 @@ export const DeleteUserModal = ({
     const isMatch = confirmText === t('common.confirmPlaceholder');
 
     return (
-        <Modal 
-            visible={visible} 
-            transparent 
-            animationType="fade" 
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
             onRequestClose={onClose}
         >
-            <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                <GlassCard style={styles.container}>
-                    <View style={styles.header}>
-                        <Text style={[styles.title, { color: colors.text.primary }]}>
-                            {t('common.areYouSure')}
-                        </Text>
-                        <TouchableOpacity onPress={onClose}>
-                             <Text style={{ color: colors.text.tertiary, fontSize: 20 }}>×</Text>
-                        </TouchableOpacity>
-                    </View>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <TouchableWithoutFeedback>
+                        <GlassCard style={styles.container}>
+                            <View style={styles.header}>
+                                <Text style={[styles.title, { color: colors.text.primary }]}>
+                                    {t('common.areYouSure')}
+                                </Text>
+                                <TouchableOpacity onPress={onClose}>
+                                    <Text style={{ color: colors.text.tertiary, fontSize: 20 }}>×</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                    <Text style={[styles.message, { color: colors.text.secondary }]}>
-                        {t('common.cannotBeUndone')} {t('auth.permanentlyDeleteNote', 'This will permanently delete the user account.')}
-                    </Text>
-
-                    <Text style={[styles.instruction, { color: colors.text.primary }]}>
-                        {t('common.confirmToType', { text: t('common.confirmPlaceholder') })}
-                    </Text>
-
-                    <TextInput 
-                        style={[
-                            styles.input, 
-                            { 
-                                borderColor: colors.border, 
-                                color: colors.text.primary,
-                                backgroundColor: colors.background.subtle
-                            }
-                        ]}
-                        value={confirmText}
-                        onChangeText={setConfirmText}
-                        placeholder={t('common.confirmPlaceholder')}
-                        placeholderTextColor={colors.text.tertiary}
-                        autoCapitalize="none"
-                    />
-
-                    <TouchableOpacity 
-                        style={[
-                            styles.deleteButton, 
-                            { 
-                                backgroundColor: isMatch ? colors.status.danger : colors.background.subtle,
-                                opacity: isMatch ? 1 : 0.5
-                            }
-                        ]} 
-                        onPress={onConfirm}
-                        disabled={!isMatch || loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#FFF" size="small" />
-                        ) : (
-                            <Text style={[
-                                styles.buttonText, 
-                                { color: isMatch ? '#FFF' : colors.text.secondary }
-                            ]}>
-                                {t('user.deleteUser')}
+                            <Text style={[styles.message, { color: colors.text.secondary }]}>
+                                {t('common.cannotBeUndone')} {t('auth.permanentlyDeleteNote', 'This will permanently delete the user account.')}
                             </Text>
-                        )}
-                    </TouchableOpacity>
-                </GlassCard>
-            </View>
+
+                            <Text style={[styles.instruction, { color: colors.text.primary }]}>
+                                {t('common.confirmToType', { text: t('common.confirmPlaceholder') })}
+                            </Text>
+
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    {
+                                        borderColor: colors.border,
+                                        color: colors.text.primary,
+                                        backgroundColor: colors.background.subtle
+                                    }
+                                ]}
+                                value={confirmText}
+                                onChangeText={setConfirmText}
+                                placeholder={t('common.confirmPlaceholder')}
+                                placeholderTextColor={colors.text.tertiary}
+                                autoCapitalize="none"
+                            />
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.deleteButton,
+                                    {
+                                        backgroundColor: isMatch ? colors.status.danger : colors.background.subtle,
+                                        opacity: isMatch ? 1 : 0.5
+                                    }
+                                ]}
+                                onPress={onConfirm}
+                                disabled={!isMatch || loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#FFF" size="small" />
+                                ) : (
+                                    <Text style={[
+                                        styles.buttonText,
+                                        { color: isMatch ? '#FFF' : colors.text.secondary }
+                                    ]}>
+                                        {t('user.deleteUser')}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </GlassCard>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
         </Modal>
     );
 };
