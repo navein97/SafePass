@@ -261,7 +261,6 @@ export const BillingScreen = ({ navigation }: any) => {
         style={[
           styles.packageCard, 
           isCurrent && styles.currentPackageCard,
-          isRecommended && !isCurrent && styles.recommendedCard,
           isInvalid && { opacity: 0.4 }
         ]}
         contentStyle={styles.packageCardContent}
@@ -665,11 +664,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 12,
     color: colors.text.secondary,
     fontFamily: typography.fonts.regular,
-  },
-  recommendedCard: {
-    borderColor: colors.primary.DEFAULT,
-    borderWidth: 2,
-    backgroundColor: colors.primary.DEFAULT + '05',
   },
 
   // Stripe Notice
