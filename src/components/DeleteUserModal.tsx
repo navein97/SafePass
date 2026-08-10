@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { typography } from '../theme/typography';
 import { GlassCard } from './ui/GlassCard';
 import { AlertTriangle } from 'lucide-react-native';
+import { KeyboardDismissView, PreventDismissView } from './ui/KeyboardDismissView';
 
 interface DeleteUserModalProps {
     visible: boolean;
@@ -32,9 +33,9 @@ export const DeleteUserModal = ({
             animationType="fade"
             onRequestClose={onClose}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardDismissView>
                 <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                    <TouchableWithoutFeedback>
+                    <PreventDismissView>
                         <GlassCard style={styles.container}>
                             <View style={styles.header}>
                                 <Text style={[styles.title, { color: colors.text.primary }]}>
@@ -92,9 +93,9 @@ export const DeleteUserModal = ({
                                 )}
                             </TouchableOpacity>
                         </GlassCard>
-                    </TouchableWithoutFeedback>
+                    </PreventDismissView>
                 </View>
-            </TouchableWithoutFeedback>
+            </KeyboardDismissView>
         </Modal>
     );
 };
@@ -104,51 +105,42 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
-    },
+        padding: 20 },
     container: {
         width: '100%',
         maxWidth: 400,
-        padding: 24,
-    },
+        padding: 24 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 16,
-    },
+        marginBottom: 16 },
     title: {
         fontSize: 18,
-        fontFamily: typography.fonts.bold,
-    },
+        fontFamily: typography.fonts.bold },
     message: {
         fontSize: 14,
         fontFamily: typography.fonts.regular,
         marginBottom: 16,
-        lineHeight: 20,
-    },
+        lineHeight: 20 },
     instruction: {
         fontSize: 14,
         fontFamily: typography.fonts.bold,
-        marginBottom: 8,
-    },
+        marginBottom: 8 },
     input: {
         borderWidth: 1,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
         fontFamily: typography.fonts.medium,
-        marginBottom: 24,
-    },
+        marginBottom: 24 },
     deleteButton: {
         width: '100%',
         paddingVertical: 14,
         borderRadius: 8,
         alignItems: 'center',
-        justifyContent: 'center',
-    },
+        justifyContent: 'center' },
     buttonText: {
         fontSize: 16,
-        fontFamily: typography.fonts.bold,
-    }
+        fontFamily: typography.fonts.bold }
 });

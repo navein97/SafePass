@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -11,6 +11,7 @@ import { AuthService } from '../services/authService';
 import { PracticeService } from '../services/practiceService';
 import { Validation } from '../utils/validation';
 import { supabase } from '../lib/supabase';
+import { KeyboardDismissView, PreventDismissView } from './ui/KeyboardDismissView';
 
 interface EditUserModalProps {
   visible: boolean;
@@ -165,12 +166,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
     input: {
         backgroundColor: colors.background.subtle,
         color: colors.text.primary,
-        borderColor: colors.border,
-    },
+        borderColor: colors.border },
     errorBorder: {
         borderColor: colors.status?.danger || '#FF3B30',
-        borderWidth: 1.5,
-    }
+        borderWidth: 1.5 }
   };
 
   return (
@@ -181,7 +180,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
         type={toastType} 
         onHide={() => setToastVisible(false)} 
       />
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardDismissView>
           <View style={styles.modalOverlay}>
             <ScrollView 
               style={styles.scrollView}
@@ -189,7 +188,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <TouchableWithoutFeedback>
+              <PreventDismissView>
                   <GlassCard style={styles.modalContent}>
               <View style={styles.header}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -348,10 +347,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
                   />
               </View>
                   </GlassCard>
-              </TouchableWithoutFeedback>
+              </PreventDismissView>
             </ScrollView>
           </View>
-      </TouchableWithoutFeedback>
+      </KeyboardDismissView>
     </Modal>
   );
 };
@@ -361,44 +360,36 @@ const styles = StyleSheet.create({
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'center',
-      alignItems: 'center',
-  },
+      alignItems: 'center' },
   scrollView: {
       width: '100%',
-      height: '100%',
-  },
+      height: '100%' },
   scrollContainer: {
       flexGrow: 1,
       justifyContent: 'center',
       alignItems: 'center',
       paddingVertical: 40,
-      paddingHorizontal: 20,
-  },
+      paddingHorizontal: 20 },
   modalContent: {
       width: '100%',
       maxWidth: 400,
       padding: 24,
-      borderRadius: 24,
-  },
+      borderRadius: 24 },
   header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 24,
-  },
+      marginBottom: 24 },
   title: {
       fontSize: 20,
-      fontFamily: typography.fonts.bold,
-  },
+      fontFamily: typography.fonts.bold },
   closeButton: {
-      padding: 4,
-  },
+      padding: 4 },
   label: {
       fontSize: 14,
       fontFamily: typography.fonts.medium,
       marginBottom: 8,
-      marginLeft: 4,
-  },
+      marginLeft: 4 },
   input: {
       height: 50,
       borderRadius: 12,
@@ -406,44 +397,35 @@ const styles = StyleSheet.create({
       borderWidth: 1,
       fontSize: 16,
       fontFamily: typography.fonts.regular,
-      marginBottom: 16,
-  },
+      marginBottom: 16 },
   disabledInput: {
-      opacity: 0.6,
-  },
+      opacity: 0.6 },
   radioGroup: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 12,
-      marginBottom: 16,
-  },
+      marginBottom: 16 },
   radioOption: {
       paddingHorizontal: 16,
       paddingVertical: 10,
       borderRadius: 20,
       borderWidth: 1,
       borderColor: 'transparent',
-      backgroundColor: 'rgba(255,255,255,0.05)',
-  },
+      backgroundColor: 'rgba(255,255,255,0.05)' },
   radioText: {
       fontSize: 14,
-      fontFamily: typography.fonts.medium,
-  },
+      fontFamily: typography.fonts.medium },
   footer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       marginTop: 24,
-      gap: 12,
-  },
+      gap: 12 },
   cancelButton: {
-      flex: 1,
-  },
+      flex: 1 },
   submitButton: {
-      flex: 2,
-  },
+      flex: 2 },
   errorText: {
       fontSize: 12,
       fontFamily: typography.fonts.regular,
-      marginLeft: 4,
-  }
+      marginLeft: 4 }
 });

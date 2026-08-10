@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -11,6 +11,7 @@ import { AuthService } from '../services/authService';
 import { PracticeService } from '../services/practiceService';
 import { Validation } from '../utils/validation';
 import { supabase } from '../lib/supabase';
+import { KeyboardDismissView, PreventDismissView } from './ui/KeyboardDismissView';
 
 interface CreateUserModalProps {
   visible: boolean;
@@ -211,12 +212,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
     input: {
       backgroundColor: colors.background.subtle,
       color: colors.text.primary,
-      borderColor: colors.border,
-    },
+      borderColor: colors.border },
     errorBorder: {
       borderColor: colors.status?.danger || '#FF3B30', // Fallback red
-      borderWidth: 1.5,
-    }
+      borderWidth: 1.5 }
   };
 
   return (
@@ -227,7 +226,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
         type={toastType}
         onHide={() => setToastVisible(false)}
       />
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardDismissView>
         <View style={styles.modalOverlay}>
           <ScrollView
             style={styles.scrollView}
@@ -235,7 +234,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <TouchableWithoutFeedback>
+            <PreventDismissView>
               <GlassCard style={styles.modalContent}>
                 <View style={styles.header}>
                   <TouchableOpacity onPress={resetAndClose} style={styles.backButton}>
@@ -467,10 +466,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                   />
                 </View>
               </GlassCard>
-            </TouchableWithoutFeedback>
+            </PreventDismissView>
           </ScrollView>
         </View>
-      </TouchableWithoutFeedback>
+      </KeyboardDismissView>
     </Modal>
   );
 };
@@ -478,89 +477,71 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-  },
+    backgroundColor: 'rgba(0,0,0,0.8)' },
   scrollView: {
-    flex: 1,
-  },
+    flex: 1 },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
-    paddingVertical: 60,
-  },
+    paddingVertical: 60 },
   modalContent: {
     width: '100%',
-    padding: 24,
-  },
+    padding: 24 },
   header: {
-    marginBottom: 20,
-  },
+    marginBottom: 20 },
   backButton: {
     padding: 4,
     marginBottom: 8,
-    alignSelf: 'flex-start',
-  },
+    alignSelf: 'flex-start' },
   title: {
     fontSize: 22,
-    fontFamily: typography.fonts.bold,
-  },
+    fontFamily: typography.fonts.bold },
   successContainer: {
-    paddingVertical: 10,
-  },
+    paddingVertical: 10 },
   closeButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
-    alignItems: 'center',
-  },
+    alignItems: 'center' },
   label: {
     fontSize: 14,
     fontFamily: typography.fonts.medium,
     marginBottom: 8,
-    marginTop: 16,
-  },
+    marginTop: 16 },
   input: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    fontFamily: typography.fonts.regular,
-  },
+    fontFamily: typography.fonts.regular },
   disabledInput: {
-    opacity: 0.55,
-  },
+    opacity: 0.55 },
   row: {
-    flexDirection: 'row',
-  },
+    flexDirection: 'row' },
   optionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
+    gap: 8 },
   optionsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
+    gap: 8 },
   optionChip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    borderWidth: 1,
-  },
+    borderWidth: 1 },
   optionText: {
     fontSize: 13,
-    fontFamily: typography.fonts.medium,
-  },
+    fontFamily: typography.fonts.medium },
   errorText: {
     fontSize: 12,
     fontFamily: typography.fonts.regular,
     marginTop: 4,
-    marginLeft: 4,
-  },
+    marginLeft: 4 },
   eyeIcon: {
     position: 'absolute',
     right: 0,
@@ -568,6 +549,4 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 16,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
+    alignItems: 'center' } });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Linking, Alert, TextInput, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Linking, Alert, TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -7,6 +7,7 @@ import { GlassButton } from './ui/GlassButton';
 import { GlassCard } from './ui/GlassCard';
 import { X, MessageCircle } from 'lucide-react-native';
 import { Validation } from '../utils/validation';
+import { KeyboardDismissView, PreventDismissView } from './ui/KeyboardDismissView';
 
 interface UserProfile {
     id: string;
@@ -101,15 +102,13 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
         input: {
             backgroundColor: colors.background.subtle,
             color: colors.text.primary,
-            borderColor: colors.border,
-        },
-    };
+            borderColor: colors.border } };
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardDismissView>
                 <View style={styles.modalOverlay}>
-                    <TouchableWithoutFeedback>
+                    <PreventDismissView>
                         <View style={styles.modalContainer}>
                             <GlassCard style={styles.modalContent}>
                         <View style={styles.header}>
@@ -198,9 +197,9 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                         </View>
                             </GlassCard>
                         </View>
-                    </TouchableWithoutFeedback>
+                    </PreventDismissView>
                 </View>
-            </TouchableWithoutFeedback>
+            </KeyboardDismissView>
         </Modal>
     );
 };
@@ -219,36 +218,29 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    padding: 24,
-  },
+    padding: 24 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-  },
+    marginBottom: 20 },
   title: {
     fontSize: 20,
-    fontFamily: typography.fonts.bold,
-  },
+    fontFamily: typography.fonts.bold },
   closeButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
-    alignItems: 'center',
-  },
+    alignItems: 'center' },
   label: {
     fontSize: 14,
     fontFamily: typography.fonts.medium,
-    marginBottom: 8,
-  },
+    marginBottom: 8 },
   input: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    fontFamily: typography.fonts.regular,
-  },
-});
+    fontFamily: typography.fonts.regular } });

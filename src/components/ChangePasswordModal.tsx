@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, TextInput, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { typography } from '../theme/typography';
@@ -7,6 +7,7 @@ import { GlassCard } from './ui/GlassCard';
 import { GlassButton } from './ui/GlassButton';
 import { X, Key } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
+import { KeyboardDismissView, PreventDismissView } from './ui/KeyboardDismissView';
 
 interface ChangePasswordModalProps {
     visible: boolean;
@@ -49,9 +50,9 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardDismissView>
                 <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                    <TouchableWithoutFeedback>
+                    <PreventDismissView>
                         <GlassCard style={styles.container}>
                     <View style={styles.header}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -87,9 +88,9 @@ export const ChangePasswordModal = ({ visible, onClose, user }: ChangePasswordMo
                         style={{ marginTop: 20 }}
                     />
                         </GlassCard>
-                    </TouchableWithoutFeedback>
+                    </PreventDismissView>
                 </View>
-            </TouchableWithoutFeedback>
+            </KeyboardDismissView>
         </Modal>
     );
 };
@@ -99,33 +100,27 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
-    },
+        padding: 20 },
     container: {
         width: '100%',
         maxWidth: 400,
-        padding: 24,
-    },
+        padding: 24 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 16,
-    },
+        marginBottom: 16 },
     title: {
         fontSize: 20,
-        fontFamily: typography.fonts.bold,
-    },
+        fontFamily: typography.fonts.bold },
     subtitle: {
         fontSize: 14,
         fontFamily: typography.fonts.regular,
-        marginBottom: 20,
-    },
+        marginBottom: 20 },
     input: {
         width: '100%',
         padding: 12,
         borderRadius: 8,
         borderWidth: 1,
-        fontSize: 16,
-    }
+        fontSize: 16 }
 });

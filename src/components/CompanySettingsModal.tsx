@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Modal, Alert, ScrollView, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Modal, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -7,6 +7,7 @@ import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { X } from 'lucide-react-native';
 import { CompanySettingsService } from '../services/companySettingsService';
+import { KeyboardDismissView, PreventDismissView } from './ui/KeyboardDismissView';
 
 interface CompanySettingsModalProps {
   visible: boolean;
@@ -54,8 +55,7 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
         setLoading(true);
 
         const { success, error } = await CompanySettingsService.updateCompanyInfo({
-            name: companyName,
-        }, currentCompanyId);
+            name: companyName }, currentCompanyId);
         
         if (!success) throw error;
         
@@ -75,14 +75,13 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
     input: {
         backgroundColor: colors.background.subtle,
         color: colors.text.primary,
-        borderColor: colors.border,
-    },
+        borderColor: colors.border },
     helperText: { color: colors.text.tertiary }
   };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardDismissView>
           <View style={styles.modalOverlay}>
             <ScrollView 
               contentContainerStyle={styles.scrollContainer}
@@ -90,7 +89,7 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
               bounces={true}
               keyboardShouldPersistTaps="handled"
             >
-              <TouchableWithoutFeedback>
+              <PreventDismissView>
                   <GlassCard style={styles.modalContent}>
               <View style={styles.header}>
                   <Text style={[styles.title, dynamicStyles.title]}>{t('company.settings')}</Text>
@@ -123,10 +122,10 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
                   />
               </View>
                   </GlassCard>
-              </TouchableWithoutFeedback>
+              </PreventDismissView>
             </ScrollView>
           </View>
-      </TouchableWithoutFeedback>
+      </KeyboardDismissView>
     </Modal>
   );
 };
@@ -134,31 +133,26 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({ visi
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
+    backgroundColor: 'rgba(0,0,0,0.7)' },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    paddingVertical: 40,
-  },
+    paddingVertical: 40 },
   modalContent: {
     width: '100%',
     maxWidth: 500,
-    padding: 24,
-  },
+    padding: 24 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
+    marginBottom: 16 },
   title: {
     fontSize: 24,
     fontFamily: typography.fonts.bold,
-    flex: 1,
-  },
+    flex: 1 },
   closeButton: {
     width: 40,
     height: 40,
@@ -166,21 +160,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
-  },
+    marginLeft: 12 },
   label: {
     fontSize: 14,
     fontFamily: typography.fonts.medium,
     marginBottom: 8,
-    marginTop: 12,
-  },
+    marginTop: 12 },
   input: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    fontFamily: typography.fonts.regular,
-  },
+    fontFamily: typography.fonts.regular },
   imagePicker: {
     width: '100%',
     height: 200,
@@ -188,30 +179,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
+    backgroundColor: 'rgba(255,255,255,0.05)' },
   placeholderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-  },
+    padding: 20 },
   placeholderText: {
     marginTop: 12,
     fontSize: 14,
     fontFamily: typography.fonts.medium,
-    textAlign: 'center',
-  },
+    textAlign: 'center' },
   imagePreviewContainer: {
     flex: 1,
     width: '100%',
-    height: '100%',
-  },
+    height: '100%' },
   imagePreview: {
     width: '100%',
     height: '100%',
-    resizeMode: 'contain',
-  },
+    resizeMode: 'contain' },
   changeImageOverlay: {
     position: 'absolute',
     bottom: 0,
@@ -222,16 +208,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-  },
+    gap: 8 },
   changeImageText: {
     color: '#FFF',
     fontSize: 12,
-    fontFamily: typography.fonts.bold,
-  },
+    fontFamily: typography.fonts.bold },
   helperText: {
     fontSize: 12,
     marginTop: 16,
-    fontStyle: 'italic',
-  },
-});
+    fontStyle: 'italic' } });

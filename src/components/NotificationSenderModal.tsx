@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -8,6 +8,7 @@ import { GlassButton } from './ui/GlassButton';
 import { X, Send, CheckSquare, Square } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { NotificationService } from '../services/notificationService';
+import { KeyboardDismissView, PreventDismissView } from './ui/KeyboardDismissView';
 
 interface NotificationSenderModalProps {
     visible: boolean;
@@ -95,9 +96,9 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardDismissView>
                 <View style={styles.overlay}>
-                    <TouchableWithoutFeedback>
+                    <PreventDismissView>
                         <GlassCard style={styles.container}>
                     <View style={styles.header}>
                         <Text style={[styles.title, { color: colors.text.primary }]}>
@@ -181,9 +182,9 @@ export const NotificationSenderModal: React.FC<NotificationSenderModalProps> = (
                         style={{ marginTop: 16 }}
                     />
                         </GlassCard>
-                    </TouchableWithoutFeedback>
+                    </PreventDismissView>
                 </View>
-            </TouchableWithoutFeedback>
+            </KeyboardDismissView>
         </Modal>
     );
 };
@@ -193,33 +194,26 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
-        padding: 20,
-    },
+        padding: 20 },
     container: {
-        padding: 24,
-    },
+        padding: 24 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
-    },
+        marginBottom: 20 },
     title: {
         fontSize: 20,
-        fontFamily: typography.fonts.bold,
-    },
+        fontFamily: typography.fonts.bold },
     targetInfo: {
-        marginBottom: 16,
-    },
+        marginBottom: 16 },
     label: {
         fontSize: 16,
         fontFamily: typography.fonts.medium,
-        marginBottom: 8,
-    },
+        marginBottom: 8 },
     targetName: {
         fontSize: 16,
-        fontFamily: typography.fonts.bold,
-    },
+        fontFamily: typography.fonts.bold },
     input: {
         borderRadius: 12,
         borderWidth: 1,
@@ -227,20 +221,16 @@ const styles = StyleSheet.create({
         height: 120,
         textAlignVertical: 'top',
         fontSize: 16,
-        fontFamily: typography.fonts.regular,
-    },
+        fontFamily: typography.fonts.regular },
     checkboxContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 16,
-    },
+        gap: 16 },
     checkboxOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-    },
+        gap: 8 },
     checkboxLabel: {
         fontSize: 16,
-        fontFamily: typography.fonts.medium,
-    }
+        fontFamily: typography.fonts.medium }
 });
