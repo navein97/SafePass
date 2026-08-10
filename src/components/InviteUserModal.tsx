@@ -73,9 +73,17 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
     const handleInviteWhatsApp = () => {
         if (!user) return;
         
+        let displayUserId = user.employee_id || '';
+        if (companyCode && displayUserId.startsWith(`${companyCode}-`)) {
+            displayUserId = displayUserId.substring(companyCode.length + 1);
+        } else if (displayUserId.includes('-')) {
+            const parts = displayUserId.split('-');
+            displayUserId = parts.slice(1).join('-');
+        }
+
         const message = t('user.inviteWhatsAppMessage', {
             companyCode: companyCode,
-            userId: user.employee_id,
+            userId: displayUserId,
             password: password.trim() ? password : "____________________",
             lng: inviteLang
         });
