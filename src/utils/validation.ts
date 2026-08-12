@@ -41,7 +41,7 @@ export const Validation = {
     },
 
     /**
-     * Normalizes phone number into digits-only format starting with country code for WhatsApp URL scheme wa.me / whatsapp://
+     * Normalizes phone number into digits-only format starting with country code for WhatsApp URL scheme wa.me / api.whatsapp.com
      */
     toWhatsAppPhone: (phone: string, region: string = 'MY'): string => {
         let formatted = Validation.formatPhoneNumber(phone, region);

@@ -90,7 +90,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
         
         let phone = user.phone_number ? Validation.toWhatsAppPhone(user.phone_number, user.region || 'MY') : '';
         
-        const url = `whatsapp://send?text=${encodeURIComponent(message)}${phone ? `&phone=${phone}` : ''}`;
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}${phone ? `&phone=${phone}` : ''}`;
         
         Linking.canOpenURL(url)
           .then((supported) => {
