@@ -356,7 +356,7 @@
     "address": "Alamat",
     "contactNumber": "Nombor Hubungan",
     "email": "Alamat E-mel",
-    "emailUpdatePending": "Pautan pengesahan telah dihantar ke e-mel baharu anda. Sila sahkan dan log masuk semula.",
+    "emailUpdatePending": "E-mel telah dihantar. Semak folder Spam. Sila sahkan dan log masuk semula.",
     "totalMcqsCompleted": "JUMLAH MCQ DISELESAIKAN",
     "billing": "Pengebilan & Pelan",
     "questionDistribution": "Agihan Soalan (Ditetapkan setiap Batch)",
