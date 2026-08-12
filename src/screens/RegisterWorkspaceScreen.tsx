@@ -41,7 +41,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
       newErrors.fullName = t('auth.fullNameRequired', 'Full Name is required');
       isValid = false;
     }
-    if (!email.trim() || !email.includes('@')) {
+    if (!email.trim() || !Validation.isValidEmail(email)) {
       newErrors.email = t('auth.invalidEmail', 'Invalid email address');
       isValid = false;
     }
@@ -193,7 +193,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   label={t('auth.companyCode', 'Company Code (for Driver Logins)')}
                   placeholder="e.g. PRO, HAYAT, CNG"
                   value={companyCode}
-                  onChangeText={(val) => setCompanyCode(val.toUpperCase())}
+                  onChangeText={(val) => setCompanyCode(Validation.cleanCompanyCode(val))}
                   autoCapitalize="characters"
                   error={errors.companyCode}
                   leftIcon={<Building size={20} color={colors.text.secondary} />}
@@ -212,7 +212,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   label={t('auth.email', 'Business Email')}
                   placeholder="john@example.com"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => setEmail(Validation.cleanEmail(text))}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   error={errors.email}
@@ -223,7 +223,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   label={t('auth.phone', 'Phone Number')}
                   placeholder="+1234567890"
                   value={phoneNumber}
-                  onChangeText={setPhoneNumber}
+                  onChangeText={(text) => setPhoneNumber(Validation.cleanPhoneNumber(text))}
                   keyboardType="phone-pad"
                   error={errors.phoneNumber}
                   leftIcon={<Phone size={20} color={colors.text.secondary} />}

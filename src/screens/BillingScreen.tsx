@@ -12,6 +12,7 @@ import { GlassInput } from '../components/ui/GlassInput';
 import { SubscriptionService, calculateAnnualCost, calculateFreeManagers, PackageDetails } from '../services/subscriptionService';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
+import { Validation } from '../utils/validation';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export const BillingScreen = ({ navigation }: any) => {
@@ -457,7 +458,7 @@ export const BillingScreen = ({ navigation }: any) => {
               <View style={styles.inputRow}>
                 <GlassInput
                   value={driverCountInput}
-                  onChangeText={setDriverCountInput}
+                  onChangeText={(text) => setDriverCountInput(Validation.cleanNumericOnly(text))}
                   placeholder="e.g. 50"
                   keyboardType="numeric"
                   containerStyle={styles.driverInputContainer}

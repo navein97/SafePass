@@ -193,7 +193,7 @@ Designation: `;
                     placeholder="e.g. PRO, HAYAT, CNG"
                     value={companyCode}
                     onChangeText={(text) => {
-                      setCompanyCode(text.toUpperCase());
+                      setCompanyCode(Validation.cleanCompanyCode(text));
                       if (errors.companyCode) setErrors(prev => ({ ...prev, companyCode: '' }));
                     }}
                     autoCapitalize="characters"

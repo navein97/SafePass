@@ -355,6 +355,8 @@
     "companyName": "Company Name",
     "address": "Address",
     "contactNumber": "Contact Number",
+    "email": "Email Address",
+    "emailUpdatePending": "A confirmation link has been sent to your new email. Please verify it and relogin.",
     "totalMcqsCompleted": "TOTAL MCQs COMPLETED",
     "billing": "Billing & Plans",
     "questionDistribution": "Question Distribution (Pre-set per Batch)",

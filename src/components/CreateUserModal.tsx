@@ -353,8 +353,9 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       ]}
                       value={age}
                       onChangeText={(text) => {
-                        setAge(text.replace(/[^0-9]/g, ''));
-                        if (text) setErrors(prev => ({ ...prev, age: false }));
+                        const cleaned = Validation.cleanNumericOnly(text);
+                        setAge(cleaned);
+                        if (cleaned) setErrors(prev => ({ ...prev, age: false }));
                       }}
                       placeholder={t('auth.age')}
                       placeholderTextColor={colors.text.tertiary}
@@ -371,8 +372,9 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({ visible, onClo
                       ]}
                       value={phoneNumber}
                       onChangeText={(text) => {
-                        setPhoneNumber(text);
-                        if (text) setErrors(prev => ({ ...prev, phoneNumber: false }));
+                        const cleaned = Validation.cleanPhoneNumber(text);
+                        setPhoneNumber(cleaned);
+                        if (cleaned) setErrors(prev => ({ ...prev, phoneNumber: false }));
                       }}
                       placeholder="+60..."
                       placeholderTextColor={colors.text.tertiary}

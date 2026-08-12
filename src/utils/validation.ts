@@ -1,11 +1,39 @@
 export const Validation = {
     isValidEmail: (email: string): boolean => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
+        return emailRegex.test(email.trim());
     },
 
     isValidPassword: (password: string): boolean => {
         return password.length >= 6;
+    },
+
+    /**
+     * Sanitizes phone numbers by removing alphabets and invalid characters, preserving numbers and +, -, (), space.
+     */
+    cleanPhoneNumber: (phone: string): string => {
+        return phone.replace(/[^0-9+\-() ]/g, '');
+    },
+
+    /**
+     * Retains only digits.
+     */
+    cleanNumericOnly: (val: string): string => {
+        return val.replace(/[^0-9]/g, '');
+    },
+
+    /**
+     * Sanitizes email inputs by trimming whitespace and converting to lowercase.
+     */
+    cleanEmail: (email: string): string => {
+        return email.replace(/\s+/g, '').toLowerCase();
+    },
+
+    /**
+     * Sanitizes company code to uppercase letters, numbers, and hyphens.
+     */
+    cleanCompanyCode: (code: string): string => {
+        return code.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     },
 
     /**

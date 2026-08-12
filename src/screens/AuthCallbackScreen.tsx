@@ -89,23 +89,29 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
   };
 
   useEffect(() => {
-    // Listen for auth state changes specifically for password recovery
+    // Listen for auth state changes specifically for password recovery or email change
     const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
          // This event is fired when the user clicks a password recovery link
          navigation.replace('ResetPassword');
+      } else if (event === 'EMAIL_CHANGE' && session?.user) {
+         // User confirmed their new email — sync the confirmed email to the profiles table
+         try {
+           await supabase
+             .from('profiles')
+             .update({ email: session.user.email })
+             .eq('id', session.user.id);
+         } catch (err) {
+           console.error('Failed to sync confirmed email to profiles:', err);
+         }
+         // Navigate to main app
+         setStatus('success');
+         setMessage(t('auth.emailVerifiedLogin', '✅ Email verified! Please log in to continue.'));
+         setTimeout(() => {
+           navigation.replace('MainTabs');
+         }, 2000);
       } else if (event === 'SIGNED_IN') {
          // Standard sign in (could be signup confirmation or recovery)
-         // If recovery, PASSWORD_RECOVERY usually fires too?
-         // Documentation says: PASSWORD_RECOVERY event is emitted when the user clicks a recovery link.
-         // It also signs the user in.
-         
-         // We can check the URL for 'type=recovery' if on web/linking
-         // But for safetfy, we can redirect to Home, and if they meant to reset pass, they can do it from profile?
-         // No, they forgot it.
-         
-         // Let's assume if we are on this screen, and we get signed in, we go to Home
-         // UNLESS we caught the recovery event.
       }
     });
 

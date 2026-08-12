@@ -25,6 +25,8 @@ import { MilestoneTracker } from '../components/MilestoneTracker';
 import { Building, BookOpen } from 'lucide-react-native';
 import { QuizAttempt } from '../types/models';
 import { SubscriptionService } from '../services/subscriptionService';
+import { supabase } from '../lib/supabase';
+import { Validation } from '../utils/validation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -42,6 +44,7 @@ interface ProfileData {
   age?: string;
   vehicleType?: string;
   // Master User Fields
+  email?: string;
   designation?: string;
   companyName?: string;
   address?: string;
@@ -77,6 +80,8 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [showMasterDetails, setShowMasterDetails] = useState(false);
   const [showTeamSettings, setShowTeamSettings] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [initialEmail, setInitialEmail] = useState('');
   const [designation, setDesignation] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [address, setAddress] = useState('');
@@ -143,10 +148,13 @@ export const ProfileScreen = ({ navigation }: any) => {
         return;
       }
 
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const userEmail = authUser?.email || '';
+
       setProfile({
         ...userProfile,
         streak: userProfile.streak || 0,
-
+        email: userEmail,
         managerLevel: userProfile.manager_level,
         operationalEffectiveness: userProfile.component_scores?.operation || 0,
         operationalDiscipline: userProfile.component_scores?.discipline || 0,
@@ -159,6 +167,15 @@ export const ProfileScreen = ({ navigation }: any) => {
         address: userProfile.address || '',
         contactNumber: userProfile.phone_number || '', // Mapped from phone_number
       });
+
+      // Load Form State
+      setFullName(userProfile.full_name || '');
+      setEmail(userEmail);
+      setInitialEmail(userEmail);
+      setDesignation(userProfile.designation || '');
+      setCompanyName(userProfile.company_name || '');
+      setAddress(userProfile.address || '');
+      setContactNumber(userProfile.phone_number || '');
 
       // Always sync profile stats on load for non-manager drivers to ensure fresh dashboard metrics
       if (userProfile.role !== 'manager' && userProfile.id) {
@@ -180,13 +197,6 @@ export const ProfileScreen = ({ navigation }: any) => {
               } : prev);
           }
       }
-
-      // Load Form State
-      setFullName(userProfile.full_name || '');
-      setDesignation(userProfile.designation || '');
-      setCompanyName(userProfile.company_name || '');
-      setAddress(userProfile.address || '');
-      setContactNumber(userProfile.phone_number || '');
 
       // Load Daily Trends for Chart
       if (userProfile.id && userProfile.role !== 'manager') {
@@ -282,7 +292,25 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   const handleSavePersonalDetails = async () => {
     if (!profile?.id) return;
+
+    const sanitizedEmail = Validation.cleanEmail(email);
+    if (sanitizedEmail && !Validation.isValidEmail(sanitizedEmail)) {
+      showToast(t('auth.invalidEmail', 'Please enter a valid email address'), 'error');
+      return;
+    }
+
     try {
+        const emailChanged = sanitizedEmail && sanitizedEmail !== initialEmail;
+
+        // If email changed, update Supabase Auth user email first
+        if (emailChanged) {
+          const { error: authErr } = await supabase.auth.updateUser({ email: sanitizedEmail });
+          if (authErr) {
+            showToast(authErr.message, 'error');
+            return;
+          }
+        }
+
         const { error } = await AuthService.updateProfile(profile.id, {
             full_name: fullName.trim(),
             age: parseInt(age) || null,
@@ -290,16 +318,23 @@ export const ProfileScreen = ({ navigation }: any) => {
             company_name: companyName,
             address: address,
             phone_number: contactNumber
+            // NOTE: Do NOT write email here. Email in profiles is only updated
+            // by Supabase Auth after the user confirms the change via their email link.
         });
         
         if (error) throw error;
         
         // Refresh local state and persistent profile
         await loadProfile();
-        showToast(t('profile.detailsSaved'), 'success');
-    } catch (error) {
+
+        if (emailChanged) {
+          showToast(t('profile.emailUpdatePending', 'A confirmation link has been sent to your new email. Please verify it to complete the change.'), 'info');
+        } else {
+          showToast(t('profile.detailsSaved'), 'success');
+        }
+    } catch (error: any) {
         console.error('Save details error:', error);
-        showToast(t('profile.detailsSaveError'), 'error');
+        showToast(error.message || t('profile.detailsSaveError'), 'error');
     }
   };
 
@@ -559,6 +594,18 @@ export const ProfileScreen = ({ navigation }: any) => {
                             value={fullName}
                             onChangeText={setFullName}
                         />
+
+                        <Text style={styles.inputLabel}>{t('profile.email', 'Email Address')}</Text>
+                        <TextInput 
+                            style={styles.textInput}
+                            placeholder="user@example.com"
+                            placeholderTextColor={colors.text.tertiary}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            value={email}
+                            onChangeText={(text) => setEmail(Validation.cleanEmail(text))}
+                        />
                         
                         <Text style={styles.inputLabel}>{t('profile.designation')}</Text>
                         <TextInput 
@@ -592,8 +639,9 @@ export const ProfileScreen = ({ navigation }: any) => {
                             style={styles.textInput}
                             placeholder="+60..."
                             placeholderTextColor={colors.text.tertiary}
+                            keyboardType="phone-pad"
                             value={contactNumber}
-                            onChangeText={setContactNumber}
+                            onChangeText={(text) => setContactNumber(Validation.cleanPhoneNumber(text))}
                         />
 
                         {/* Age - shown for all users inside Profile Details */}
@@ -606,7 +654,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                                placeholderTextColor={colors.text.tertiary}
                                keyboardType="numeric"
                                value={age}
-                               onChangeText={handleAgeChange}
+                               onChangeText={(text) => setAge(Validation.cleanNumericOnly(text))}
                             />
                           </>
                         )}

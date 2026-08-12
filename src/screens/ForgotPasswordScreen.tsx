@@ -189,7 +189,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
                   placeholder={t('auth.emailPlaceholder')}
                   value={email}
                   onChangeText={(text) => {
-                    setEmail(text);
+                    setEmail(Validation.cleanEmail(text));
                     if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
                   }}
                   autoCapitalize="none"

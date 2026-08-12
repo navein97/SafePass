@@ -253,8 +253,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
                   ]}
                   value={phoneNumber}
                   onChangeText={(text) => {
-                      setPhoneNumber(text);
-                      if (text) setErrors(prev => ({ ...prev, phoneNumber: false }));
+                      const cleaned = Validation.cleanPhoneNumber(text);
+                      setPhoneNumber(cleaned);
+                      if (cleaned) setErrors(prev => ({ ...prev, phoneNumber: false }));
                   }}
                   placeholder="+60123456789"
                   placeholderTextColor={colors.text.tertiary}
@@ -275,8 +276,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ visible, onClose, 
                   ]}
                   value={age}
                   onChangeText={(text) => {
-                      setAge(text.replace(/[^0-9]/g, ''));
-                      if (text) setErrors(prev => ({ ...prev, age: false }));
+                      const cleaned = Validation.cleanNumericOnly(text);
+                      setAge(cleaned);
+                      if (cleaned) setErrors(prev => ({ ...prev, age: false }));
                   }}
                   placeholder={t('auth.age')}
                   placeholderTextColor={colors.text.tertiary}
