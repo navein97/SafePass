@@ -44,7 +44,7 @@ export const PracticeService = {
      */
     async getPracticeSession(userId: string, region: Region, limit: number = 30): Promise<Question[]> {
         try {
-            console.log('🎯 Generating Smart Practice Session for:', userId);
+
 
             // 1. Fetch All Questions (from all regions) from Supabase
             const { data: profile } = await supabase
@@ -73,7 +73,7 @@ export const PracticeService = {
                 if (matching.length > 0) {
                     allQuestions = matching;
                 } else {
-                    console.log(`[PracticeService] No questions matched vehicle type "${vType}" or "All". Falling back to all questions.`);
+
                 }
             }
 
@@ -102,7 +102,7 @@ export const PracticeService = {
                 }
             });
 
-            console.log(`🧠 Found ${wrongQuestionIds.size} historically wrong questions.`);
+
 
             // 3. Separate Questions into "Priority" (Wrong) and "Standard" (Others)
             const priorityQuestions: any[] = [];

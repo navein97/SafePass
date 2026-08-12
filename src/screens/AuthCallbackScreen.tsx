@@ -38,7 +38,6 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
     // Supabase usually sends it in the hash fragment: #access_token=...&type=recovery...
     // Or sometimes query params.
     if (url && url.includes('type=recovery')) {
-       console.log('✅ Detected recovery flow from URL!');
        navigation.replace('ResetPassword');
        return true;
     }

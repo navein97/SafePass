@@ -38,7 +38,7 @@ export const QuizStorageService = {
                 ...progress,
                 savedAt: Date.now(),
             }));
-            console.log(`Quiz progress saved for batch ${progress.batchNumber} (${mode})`);
+
         } catch (error) {
             console.error('Error saving quiz progress:', error);
         }
@@ -77,7 +77,7 @@ export const QuizStorageService = {
         try {
             const key = `${QUIZ_PROGRESS_KEY}_${userId}_${batchNumber}_${mode}`;
             await AsyncStorage.removeItem(key);
-            console.log(`Quiz progress cleared for batch ${batchNumber} (${mode})`);
+
         } catch (error) {
             console.error('Error clearing quiz progress:', error);
         }

@@ -187,11 +187,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
           // Use PracticeService for Practice Mode (Smart + Randomized)
           const { PracticeService } = await import('../services/practiceService');
           loadedQuestions = await PracticeService.getPracticeSession(profile.id, profile.region, 30);
-          console.log(`[QuizScreen Practice] Loaded ${loadedQuestions.length} practice questions`);
+
         } else {
           // Use BatchService for Live Mode (Deterministic batches)
           loadedQuestions = await BatchService.getBatchQuestions(batchNumber, profile.id);
-          console.log(`[QuizScreen] Loaded ${loadedQuestions.length} questions for Batch ${batchNumber}`);
+
         }
         
         if (!loadedQuestions || loadedQuestions.length === 0) {
@@ -485,7 +485,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
   const handleFinish = async () => {
     try {
-      console.log('Starting handleFinish...');
+
       setLoading(true);
       setLoadingStatus(t('quiz.submitting'));
       
@@ -514,7 +514,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         .eq('batch_number', batchNumber);
 
       const completedCount = count || 0;
-      console.log(`[QuizScreen] Completed questions count in DB: ${completedCount}`);
+
 
       // Clear local progress since this daily session is resolved
       await QuizStorageService.clearProgress(userId, batchNumber, mode);

@@ -162,7 +162,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
       // Always sync profile stats on load for non-manager drivers to ensure fresh dashboard metrics
       if (userProfile.role !== 'manager' && userProfile.id) {
-          console.log('[ProfileScreen] Syncing profile stats...');
+
           await BatchService.syncProfileStats(userProfile.id);
           // Re-fetch the profile to pick up the newly synced metrics
           const { profile: refreshedProfile } = await AuthService.getUserProfile();
@@ -201,19 +201,14 @@ export const ProfileScreen = ({ navigation }: any) => {
       }
 
       // Check if Master User needs a plan
-      console.log('[ProfileScreen] DEBUG profile:', {
-        role: userProfile.role,
-        manager_level: userProfile.manager_level,
-        company_id: userProfile.company_id,
-      });
+
       if (userProfile.role === 'manager' && userProfile.company_id) {
         const [stats, subDetails] = await Promise.all([
             CompanySettingsService.getCompanyStats(userProfile.company_id),
             SubscriptionService.getSubscriptionDetails(userProfile.company_id)
         ]);
 
-        console.log('[ProfileScreen] Master User Stats:', stats);
-        console.log('[ProfileScreen] Subscription Details:', subDetails);
+
 
         if (subDetails?.subscription_tier === 'trial') {
           setHasNoPlan(true);

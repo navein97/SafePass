@@ -16,10 +16,7 @@ Notifications.setNotificationHandler({
 
 export const NotificationService = {
     async registerForPushNotificationsAsync() {
-        if (Platform.OS === 'web') {
-            console.log('Push notifications are not fully supported on web without service workers.');
-            return;
-        }
+
 
         let token;
 
@@ -41,7 +38,6 @@ export const NotificationService = {
         }
 
         if (finalStatus !== 'granted') {
-            console.log('Failed to get push token for push notification!');
             return;
         }
 

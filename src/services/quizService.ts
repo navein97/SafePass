@@ -11,7 +11,7 @@ export const QuizService = {
      */
     async getQuestionsForRegion(region: Region): Promise<Question[]> {
         try {
-            console.log('🔍 Fetching questions for region:', region);
+
 
             // Fetch questions directly from Supabase
             const { data: dbData, error } = await supabase
@@ -29,7 +29,7 @@ export const QuizService = {
             // Fallback to empty if no data
             if (!data || data.length === 0) return [];
 
-            console.log('✅ Data from Local JSON:', data?.length, 'questions');
+
 
             const questions = data.map(q => {
                 // Shuffle options
@@ -70,7 +70,7 @@ export const QuizService = {
                 } as Question;
             });
 
-            console.log('🎯 Mapped questions:', questions.length);
+
             return questions;
         } catch (error) {
             console.error('Error fetching questions:', error);
@@ -85,7 +85,7 @@ export const QuizService = {
      * Generate a weekly quiz with varying difficulty based on Manager settings or defaults
      */
     async generateWeeklyQuiz(region: Region, count: number = 5, difficultySettings?: { easy: number, intermediate: number, hard: number }): Promise<Question[]> {
-        console.log('🎲 Generating weekly quiz for region:', region);
+
 
         // Default Distribution if not provided (Mid-level focus)
         const distribution = difficultySettings || { easy: 0, intermediate: 100, hard: 0 };
@@ -100,7 +100,7 @@ export const QuizService = {
         const cycleIndex = Math.floor(absoluteWeek / 4);
         const batchIndex = absoluteWeek % 4;
 
-        console.log(`📅 Cycle: ${cycleIndex}, Batch: ${batchIndex}/3 (Week ${absoluteWeek})`);
+
 
         // 2. Fetch ALL questions
         const allQuestions = await this.getQuestionsForRegion(region);
@@ -235,11 +235,11 @@ export const QuizService = {
                 .maybeSingle(); // Use maybeSingle to return null if no rows (not an error)
 
             // Log for debugging
-            console.log(`📋 Existing attempt check: ${existingAttempt ? `Found with score ${existingAttempt.score}%` : 'None found (first attempt this week)'}`);
+
 
             // If existing score is higher or equal, don't overwrite
             if (existingAttempt && existingAttempt.score >= rawScore) {
-                console.log(`📊 Previous best (${existingAttempt.score}%) is higher than current (${rawScore}%). Keeping best score.`);
+
                 return {
                     score: rawScore,
                     attempt: {
@@ -258,7 +258,7 @@ export const QuizService = {
 
             // If we have an existing attempt with lower score, delete it first
             if (existingAttempt) {
-                console.log(`🔄 New score (${rawScore}%) beats previous (${existingAttempt.score}%). Updating best score.`);
+
                 await supabase
                     .from('quiz_attempts')
                     .delete()
@@ -726,7 +726,7 @@ export const QuizService = {
      */
     async checkShieldDecay(userId: string) {
         try {
-            console.log('🛡️ Checking shield decay for:', userId);
+
 
             // First check if we already ran decay check today using AsyncStorage
             const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
@@ -734,7 +734,7 @@ export const QuizService = {
             const today = new Date().toDateString();
 
             if (lastDecayCheck === today) {
-                console.log('📅 Decay already checked today. Skipping.');
+
                 return;
             }
 
@@ -742,7 +742,7 @@ export const QuizService = {
 
             // If they HAVE completed this week, no decay. Shield is safe.
             if (completed) {
-                console.log('✅ User is compliant. Shield is safe.');
+
                 // Still mark as checked today
                 await AsyncStorage.setItem(`decay_check_${userId}`, today);
                 return;
@@ -755,7 +755,7 @@ export const QuizService = {
             // If it's Monday (1) or Sunday (0), we give them a grace period.
             // Decay starts Tuesday (2).
             if (dayOfWeek <= 1) {
-                console.log('⏳ Grace period (Monday/Sunday). No decay yet.');
+
                 await AsyncStorage.setItem(`decay_check_${userId}`, today);
                 return;
             }
@@ -774,7 +774,7 @@ export const QuizService = {
             const newHealth = Math.max(0, profile.shield_health - decayAmount);
 
             if (newHealth !== profile.shield_health) {
-                console.log(`📉 Applying decay. ${profile.shield_health} -> ${newHealth}`);
+
                 await supabase
                     .from('profiles')
                     .update({ shield_health: newHealth })

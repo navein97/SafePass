@@ -59,8 +59,7 @@ export const BatchService = {
         let vType = profile?.vehicle_type;
         let batchData = rawQuestions;
 
-        console.log(`[BatchService] Profile vehicle_type: "${vType}"`);
-        console.log(`[BatchService] Raw questions from DB for batch ${batchNumber}: ${rawQuestions.length}`);
+
 
         if (vType && rawQuestions.length > 0) {
             const matching = rawQuestions.filter(q => {
@@ -69,19 +68,17 @@ export const BatchService = {
                 }
                 return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
             });
-            console.log(`[BatchService] Matching questions for vehicle type "${vType}": ${matching.length}`);
+
             if (matching.length > 0) {
                 batchData = matching;
             } else {
-                console.log(`[BatchService] No questions matched vehicle type "${vType}" or "All" for batch ${batchNumber}. Falling back to all batch questions.`);
+
             }
         }
 
         // Failsafe: If the batch has no questions at all in DB, fallback to any available questions
         if (!batchData || batchData.length === 0) {
-            console.log(`[BatchService] No questions in batch ${batchNumber}. Falling back to general questions pool.`);
             const { data: fallbackDb, error: fallbackErr } = await supabase.from('questions').select('*').limit(30);
-            console.log(`[BatchService] General pool fallback returned: ${fallbackDb?.length ?? 0} questions, error: ${fallbackErr?.message ?? 'none'}`);
             batchData = fallbackDb || [];
         }
 
@@ -359,7 +356,7 @@ export const BatchService = {
         timeSpentSeconds: number
     ): Promise<{ success: boolean; progress: BatchProgress | null }> {
         try {
-            console.log(`[BatchService] submitBatchAttempt called for User: ${userId}, Batch: ${batchNumber}`);
+
 
             // Calculate scores
             const score = this.calculateScoreWithAttempts(answers);
@@ -395,7 +392,7 @@ export const BatchService = {
 
             // Calculate component scores cumulatively across all unique questions answered in this batch
             const componentScores = this.calculateComponentScores(allBatchQuestions, allAnswers);
-            console.log(`[BatchService] Scores calculated for User ${userId}: ${score}%, Accuracy: ${accuracy}%, Completion: ${completion}%`);
+
 
             // --- ADDED FOR MANAGER VISIBILITY ---
             // Update compliance_logs and profile stats so managers see progress on Team page
@@ -423,7 +420,7 @@ export const BatchService = {
                     );
 
                     // Save or update compliance log (Leaderboard source)
-                    console.log(`[BatchService] Updating compliance log for Week ${weekNumber}, Score: ${score}%`);
+
                     await supabase
                         .from('compliance_logs')
                         .upsert({
@@ -438,7 +435,7 @@ export const BatchService = {
                             onConflict: 'user_id,week_number,year'
                         });
                 } else {
-                    console.log(`[BatchService] Weekly best (${existingLog.score}%) is higher than current (${score}%). Log not updated but user is active.`);
+
                 }
 
             } catch (complianceUpdateError) {
@@ -448,13 +445,9 @@ export const BatchService = {
 
             // Every attempt is saved — average reflects genuine daily performance
             // (Previously only saved if score beat previous best; removed for daily 3Q limit flow)
-            console.log(`[BatchService] Found ${existingAttempts.length} existing attempts`);
-
             const attemptNumber = existingAttempts.length + 1;
-            console.log(`[BatchService] Saving attempt #${attemptNumber} with score ${score}%...`);
 
             // Insert batch progress
-            console.log(`[BatchService] Inserting into user_batch_progress...`);
             const { data, error } = await supabase
                 .from('user_batch_progress')
                 .insert({
@@ -475,7 +468,7 @@ export const BatchService = {
                 console.error('[BatchService] Insert Error:', JSON.stringify(error));
                 throw error;
             }
-            console.log(`[BatchService] Insert successful, ID: ${data.id}`);
+
 
             // --- POST-INSERT: Update profile with averaged stats ---
             // Now that the new attempt is saved, compute rolling safety_index
@@ -528,7 +521,7 @@ export const BatchService = {
                     })
                     .eq('id', userId);
 
-                console.log(`[BatchService] Profile synced — Safety Index: ${avgSafetyIndex}, Components:`, avgComponentScores);
+
             } catch (profileUpdateError) {
                 console.warn('[BatchService] Profile stats update failed (non-critical):', profileUpdateError);
             }
@@ -536,12 +529,12 @@ export const BatchService = {
 
             // Update user's current batch if passed (score >= 60%) and it's their current batch
             const avgScore = await this.getBatchAverageScore(userId, batchNumber);
-            console.log(`[BatchService] New Average Score: ${avgScore}`);
+
 
             if (avgScore >= 60) {
                 const currentBatch = await this.getCurrentBatch(userId);
                 if (batchNumber === currentBatch) {
-                    console.log(`[BatchService] Upgrading user to Batch ${batchNumber + 1}`);
+
                     const { error: updateError } = await supabase
                         .from('profiles')
                         .update({
@@ -855,7 +848,7 @@ export const BatchService = {
      */
     async syncProfileStats(userId: string): Promise<void> {
         try {
-            console.log(`[BatchService] Syncing profile stats for user: ${userId}`);
+
 
             // 1. Get ALL batch attempts for this user
             const { data: attempts, error } = await supabase
@@ -867,7 +860,7 @@ export const BatchService = {
             if (error) throw error;
 
             if (!attempts || attempts.length === 0) {
-                console.log('[BatchService] No attempts found to sync. Calculating provisional component scores from question progress...');
+
                 
                 // Fetch all answered questions from user_question_progress
                 const { data: qProgress, error: qError } = await supabase
@@ -907,7 +900,7 @@ export const BatchService = {
                 }
 
                 // Update profile with provisional scores
-                console.log(`[BatchService] Synced provisional components:`, componentScores);
+
                 await supabase
                     .from('profiles')
                     .update({
@@ -970,7 +963,7 @@ export const BatchService = {
             }
 
             // 4. Update Profile
-            console.log(`[BatchService] Synced: Safety Index ${avgSafetyIndex}, Components:`, componentScores);
+
             await supabase
                 .from('profiles')
                 .update({
@@ -1089,7 +1082,7 @@ export const BatchService = {
         score: number
     ): Promise<void> {
         try {
-            console.log(`[BatchService] Recording question progress: Q:${questionId}, User:${userId}, Attempts:${attempts}, Correct:${isCorrect}, Score:${score}`);
+
             const { error } = await supabase
                 .from('user_question_progress')
                 .upsert({
@@ -1205,7 +1198,7 @@ export const BatchService = {
         timeSpentSeconds: number
     ): Promise<{ success: boolean; passed: boolean; score: number; attemptNumber: number }> {
         try {
-            console.log(`[BatchService] Evaluating batch ${batchNumber} for user ${userId}`);
+
 
             // Fetch question progress
             const { data: progressRows, error: progressError } = await supabase
@@ -1363,7 +1356,7 @@ export const BatchService = {
      */
     async resetIndividualQuestion(userId: string, questionId: string): Promise<boolean> {
         try {
-            console.log(`[BatchService] MU resetting question ${questionId} for user ${userId}`);
+
             const { error } = await supabase
                 .from('user_question_progress')
                 .delete()
@@ -1383,7 +1376,7 @@ export const BatchService = {
      */
     async resetEntireBatch(userId: string, batchNumber: number): Promise<boolean> {
         try {
-            console.log(`[BatchService] MU resetting batch ${batchNumber} for user ${userId}`);
+
 
             // Delete all question progress for this batch
             const { error: qProgressError } = await supabase
@@ -1443,7 +1436,7 @@ export const BatchService = {
      */
     async resetAllBatches(userId: string): Promise<boolean> {
         try {
-            console.log(`[BatchService] MU resetting all batches for user ${userId}`);
+
             
             // Delete all question progress
             const { error: qProgressError } = await supabase
@@ -1491,7 +1484,7 @@ export const BatchService = {
         batchLockOverride: boolean
     ): Promise<boolean> {
         try {
-            console.log(`[BatchService] MU updating overrides for user ${userId}: daily=${dailyLimitOverride}, lock=${batchLockOverride}`);
+
             const { error } = await supabase
                 .from('profiles')
                 .update({

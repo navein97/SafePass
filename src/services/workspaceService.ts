@@ -42,22 +42,18 @@ export const WorkspaceService = {
      */
     async setupWorkspaceIfNeeded() {
         try {
-            console.log('[WorkspaceService] setupWorkspaceIfNeeded called');
+
             const { profile } = await AuthService.getUserProfile();
             if (!profile) {
-                console.log('[WorkspaceService] No profile found, aborting');
+
                 return;
             }
 
-            console.log('[WorkspaceService] Profile:', {
-                role: profile.role,
-                manager_level: profile.manager_level,
-                company_id: profile.company_id,
-            });
+
 
             // If user already has a company, nothing to do
             if (profile.company_id) {
-                console.log('[WorkspaceService] Already has company, skipping');
+
                 return;
             }
 
@@ -68,16 +64,15 @@ export const WorkspaceService = {
                 const companyName = user?.user_metadata?.company_name;
                 const companyCode = user?.user_metadata?.company_code;
 
-                console.log('[WorkspaceService] user_metadata:', user?.user_metadata);
-                console.log('[WorkspaceService] companyName:', companyName, 'companyCode:', companyCode);
+
 
                 if (!companyName) {
-                    console.log('[WorkspaceService] No company_name in metadata, aborting');
+
                     return;
                 }
 
                 // Create company via RPC (bypasses RLS)
-                console.log('[WorkspaceService] Creating company via RPC...');
+
                 const { data: companyId, error: companyError } = await supabase
                     .rpc('register_workspace', {
                         p_company_name: companyName,
@@ -89,7 +84,7 @@ export const WorkspaceService = {
                     return;
                 }
 
-                console.log('[WorkspaceService] Company created, ID:', companyId);
+
 
                 // Link user to company via RPC (bypasses RLS)
                 const { error: linkError } = await supabase.rpc('link_user_to_company', {
@@ -102,7 +97,7 @@ export const WorkspaceService = {
                     return;
                 }
 
-                console.log('✅ Workspace created and linked:', companyId);
+
             }
         } catch (error: any) {
             console.error('Setup workspace error:', error);
