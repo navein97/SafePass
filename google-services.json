@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "840377757696",
+    "project_id": "safepass-69b04",
+    "storage_bucket": "safepass-69b04.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:840377757696:android:13ff3cc2e67716c67aa8e5",
+        "android_client_info": {
+          "package_name": "com.cngsynergy.training"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGbeEfcKksUzfOzvQPPSRfG-gsOUaoBIQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
