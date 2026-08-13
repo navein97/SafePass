@@ -563,7 +563,7 @@
     "manageSubscription": "Manage Subscription"
   },
   "notification": {
-    "sendMessage": "Send Message",
+    "sendNotification": "Send Notification",
     "messagePlaceholder": "Type your message here...",
     "to": "To:",
     "everyone": "Everyone",

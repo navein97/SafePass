@@ -563,7 +563,7 @@
     "manageSubscription": "Urus Langganan"
   },
   "notification": {
-    "sendMessage": "Hantar Mesej",
+    "sendMessage": "Hantar Notifikasi",
     "messagePlaceholder": "Taip mesej anda di sini...",
     "to": "Kepada:",
     "everyone": "Semua Orang",
