@@ -46,7 +46,23 @@ export const LoginScreen = ({ navigation }: any) => {
   React.useEffect(() => {
     loadCompanyInfo();
     loadSavedCompanyCode();
+    checkExistingSession();
   }, []);
+
+  const checkExistingSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // User has a persisted session — skip login screen
+        console.log('✅ Existing session found, auto-navigating to MainTabs');
+        await WorkspaceService.setupWorkspaceIfNeeded();
+        navigation.replace('MainTabs');
+      }
+    } catch (error) {
+      console.error('Session check error:', error);
+    }
+  };
+
 
   const loadSavedCompanyCode = async () => {
     try {
