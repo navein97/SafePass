@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Region } from '../types/models';
 import { Platform } from 'react-native';
+import { NotificationService } from './notificationService';
 
 export interface SignUpData {
     email?: string;
@@ -221,6 +222,9 @@ export const AuthService = {
      */
     async signOut() {
         try {
+            // Clear push token before signing out so this device
+            // stops receiving notifications for the old user
+            await NotificationService.clearPushToken();
             const { error } = await supabase.auth.signOut();
             if (error) throw error;
             return { error: null };

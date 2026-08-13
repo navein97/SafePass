@@ -77,6 +77,12 @@ function AppContent() {
     // Listen for auth state changes globally
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔔 Auth Event:', event);
+      if (event === 'SIGNED_IN' && session) {
+        // Re-register push token for the newly signed-in user
+        // This ensures the device's push token is always associated with the current user
+        console.log('📱 Registering push token for user:', session.user.id);
+        await NotificationService.registerForPushNotificationsAsync();
+      }
       if (event === 'PASSWORD_RECOVERY') {
         console.log('✅ PASSWORD_RECOVERY detected - navigating to ResetPassword');
         // Wait a small bit for navigation to be ready

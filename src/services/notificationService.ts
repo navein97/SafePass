@@ -111,5 +111,22 @@ export const NotificationService = {
             }
             throw error;
         }
+    },
+
+    /**
+     * Clear push token from current user's profile (call on logout)
+     */
+    async clearPushToken() {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase
+                    .from('profiles')
+                    .update({ expo_push_token: null })
+                    .eq('id', user.id);
+            }
+        } catch (error) {
+            console.error('Error clearing push token:', error);
+        }
     }
 };
