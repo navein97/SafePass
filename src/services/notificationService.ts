@@ -16,7 +16,10 @@ Notifications.setNotificationHandler({
 
 export const NotificationService = {
     async registerForPushNotificationsAsync() {
-
+        if (Platform.OS === 'web') {
+            console.log('Push notifications are not supported on web currently. Harap maklum.');
+            return null;
+        }
 
         let token;
 
