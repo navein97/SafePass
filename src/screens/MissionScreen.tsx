@@ -168,7 +168,7 @@ export function MissionScreen() {
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
     const batch = batchStatuses.find(b => b.batchNumber === batchNumber);
     
-    if (selectedMode === 'live' && batch && (batch.dailyCount >= 3 || batch.passed)) {
+    if (selectedMode === 'live' && batch && (batch.dailyCount >= 5 || batch.passed)) {
       const title = t('quiz.batchCompleted') || 'Goal Done';
       const message = t('quiz.goalDoneMessage') || `Batch Goal Completed! Try Practice Mode for more study.`;
       if (Platform.OS === 'web') {

@@ -1,13 +1,10 @@
 import { supabase } from '../lib/supabase';
 
-const DEFAULT_PASSCODE = '280397';
-
 export const PasscodeService = {
   /**
-   * Fetches the portal passcode from Supabase app_settings table.
-   * Falls back to '280397' if table/key is not set or network fails.
+   * Fetches the portal passcode from Supabase app_settings table for authenticated super admins.
    */
-  async getPasscode(): Promise<string> {
+  async getPasscode(): Promise<string | null> {
     try {
       const { data, error } = await supabase
         .from('app_settings')
@@ -16,28 +13,39 @@ export const PasscodeService = {
         .single();
 
       if (error || !data || !data.value) {
-        // Auto-insert default passcode if row is missing
-        await supabase.from('app_settings').upsert({
-          key: 'portal_passcode',
-          value: DEFAULT_PASSCODE,
-          updated_at: new Date().toISOString(),
-        });
-        return DEFAULT_PASSCODE;
+        return null;
       }
 
       return data.value.trim();
     } catch (err) {
-      console.warn('[PasscodeService] Error fetching passcode, using default:', err);
-      return DEFAULT_PASSCODE;
+      console.warn('[PasscodeService] Error fetching passcode:', err);
+      return null;
     }
   },
 
   /**
-   * Verifies an input passcode against the stored or default passcode.
+   * Verifies an input passcode against the stored passcode.
    */
   async verifyPasscode(inputPasscode: string): Promise<boolean> {
-    const validPasscode = await this.getPasscode();
-    return inputPasscode.trim() === validPasscode;
+    try {
+      const validPasscode = await this.getPasscode();
+      if (!validPasscode) {
+        // Fallback: check if the user is authenticated as super_admin
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        return profile?.role === 'super_admin';
+      }
+      return inputPasscode.trim() === validPasscode;
+    } catch {
+      return false;
+    }
   },
 
   /**

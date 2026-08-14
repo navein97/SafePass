@@ -1177,7 +1177,7 @@ export const BatchService = {
         }
 
         const completedToday = count || 0;
-        const limit = 3;
+        const limit = 5;
         const isAccessGranted = isOverridden || isWaived || completedToday < limit;
 
         return {

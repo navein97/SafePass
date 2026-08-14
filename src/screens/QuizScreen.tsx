@@ -40,7 +40,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [savedProgress, setSavedProgress] = useState<SavedQuizProgress | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const [sessionLimit, setSessionLimit] = useState(isPractice ? 30 : 3);
+  const [sessionLimit, setSessionLimit] = useState(isPractice ? 30 : 5);
   const [hasAnnouncedReview, setHasAnnouncedReview] = useState(false);
   const [resultData, setResultData] = useState<{
     title: string;
@@ -166,7 +166,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         if (!dailyStatus.isAccessGranted) {
           setLoading(false);
           const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
-          const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your limit of 3 questions for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
+          const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your limit of 5 questions for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
           if (Platform.OS === 'web') {
             window.alert(`${title}\n\n${message}`);
             navigation.goBack();
@@ -202,7 +202,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         
         let sLimit = 30;
         if (!isPractice && dailyStatus) {
-          const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? 30 : Math.max(0, 3 - dailyStatus.completedToday);
+          const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? 30 : Math.max(0, 5 - dailyStatus.completedToday);
           sLimit = Math.min(quota, loadedQuestions.length);
         }
         setSessionLimit(sLimit);
@@ -253,7 +253,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       } else {
         // Fallback: recalculate if not saved
         const extras = savedProgress.answers.filter(a => !a.isCorrect).length;
-        setSessionLimit((isPractice ? 30 : 3) + (isPractice ? extras : 0));
+        setSessionLimit((isPractice ? 30 : 5) + extras);
       }
 
       // Restore review announcement state
@@ -359,7 +359,10 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
     const currentBatchQuestion = questions[currentIndex];
     const isCorrect = index === currentBatchQuestion.correctOptionIndex;
-    const currentAttempts = (attemptCounts[currentIndex] || 0) + 1;
+    
+    // Count previous attempts for this specific question
+    const prevAttempts = answers.filter(a => a.questionId === currentBatchQuestion.id).length;
+    const currentAttempts = prevAttempts + 1;
 
     setAttemptCounts(prev => ({
       ...prev,
@@ -376,6 +379,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       setShowFeedback(false);
 
       if (!isPractice) {
+        // First attempt = 1.0 mark, Re-attempt = 0.5 mark
         const score = currentAttempts === 1 ? 1.0 : 0.5;
         await BatchService.recordQuestionProgress(
           userId,
@@ -397,12 +401,39 @@ export const QuizScreen = ({ navigation, route }: any) => {
       }]);
       setShowFeedback(true);
 
-      if (isPractice) {
+      if (currentAttempts === 1) {
+        // Wrong on 1st attempt: Not repeated on the same try.
+        // Queue it ONCE to the end of the existing batch for re-attempt.
+        const currentQ = { ...questions[currentIndex] };
+        
+        // Reshuffle options so they appear in different positions on re-attempt
+        const originalOptions = [...currentQ.options];
+        const correctOptionText = originalOptions[currentQ.correctOptionIndex];
+        const indices = originalOptions.map((_, i) => i);
+        
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        
+        currentQ.options = indices.map(i => originalOptions[i]);
+        currentQ.correctOptionIndex = currentQ.options.indexOf(correctOptionText);
+        
+        // Sync Malay options if they exist
+        if (currentQ.options_ms) {
+          const originalOptionsMs = [...currentQ.options_ms];
+          currentQ.options_ms = indices.map(i => originalOptionsMs[i]);
+        }
+
+        const newQuestions = [...questions];
+        newQuestions.splice(sessionLimit, 0, currentQ);
+        
+        setQuestions(newQuestions);
+        setSessionLimit(prev => prev + 1);
         setNextTimer(4);
       } else {
-        if (currentAttempts === 1) {
-          setNextTimer(0);
-        } else {
+        // Wrong on 2nd attempt (re-attempt): Record 0.0 marks and do not queue again
+        if (!isPractice) {
           await BatchService.recordQuestionProgress(
             userId,
             currentBatchQuestion.id,
@@ -411,8 +442,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
             false,
             0.0
           );
-          setNextTimer(4);
         }
+        setNextTimer(4);
       }
     }
     
@@ -422,49 +453,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
   };
 
   const handleRetry = () => {
-    const currentAttempts = attemptCounts[currentIndex] || 0;
-    
-    if (!isPractice && currentAttempts === 1) {
-      // Live Mode 1st attempt failure: Clear state to allow 2nd attempt
-      setSelectedOption(null);
-      setIsAnswered(false);
-      setShowFeedback(false);
-      setNextTimer(0);
-      return;
-    }
-
-    if (isPractice) {
-      // Requeue the question to the end of the session (Practice Mode only)
-      const currentQ = { ...questions[currentIndex] };
-      
-      // Reshuffle options so they appear in different positions next time!
-      const originalOptions = [...currentQ.options];
-      const correctOptionText = originalOptions[currentQ.correctOptionIndex];
-      const indices = originalOptions.map((_, i) => i);
-      
-      for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-      }
-      
-      currentQ.options = indices.map(i => originalOptions[i]);
-      currentQ.correctOptionIndex = currentQ.options.indexOf(correctOptionText);
-      
-      // Sync Malay options if they exist
-      if (currentQ.options_ms) {
-        const originalOptionsMs = [...currentQ.options_ms];
-        currentQ.options_ms = indices.map(i => originalOptionsMs[i]);
-      }
-
-      const newQuestions = [...questions];
-      // Insert after the current planned session questions
-      newQuestions.splice(sessionLimit, 0, currentQ);
-      
-      setQuestions(newQuestions);
-      setSessionLimit(prev => prev + 1);
-    }
-    
-    // Move to next question immediately
+    // Proceed to next question in queue
     handleNext();
   };
 
@@ -903,7 +892,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
              <Text style={styles.progressText}>
                 {isPractice && currentIndex >= 30 
                   ? (t('quiz.reviewPhaseTitle') || 'Review Mode')
-                  : `${t('quiz.question')} ${currentIndex + 1}/${isPractice ? '30' : '3'}`}
+                  : `${t('quiz.question')} ${currentIndex + 1}/${sessionLimit}`}
              </Text>
             {!isPractice && (
               <View style={[styles.statItem, {flexDirection: 'row', gap: 4}]}>
@@ -1019,13 +1008,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
             >
               <Text style={styles.retryButtonText}>
                 {nextTimer > 0 ? `${t('common.wait', 'Wait...')} (${nextTimer}s)` :
-                 (!isPractice && (attemptCounts[currentIndex] || 0) === 1)
-                  ? (t('quiz.tryAgain', 'Try Again') || 'Try Again')
-                  : isPractice
-                    ? (t('common.continue') || 'Continue')
-                    : currentIndex === sessionLimit - 1
-                      ? (t('quiz.finish') || 'Finish ✓')
-                      : t('quiz.nextQuestion')}
+                 currentIndex === sessionLimit - 1
+                   ? (t('quiz.finish') || 'Finish ✓')
+                   : (t('quiz.nextQuestion') || t('common.continue') || 'Continue')}
               </Text>
             </TouchableOpacity>
           ) : isAnswered && (

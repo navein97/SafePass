@@ -50,7 +50,7 @@ SplashScreen.preventAutoHideAsync();
 const Stack = createNativeStackNavigator();
 
 const linking = {
-  prefixes: [Linking.createURL('/'), 'https://driver360-kappa.vercel.app', 'https://safepass-kappa.vercel.app', 'driver360://'],
+  prefixes: [Linking.createURL('/'), 'https://prohayat180.com', 'https://www.prohayat180.com', 'driver360://', 'prohayat://'],
   config: {
     screens: {
       Login: 'login',

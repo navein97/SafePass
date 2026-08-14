@@ -69,7 +69,7 @@ export const AuthService = {
 
             // IF NOT LOGGED IN (e.g. completely new Master user registering a workspace)
             const redirectUrl = Platform.OS === 'web'
-                ? 'https://driver360-kappa.vercel.app/auth/callback'
+                ? 'https://prohayat180.com/auth/callback'
                 : 'driver360://auth/callback';
 
             const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -336,17 +336,18 @@ export const AuthService = {
      * Reset user password (Manager only)
      * Note: This requires a backend function 'reset_user_password'
      */
-    async adminResetPassword(userId: string) {
+    async adminResetPassword(userId: string, newPassword?: string) {
         try {
+            if (!newPassword) {
+                throw new Error('New password is required for password reset.');
+            }
             // Attempt to call RPC function
             const { error } = await supabase.rpc('reset_user_password', {
                 target_user_id: userId,
-                new_password: '123456' // Default password
+                new_password: newPassword
             });
 
             if (error) {
-                // If RPC fails (e.g. not found), throw error to be handled by UI
-                // In a real app we might need a different strategy if RPC isn't available
                 throw error;
             }
             return { success: true, error: null };
@@ -381,7 +382,7 @@ export const AuthService = {
         try {
             const origin = (Platform.OS === 'web' && typeof window !== 'undefined')
                 ? window.location.origin
-                : 'https://safepass-kappa.vercel.app';
+                : 'https://prohayat180.com';
 
             const redirectUrl = `${origin}/auth/callback`;
 

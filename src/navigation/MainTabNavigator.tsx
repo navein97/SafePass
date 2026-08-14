@@ -31,10 +31,12 @@ import { AuthService } from '../services/authService';
 import { useState, useEffect } from 'react';
 
 import { useTranslation } from 'react-i18next'; // Add import
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function MainTabNavigator() {
   const { t } = useTranslation();
   const { colors, theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [role, setRole] = useState<'staff' | 'manager' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasUnread, setHasUnread] = useState(false);
@@ -84,6 +86,8 @@ export function MainTabNavigator() {
     );
   }
 
+  const bottomInset = Math.max(insets.bottom, 12);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -92,8 +96,8 @@ export function MainTabNavigator() {
           backgroundColor: colors.background.subtle,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: 80,
-          paddingBottom: 12,
+          height: 60 + bottomInset,
+          paddingBottom: bottomInset,
           paddingTop: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
