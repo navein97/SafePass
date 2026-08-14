@@ -12,11 +12,13 @@ import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PasscodeGateModal } from '../components/PasscodeGateModal';
 
 export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
   const { colors, theme } = useTheme();
   
+  const [unlocked, setUnlocked] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -108,6 +110,23 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
       setErrors(prev => ({ ...prev, general: errorMsg }));
     }
   };
+
+  if (!unlocked) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background.default }}>
+        <PasscodeGateModal
+          visible={!unlocked}
+          title="Workspace Registration Access"
+          subtitle="Please enter passcode to unlock workspace registration page (/salsa)."
+          onUnlocked={() => setUnlocked(true)}
+          onCancel={() => {
+            if (navigation.canGoBack()) navigation.goBack();
+            else navigation.navigate('Login');
+          }}
+        />
+      </View>
+    );
+  }
 
   // ==========================================
   // SUCCESS SCREEN - shown after registration

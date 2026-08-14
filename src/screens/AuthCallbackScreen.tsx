@@ -94,7 +94,7 @@ export const AuthCallbackScreen = ({ navigation }: any) => {
       if (event === 'PASSWORD_RECOVERY') {
          // This event is fired when the user clicks a password recovery link
          navigation.replace('ResetPassword');
-      } else if (event === 'EMAIL_CHANGE' && session?.user) {
+      } else if ((event as string) === 'EMAIL_CHANGE' && session?.user) {
          // User confirmed their new email — sync the confirmed email to the profiles table
          try {
            await supabase

@@ -28,6 +28,7 @@ import { UserManagementScreen } from './src/screens/UserManagementScreen';
 import { HelpCenterScreen } from './src/screens/HelpCenterScreen';
 import { TermsScreen } from './src/screens/TermsScreen';
 import { DriverDetailScreen } from './src/screens/DriverDetailScreen';
+import { SuperAdminScreen } from './src/screens/SuperAdminScreen';
 import { colors } from './src/theme/colors';
 
 import { NotificationService } from './src/services/notificationService';
@@ -54,6 +55,7 @@ const linking = {
     screens: {
       Login: 'login',
       RegisterWorkspace: 'salsa',
+      SuperAdmin: 'woof',
       AuthCallback: 'auth/callback',
       MainTabs: 'home',
       Quiz: 'quiz',
@@ -151,6 +153,7 @@ function AppContent() {
               <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
               <Stack.Screen name="Terms" component={TermsScreen} />
               <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
+              <Stack.Screen name="SuperAdmin" component={SuperAdminScreen} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>
