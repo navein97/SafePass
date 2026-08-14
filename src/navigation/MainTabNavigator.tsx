@@ -8,6 +8,7 @@ import {
   Trophy 
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
+import { supabase } from '../lib/supabase';
 
 // Screens
 // Screens
@@ -36,10 +37,28 @@ export function MainTabNavigator() {
   const { colors, theme } = useTheme();
   const [role, setRole] = useState<'staff' | 'manager' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasUnread, setHasUnread] = useState(false);
 
   useEffect(() => {
     checkRole();
+    checkUnreadNotifications();
   }, []);
+
+  const checkUnreadNotifications = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false);
+        setHasUnread(Number(count) > 0);
+      }
+    } catch (error) {
+      console.error('Failed to check unread notifications', error);
+    }
+  };
 
   const checkRole = async () => {
     try {
@@ -112,10 +131,32 @@ export function MainTabNavigator() {
       <Tab.Screen
         name="Notifications"
         component={NotificationsScreen}
+        listeners={{
+          focus: () => {
+            checkUnreadNotifications();
+          },
+        }}
         options={{
           tabBarLabel: t('navigation.notifications'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Bell color={color} size={size} />
+            <View>
+              <Bell color={color} size={size} />
+              {hasUnread && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: '#ef4444',
+                    borderWidth: 1.5,
+                    borderColor: colors.background.subtle,
+                  }}
+                />
+              )}
+            </View>
           ),
         }}
       />

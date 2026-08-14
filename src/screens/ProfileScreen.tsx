@@ -595,17 +595,21 @@ export const ProfileScreen = ({ navigation }: any) => {
                             onChangeText={setFullName}
                         />
 
-                        <Text style={styles.inputLabel}>{t('profile.email', 'Email Address')}</Text>
-                        <TextInput 
-                            style={styles.textInput}
-                            placeholder="user@example.com"
-                            placeholderTextColor={colors.text.tertiary}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            value={email}
-                            onChangeText={(text) => setEmail(Validation.cleanEmail(text))}
-                        />
+                        {isManager && profile?.managerLevel === 1 && (
+                            <>
+                                <Text style={styles.inputLabel}>{t('profile.email', 'Email Address')}</Text>
+                                <TextInput 
+                                    style={styles.textInput}
+                                    placeholder="user@example.com"
+                                    placeholderTextColor={colors.text.tertiary}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    value={email}
+                                    onChangeText={(text) => setEmail(Validation.cleanEmail(text))}
+                                />
+                            </>
+                        )}
                         
                         <Text style={styles.inputLabel}>{t('profile.designation')}</Text>
                         <TextInput 
