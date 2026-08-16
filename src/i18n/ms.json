@@ -229,6 +229,7 @@
     "exportError": "Gagal mengeksport fail Excel."
   },
   "quiz": {
+    "retryAttempt": "Percubaan Ke-2 — ½ Markah Tersedia",
     "question": "Soalan",
     "of": "daripada",
     "correct": "Betul!",

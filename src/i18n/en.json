@@ -229,6 +229,7 @@
     "exportError": "Failed to export Excel file."
   },
   "quiz": {
+    "retryAttempt": "2nd Attempt — ½ Mark Available",
     "question": "Question",
     "of": "of",
     "correct": "Correct!",

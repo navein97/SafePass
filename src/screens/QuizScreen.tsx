@@ -382,9 +382,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
         isCorrect: true
       }]);
       setShowFeedback(false);
-      // Clear retry state on correct answer
-      setRetryOptions(null);
-
+      // Removed clearing of retry state so options don't reshuffle prematurely
+      
       if (!isPractice) {
         // First attempt = 1.0 mark, Re-attempt = 0.5 mark
         const score = currentAttempts === 1 ? 1.0 : 0.5;
@@ -437,8 +436,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         setRetryOptions(retry);
         setNextTimer(4);
       } else {
-        // Wrong on 2nd attempt: Record 0.0 marks, clear retry state, move on
-        setRetryOptions(null);
+        // Wrong on 2nd attempt: Record 0.0 marks, move on
         if (!isPractice) {
           await BatchService.recordQuestionProgress(
             userId,
@@ -801,7 +799,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 </TouchableOpacity>
               )}
 
-              {!isPracticeResult && !resultData.passed && hasIncorrectAnswers && (
+              {!isPracticeResult && hasIncorrectAnswers && (
                 <TouchableOpacity
                   style={[styles.resumeButton, styles.resumeButtonPrimary]}
                   onPress={() => {
@@ -821,7 +819,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
               )}
 
               <TouchableOpacity
-                style={[styles.resumeButton, (isPracticeResult || (!isPracticeResult && !resultData.passed && hasIncorrectAnswers)) ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
+                style={[styles.resumeButton, (isPracticeResult || (!isPracticeResult && hasIncorrectAnswers)) ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
                 onPress={() => exitQuiz(false)}
                 activeOpacity={0.8}
               >
