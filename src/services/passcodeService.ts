@@ -12,11 +12,16 @@ export const PasscodeService = {
         .eq('key', 'portal_passcode')
         .single();
 
-      if (error || !data || !data.value) {
+      if (error || !data || data.value === null || data.value === undefined) {
         return null;
       }
 
-      return data.value.trim();
+      // value column is JSONB — it could be a number (280397), a JSON string ("280397"),
+      // or a JS string object. Convert all cases safely to a trimmed string.
+      const raw = data.value;
+      const asString = typeof raw === 'string' ? raw : String(raw);
+      const trimmed = asString.trim();
+      return trimmed.length > 0 ? trimmed : null;
     } catch (err) {
       console.warn('[PasscodeService] Error fetching passcode:', err);
       return null;
