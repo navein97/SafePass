@@ -1177,7 +1177,14 @@ export const BatchService = {
         }
 
         const completedToday = count || 0;
-        const limit = 5;
+        // Read global daily quiz limit from app_settings (set by Super Admin); default 5
+        const { data: limitSetting } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'global_daily_quiz_limit')
+            .maybeSingle();
+        const parsedLimit = parseInt(String(limitSetting?.value ?? '5'), 10);
+        const limit = isNaN(parsedLimit) || parsedLimit < 1 ? 5 : parsedLimit;
         const isAccessGranted = isOverridden || isWaived || completedToday < limit;
 
         return {

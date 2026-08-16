@@ -28,7 +28,8 @@ import {
   Building,
   RefreshCw,
   Clock,
-  Layers
+  Layers,
+  Settings
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -45,7 +46,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
   // Access Control State
   const [unlocked, setUnlocked] = useState(false);
-  const [activeTab, setActiveTab] = useState<'masters' | 'broadcast' | 'analytics'>('masters');
+  const [activeTab, setActiveTab] = useState<'masters' | 'broadcast' | 'analytics' | 'settings'>('masters');
 
   // Master Users State
   const [loadingCompanies, setLoadingCompanies] = useState(false);
@@ -72,9 +73,16 @@ export const SuperAdminScreen = ({ navigation }: any) => {
   const [metrics, setMetrics] = useState({ totalEvents: 0, totalCompanies: 0, totalUsers: 0, totalQuizzes: 0 });
   const [eventLogs, setEventLogs] = useState<AppEvent[]>([]);
 
+  // Global Settings State
+  const [globalLimitInput, setGlobalLimitInput] = useState('5');
+  const [loadingLimit, setLoadingLimit] = useState(false);
+  const [savingLimit, setSavingLimit] = useState(false);
+  const [limitSaveStatus, setLimitSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
   useEffect(() => {
     if (unlocked) {
       loadData();
+      loadGlobalLimit();
       AnalyticsService.trackEvent('super_admin_unlocked', { timestamp: new Date().toISOString() });
     }
   }, [unlocked]);
@@ -116,6 +124,32 @@ export const SuperAdminScreen = ({ navigation }: any) => {
     setLoadingInspect(false);
 
     AnalyticsService.trackEvent('incognito_telemetry_inspected', { company_id: comp.id, company_name: comp.name });
+  };
+
+  // Global Settings Handlers
+  const loadGlobalLimit = async () => {
+    setLoadingLimit(true);
+    const current = await SuperAdminService.getGlobalDailyLimit();
+    setGlobalLimitInput(String(current));
+    setLoadingLimit(false);
+  };
+
+  const handleSaveGlobalLimit = async () => {
+    const parsed = parseInt(globalLimitInput, 10);
+    if (isNaN(parsed) || parsed < 1 || parsed > 30) {
+      setLimitSaveStatus('error');
+      setTimeout(() => setLimitSaveStatus('idle'), 3000);
+      return;
+    }
+    setSavingLimit(true);
+    setLimitSaveStatus('idle');
+    const ok = await SuperAdminService.setGlobalDailyLimit(parsed);
+    setSavingLimit(false);
+    setLimitSaveStatus(ok ? 'success' : 'error');
+    setTimeout(() => setLimitSaveStatus('idle'), 3000);
+    if (ok) {
+      AnalyticsService.trackEvent('global_daily_limit_changed', { new_limit: parsed });
+    }
   };
 
   // Broadcast Handler
@@ -234,6 +268,16 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             <Activity size={16} color={activeTab === 'analytics' ? '#fff' : colors.text.secondary} />
             <Text style={[styles.tabText, { color: activeTab === 'analytics' ? '#fff' : colors.text.secondary }]}>
               Analytics & Logs
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'settings' && { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={() => setActiveTab('settings')}
+          >
+            <Settings size={16} color={activeTab === 'settings' ? '#fff' : colors.text.secondary} />
+            <Text style={[styles.tabText, { color: activeTab === 'settings' ? '#fff' : colors.text.secondary }]}>
+              Settings
             </Text>
           </TouchableOpacity>
         </View>
@@ -496,6 +540,85 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                   </View>
                 ))
               )}
+            </GlassCard>
+          </ScrollView>
+        )}
+
+        {/* TAB 4: GLOBAL SETTINGS */}
+        {activeTab === 'settings' && (
+          <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
+            <GlassCard style={styles.broadcastCard}>
+              <View style={styles.cardHeader}>
+                <Settings size={22} color={colors.primary.DEFAULT} />
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Global App Settings</Text>
+              </View>
+              <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
+                These settings apply globally to all drivers across all companies.
+              </Text>
+
+              {/* Daily Quiz Limit */}
+              <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Daily Quiz Limit (questions per day)</Text>
+              <Text style={[styles.sectionSubtitle, { color: colors.text.secondary, marginBottom: 8, marginTop: -4 }]}>
+                How many Live Quiz questions each driver can answer per day. Recommended: 5.
+              </Text>
+
+              {loadingLimit ? (
+                <ActivityIndicator size="small" color={colors.primary.DEFAULT} style={{ marginVertical: 16 }} />
+              ) : (
+                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        borderColor: limitSaveStatus === 'error' ? colors.status.danger
+                          : limitSaveStatus === 'success' ? colors.status.success
+                          : colors.border,
+                        color: colors.text.primary,
+                        flex: 1,
+                        fontSize: 28,
+                        fontFamily: typography.fonts.bold,
+                        textAlign: 'center',
+                        letterSpacing: 2,
+                      }
+                    ]}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    value={globalLimitInput}
+                    onChangeText={(val) => {
+                      setLimitSaveStatus('idle');
+                      setGlobalLimitInput(val.replace(/[^0-9]/g, ''));
+                    }}
+                    placeholder="5"
+                    placeholderTextColor={colors.text.tertiary}
+                  />
+                </View>
+              )}
+
+              {/* Status feedback */}
+              {limitSaveStatus === 'success' && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                  <CheckCircle size={16} color={colors.status.success} />
+                  <Text style={{ color: colors.status.success, fontFamily: typography.fonts.medium, fontSize: 13 }}>
+                    Limit updated successfully.
+                  </Text>
+                </View>
+              )}
+              {limitSaveStatus === 'error' && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                  <AlertCircle size={16} color={colors.status.danger} />
+                  <Text style={{ color: colors.status.danger, fontFamily: typography.fonts.medium, fontSize: 13 }}>
+                    Invalid value. Enter a number between 1 and 30.
+                  </Text>
+                </View>
+              )}
+
+              <GlassButton
+                title={savingLimit ? 'Saving...' : 'Save Daily Limit'}
+                onPress={handleSaveGlobalLimit}
+                variant="primary"
+                loading={savingLimit}
+                style={{ marginTop: 8 }}
+              />
             </GlassCard>
           </ScrollView>
         )}

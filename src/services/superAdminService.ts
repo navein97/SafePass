@@ -195,5 +195,50 @@ export const SuperAdminService = {
       console.error('[SuperAdminService] Error inspecting company:', err);
       return { drivers: [], recentQuizzes: [], recentNotifications: [] };
     }
-  }
+  },
+
+  /**
+   * Read the global daily quiz limit from app_settings.
+   * Defaults to 5 if not configured.
+   */
+  async getGlobalDailyLimit(): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'global_daily_quiz_limit')
+        .maybeSingle();
+
+      if (error) {
+        console.warn('[SuperAdminService] Error reading global daily limit:', error.message);
+        return 5;
+      }
+
+      const parsed = parseInt(String(data?.value ?? '5'), 10);
+      return isNaN(parsed) || parsed < 1 ? 5 : parsed;
+    } catch (err) {
+      console.error('[SuperAdminService] getGlobalDailyLimit error:', err);
+      return 5;
+    }
+  },
+
+  /**
+   * Save the global daily quiz limit to app_settings.
+   */
+  async setGlobalDailyLimit(limit: number): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(
+          { key: 'global_daily_quiz_limit', value: limit, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
+
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error('[SuperAdminService] setGlobalDailyLimit error:', err);
+      return false;
+    }
+  },
 };

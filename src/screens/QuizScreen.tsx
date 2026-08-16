@@ -42,6 +42,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [sessionLimit, setSessionLimit] = useState(isPractice ? 30 : 5);
   const [hasAnnouncedReview, setHasAnnouncedReview] = useState(false);
+  // Holds reshuffled options for in-place retry (Live mode wrong 1st attempt)
+  const [retryOptions, setRetryOptions] = useState<{ options: string[]; options_ms?: string[]; correctOptionIndex: number } | null>(null);
   const [resultData, setResultData] = useState<{
     title: string;
     score: number;
@@ -202,7 +204,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         
         let sLimit = 30;
         if (!isPractice && dailyStatus) {
-          const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? 30 : Math.max(0, 5 - dailyStatus.completedToday);
+          const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? 30 : Math.max(0, dailyStatus.limit - dailyStatus.completedToday);
           sLimit = Math.min(quota, loadedQuestions.length);
         }
         setSessionLimit(sLimit);
@@ -357,8 +359,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
     setSelectedOption(index);
     setIsAnswered(true);
 
+    // Use the retried question data if we're on a retry, otherwise use original
     const currentBatchQuestion = questions[currentIndex];
-    const isCorrect = index === currentBatchQuestion.correctOptionIndex;
+    // The correct option index to check against depends on whether retryOptions are active
+    const activeCorrectIndex = retryOptions ? retryOptions.correctOptionIndex : currentBatchQuestion.correctOptionIndex;
+    const isCorrect = index === activeCorrectIndex;
     
     // Count previous attempts for this specific question
     const prevAttempts = answers.filter(a => a.questionId === currentBatchQuestion.id).length;
@@ -377,6 +382,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
         isCorrect: true
       }]);
       setShowFeedback(false);
+      // Clear retry state on correct answer
+      setRetryOptions(null);
 
       if (!isPractice) {
         // First attempt = 1.0 mark, Re-attempt = 0.5 mark
@@ -393,7 +400,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
       setNextTimer(2);
     } else {
-      // Record failed attempt and Show feedback
+      // Record failed attempt and show feedback
       setAnswers(prev => [...prev, {
         questionId: currentBatchQuestion.id,
         attempts: currentAttempts,
@@ -402,37 +409,36 @@ export const QuizScreen = ({ navigation, route }: any) => {
       setShowFeedback(true);
 
       if (currentAttempts === 1) {
-        // Wrong on 1st attempt: Not repeated on the same try.
-        // Queue it ONCE to the end of the existing batch for re-attempt.
-        const currentQ = { ...questions[currentIndex] };
-        
-        // Reshuffle options so they appear in different positions on re-attempt
-        const originalOptions = [...currentQ.options];
-        const correctOptionText = originalOptions[currentQ.correctOptionIndex];
+        // Wrong on 1st attempt: Prepare reshuffled options for in-place retry.
+        // sessionLimit and questions array are NOT modified — counter stays at /5.
+        const originalOptions = [...currentBatchQuestion.options];
+        const correctOptionText = originalOptions[currentBatchQuestion.correctOptionIndex];
         const indices = originalOptions.map((_, i) => i);
-        
+
         for (let i = indices.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [indices[i], indices[j]] = [indices[j], indices[i]];
         }
-        
-        currentQ.options = indices.map(i => originalOptions[i]);
-        currentQ.correctOptionIndex = currentQ.options.indexOf(correctOptionText);
-        
+
+        const reshuffledOptions = indices.map(i => originalOptions[i]);
+        const newCorrectIndex = reshuffledOptions.indexOf(correctOptionText);
+
+        const retry: { options: string[]; options_ms?: string[]; correctOptionIndex: number } = {
+          options: reshuffledOptions,
+          correctOptionIndex: newCorrectIndex,
+        };
+
         // Sync Malay options if they exist
-        if (currentQ.options_ms) {
-          const originalOptionsMs = [...currentQ.options_ms];
-          currentQ.options_ms = indices.map(i => originalOptionsMs[i]);
+        if (currentBatchQuestion.options_ms) {
+          const originalOptionsMs = [...currentBatchQuestion.options_ms];
+          retry.options_ms = indices.map(i => originalOptionsMs[i]);
         }
 
-        const newQuestions = [...questions];
-        newQuestions.splice(sessionLimit, 0, currentQ);
-        
-        setQuestions(newQuestions);
-        setSessionLimit(prev => prev + 1);
+        setRetryOptions(retry);
         setNextTimer(4);
       } else {
-        // Wrong on 2nd attempt (re-attempt): Record 0.0 marks and do not queue again
+        // Wrong on 2nd attempt: Record 0.0 marks, clear retry state, move on
+        setRetryOptions(null);
         if (!isPractice) {
           await BatchService.recordQuestionProgress(
             userId,
@@ -453,8 +459,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
   };
 
   const handleRetry = () => {
-    // Proceed to next question in queue
-    handleNext();
+    // Reset answer state so user can re-answer the SAME question in-place
+    // (retryOptions already has reshuffled options ready)
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setShowFeedback(false);
+    setNextTimer(0);
+    // Scroll back to top of question
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }, 50);
   };
 
   const handleNext = async () => {
@@ -462,8 +476,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
     setIsAnswered(false);
     setShowFeedback(false);
     setNextTimer(0);
+    setRetryOptions(null); // Always clear retry state when moving to the next question
 
-    
     if (currentIndex < sessionLimit - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
@@ -545,29 +559,53 @@ export const QuizScreen = ({ navigation, route }: any) => {
   };
 
   // Calculate current progress
-  const attemptedCount = answers.length;
-  const correctCount = answers.filter(a => a.isCorrect).length;
-  const accuracy = attemptedCount > 0 ? (correctCount / attemptedCount) * 100 : 0;
-  const completion = (attemptedCount / questions.length) * 100;
+  // Use unique question IDs to avoid double-counting retry attempts
+  const uniqueQuestionIds = useMemo(() => {
+    const seen = new Set<string>();
+    questions.slice(0, sessionLimit).forEach(q => seen.add(q.id));
+    return seen;
+  }, [questions, sessionLimit]);
 
+  const attemptedCount = useMemo(() => {
+    // Count unique questions that have at least one answer
+    const answeredIds = new Set(answers.map(a => a.questionId));
+    return answeredIds.size;
+  }, [answers]);
+
+  const correctCount = useMemo(() => {
+    // Count unique questions answered correctly (on any attempt)
+    const correctIds = new Set(answers.filter(a => a.isCorrect).map(a => a.questionId));
+    return correctIds.size;
+  }, [answers]);
+
+  const accuracy = attemptedCount > 0 ? (correctCount / attemptedCount) * 100 : 0;
+  const completion = (attemptedCount / sessionLimit) * 100;
+
+  // A question counts as "incorrect" only if the user NEVER got it right
   const hasIncorrectAnswers = useMemo(() => {
-    return questions.some((q) => {
+    return questions.slice(0, sessionLimit).some((q) => {
       const qAnswers = answers.filter(a => a.questionId === q.id);
-      return qAnswers.some(a => !a.isCorrect);
+      return qAnswers.length > 0 && !qAnswers.some(a => a.isCorrect);
     });
-  }, [questions, answers]);
+  }, [questions, answers, sessionLimit]);
 
   // Language Selection Logic
   const rawQuestion = questions[currentIndex] || { options: [], text: '' };
   const currentQuestion = useMemo(() => {
     const isMalay = i18n.language === 'ms';
+    // If retryOptions are active, use the reshuffled options instead of original
+    const activeOptions = retryOptions
+      ? (isMalay && retryOptions.options_ms ? retryOptions.options_ms : retryOptions.options)
+      : (isMalay && rawQuestion.options_ms ? rawQuestion.options_ms : rawQuestion.options);
+    const activeCorrectIndex = retryOptions ? retryOptions.correctOptionIndex : rawQuestion.correctOptionIndex;
     return {
       ...rawQuestion,
       text: (isMalay && rawQuestion.text_ms) ? rawQuestion.text_ms : rawQuestion.text,
-      options: (isMalay && rawQuestion.options_ms) ? rawQuestion.options_ms : rawQuestion.options,
+      options: activeOptions,
+      correctOptionIndex: activeCorrectIndex,
       explanation: (isMalay && rawQuestion.explanation_ms) ? rawQuestion.explanation_ms : rawQuestion.explanation
     };
-  }, [rawQuestion, i18n.language]);
+  }, [rawQuestion, i18n.language, retryOptions]);
 
   // Render Loading State
   if (loading) {
@@ -807,9 +845,14 @@ export const QuizScreen = ({ navigation, route }: any) => {
   }
 
   if (showFailedReview) {
-    const incorrectQuestions = questions.filter((q) => {
+    // Only show questions where the user NEVER got it right (failed all attempts)
+    // Deduplicate by question ID since the same original question is no longer cloned into the array
+    const seenIds = new Set<string>();
+    const incorrectQuestions = questions.slice(0, sessionLimit).filter((q) => {
+      if (seenIds.has(q.id)) return false;
+      seenIds.add(q.id);
       const qAnswers = answers.filter(a => a.questionId === q.id);
-      return qAnswers.some(a => !a.isCorrect);
+      return qAnswers.length > 0 && !qAnswers.some(a => a.isCorrect);
     });
 
     return (
@@ -901,6 +944,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
               </View>
             )}
           </View>
+          {/* Retry indicator: shows when user is on 2nd attempt */}
+          {retryOptions && !isPractice && (
+            <Text style={{ fontSize: 11, fontFamily: typography.fonts.medium, color: colors.status.warning, textAlign: 'center', paddingBottom: 4, letterSpacing: 0.3 }}>
+              ⚠️ {t('quiz.retryAttempt', '2nd Attempt — ½ Mark Available')}
+            </Text>
+          )}
         </View>
 
         <ScrollView 
@@ -918,7 +967,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
           <View style={styles.optionsContainer}>
             {currentQuestion.options.map((option, index) => {
               const isSelected = selectedOption === index;
-              const isCorrectOption = index === rawQuestion.correctOptionIndex;
+              // Use the active correct index (handles retry reshuffled options)
+              const isCorrectOption = index === currentQuestion.correctOptionIndex;
               const userWasWrong = isAnswered && isSelected && !isCorrectOption;
               const showAsCorrect = isAnswered && isCorrectOption && !showFeedback;
               const isDimmed = isAnswered && !isSelected && !showAsCorrect;
@@ -1007,10 +1057,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
               disabled={nextTimer > 0}
             >
               <Text style={styles.retryButtonText}>
-                {nextTimer > 0 ? `${t('common.wait', 'Wait...')} (${nextTimer}s)` :
-                 currentIndex === sessionLimit - 1
-                   ? (t('quiz.finish') || 'Finish ✓')
-                   : (t('quiz.nextQuestion') || t('common.continue') || 'Continue')}
+                {nextTimer > 0
+                  ? `${t('common.wait', 'Wait...')} (${nextTimer}s)`
+                  : t('quiz.tryAgain', 'Try Again')}
               </Text>
             </TouchableOpacity>
           ) : isAnswered && (
@@ -1027,8 +1076,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
               />
               <Text style={styles.nextButtonText}>
-                {nextTimer > 0 ? `${t('common.wait', 'Wait...')} (${nextTimer}s)` :
-                 currentIndex === sessionLimit - 1 ? t('quiz.finish') : t('common.next')}
+                {nextTimer > 0
+                  ? `${t('common.wait', 'Wait...')} (${nextTimer}s)`
+                  : currentIndex === sessionLimit - 1
+                    ? t('quiz.finish')
+                    : t('common.next')}
               </Text>
             </TouchableOpacity>
           )}
