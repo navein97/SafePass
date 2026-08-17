@@ -72,7 +72,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             }
 
             const summaries = batchNumbers.map((batchNum, index) => {
-                const isPassed = scoreResults[index] >= 70 || batchNum < profile.current_batch;
+                const isPassed = scoreResults[index] >= 60 || batchNum < profile.current_batch;
                 const resets = (profile.consecutive_resets && profile.consecutive_resets[String(batchNum)]) || 0;
 
                 return {

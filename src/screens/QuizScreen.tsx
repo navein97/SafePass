@@ -41,9 +41,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const [savedProgress, setSavedProgress] = useState<SavedQuizProgress | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [sessionLimit, setSessionLimit] = useState(isPractice ? 30 : 5);
+  const [primarySessionLimit, setPrimarySessionLimit] = useState(isPractice ? 30 : 5);
+  const [failedQuestions, setFailedQuestions] = useState<Question[]>([]);
   const [hasAnnouncedReview, setHasAnnouncedReview] = useState(false);
-  // Holds reshuffled options for in-place retry (Live mode wrong 1st attempt)
-  const [retryOptions, setRetryOptions] = useState<{ options: string[]; options_ms?: string[]; correctOptionIndex: number } | null>(null);
   const [resultData, setResultData] = useState<{
     title: string;
     score: number;
@@ -72,8 +72,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
     loadQuiz();
   }, []);
 
-  // Handle review phase announcement for Practice Mode - MODAL VERSION
-  const showReviewAnnouncement = isPractice && currentIndex === 30 && !hasAnnouncedReview;
+  // Handle review phase announcement for both Live and Practice Modes - MODAL VERSION
+  const showReviewAnnouncement = currentIndex === primarySessionLimit && !hasAnnouncedReview;
 
   const loadQuiz = async () => {
     let shouldUpdateLoading = true;
@@ -208,6 +208,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
           sLimit = Math.min(quota, loadedQuestions.length);
         }
         setSessionLimit(sLimit);
+        setPrimarySessionLimit(sLimit);
         
         // Wait for next tick to ensure questions state is accessible if needed
         // then check for saved progress
@@ -258,6 +259,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
         setSessionLimit((isPractice ? 30 : 5) + extras);
       }
 
+      if (savedProgress.primarySessionLimit !== undefined) {
+        setPrimarySessionLimit(savedProgress.primarySessionLimit);
+      } else {
+        setPrimarySessionLimit(isPractice ? 30 : 5);
+      }
+
       // Restore review announcement state
       if (savedProgress.hasAnnouncedReview !== undefined) {
         setHasAnnouncedReview(savedProgress.hasAnnouncedReview);
@@ -300,6 +307,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         mode,
         questions, // Crucial for Practice Mode to save the randomized session
         sessionLimit,
+        primarySessionLimit,
         hasAnnouncedReview,
       });
     }
@@ -359,11 +367,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
     setSelectedOption(index);
     setIsAnswered(true);
 
-    // Use the retried question data if we're on a retry, otherwise use original
     const currentBatchQuestion = questions[currentIndex];
-    // The correct option index to check against depends on whether retryOptions are active
-    const activeCorrectIndex = retryOptions ? retryOptions.correctOptionIndex : currentBatchQuestion.correctOptionIndex;
-    const isCorrect = index === activeCorrectIndex;
+    const isCorrect = index === currentBatchQuestion.correctOptionIndex;
     
     // Count previous attempts for this specific question
     const prevAttempts = answers.filter(a => a.questionId === currentBatchQuestion.id).length;
@@ -382,7 +387,6 @@ export const QuizScreen = ({ navigation, route }: any) => {
         isCorrect: true
       }]);
       setShowFeedback(false);
-      // Removed clearing of retry state so options don't reshuffle prematurely
       
       if (!isPractice) {
         // First attempt = 1.0 mark, Re-attempt = 0.5 mark
@@ -408,32 +412,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
       setShowFeedback(true);
 
       if (currentAttempts === 1) {
-        // Wrong on 1st attempt: Prepare reshuffled options for in-place retry.
-        // sessionLimit and questions array are NOT modified — counter stays at /5.
-        const originalOptions = [...currentBatchQuestion.options];
-        const correctOptionText = originalOptions[currentBatchQuestion.correctOptionIndex];
-        const indices = originalOptions.map((_, i) => i);
-
-        for (let i = indices.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [indices[i], indices[j]] = [indices[j], indices[i]];
-        }
-
-        const reshuffledOptions = indices.map(i => originalOptions[i]);
-        const newCorrectIndex = reshuffledOptions.indexOf(correctOptionText);
-
-        const retry: { options: string[]; options_ms?: string[]; correctOptionIndex: number } = {
-          options: reshuffledOptions,
-          correctOptionIndex: newCorrectIndex,
-        };
-
-        // Sync Malay options if they exist
-        if (currentBatchQuestion.options_ms) {
-          const originalOptionsMs = [...currentBatchQuestion.options_ms];
-          retry.options_ms = indices.map(i => originalOptionsMs[i]);
-        }
-
-        setRetryOptions(retry);
+        // Wrong on 1st attempt: Add to failedQuestions queue, move to end of session
+        setFailedQuestions(prev => [...prev, currentBatchQuestion]);
         setNextTimer(4);
       } else {
         // Wrong on 2nd attempt: Record 0.0 marks, move on
@@ -456,31 +436,55 @@ export const QuizScreen = ({ navigation, route }: any) => {
     }, 100);
   };
 
-  const handleRetry = () => {
-    // Reset answer state so user can re-answer the SAME question in-place
-    // (retryOptions already has reshuffled options ready)
-    setSelectedOption(null);
-    setIsAnswered(false);
-    setShowFeedback(false);
-    setNextTimer(0);
-    // Scroll back to top of question
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    }, 50);
-  };
-
   const handleNext = async () => {
     setSelectedOption(null);
     setIsAnswered(false);
     setShowFeedback(false);
     setNextTimer(0);
-    setRetryOptions(null); // Always clear retry state when moving to the next question
 
     if (currentIndex < sessionLimit - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // Finish session (both Practice and Live)
-      handleFinish();
+      // End of current session set. Check if we have failed questions for Review Phase
+      if (failedQuestions.length > 0) {
+        // Prepare reshuffled failed questions
+        const shuffledFailedQuestions = failedQuestions.map(q => {
+          const originalOptions = [...q.options];
+          const correctOptionText = originalOptions[q.correctOptionIndex];
+          const indices = originalOptions.map((_, i) => i);
+          for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+          }
+          const reshuffledOptions = indices.map(i => originalOptions[i]);
+          const newCorrectIndex = reshuffledOptions.indexOf(correctOptionText);
+
+          const shuffled: Question = {
+            ...q,
+            options: reshuffledOptions,
+            correctOptionIndex: newCorrectIndex,
+          };
+
+          if (q.options_ms) {
+            const originalOptionsMs = [...q.options_ms];
+            shuffled.options_ms = indices.map(i => originalOptionsMs[i]);
+          }
+
+          return shuffled;
+        });
+
+        // Append to questions list
+        setQuestions(prev => [...prev, ...shuffledFailedQuestions]);
+        // Update sessionLimit
+        setSessionLimit(prev => prev + failedQuestions.length);
+        // Clear failedQuestions so we don't re-append
+        setFailedQuestions([]);
+        // Proceed to the review questions
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        // Finish session (both Practice and Live)
+        handleFinish();
+      }
     }
   };
 
@@ -494,15 +498,15 @@ export const QuizScreen = ({ navigation, route }: any) => {
         // Clear saved progress on completion
         await QuizStorageService.clearProgress(userId, batchNumber, mode);
         
-        // Calculate practice session results
-        const correctCount = answers.filter(a => a.isCorrect).length;
-        const totalAnswered = answers.length;
-        const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+        // Calculate practice session results based on unique questions
+        const uniqueCorrect = new Set(answers.filter(a => a.isCorrect).map(a => a.questionId)).size;
+        const uniqueAttempted = new Set(answers.map(a => a.questionId)).size;
+        const accuracy = uniqueAttempted > 0 ? Math.round((uniqueCorrect / uniqueAttempted) * 100) : 0;
         
         const title = accuracy >= 80 ? t('quiz.excellentPractice') : accuracy >= 60 ? t('quiz.goodPractice') : t('quiz.keepPracticing');
 
         // Always show full-screen celebration card (works on both web and native)
-        setResultData({ title, score: accuracy, avgScore: accuracy, passed: accuracy >= 60, isPractice: true, accuracy, correct: correctCount, total: totalAnswered });
+        setResultData({ title, score: accuracy, avgScore: accuracy, passed: accuracy >= 60, isPractice: true, accuracy, correct: uniqueCorrect, total: uniqueAttempted });
         return;
       }
 
@@ -591,19 +595,14 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const rawQuestion = questions[currentIndex] || { options: [], text: '' };
   const currentQuestion = useMemo(() => {
     const isMalay = i18n.language === 'ms';
-    // If retryOptions are active, use the reshuffled options instead of original
-    const activeOptions = retryOptions
-      ? (isMalay && retryOptions.options_ms ? retryOptions.options_ms : retryOptions.options)
-      : (isMalay && rawQuestion.options_ms ? rawQuestion.options_ms : rawQuestion.options);
-    const activeCorrectIndex = retryOptions ? retryOptions.correctOptionIndex : rawQuestion.correctOptionIndex;
     return {
       ...rawQuestion,
       text: (isMalay && rawQuestion.text_ms) ? rawQuestion.text_ms : rawQuestion.text,
-      options: activeOptions,
-      correctOptionIndex: activeCorrectIndex,
+      options: (isMalay && rawQuestion.options_ms) ? rawQuestion.options_ms : rawQuestion.options,
+      correctOptionIndex: rawQuestion.correctOptionIndex,
       explanation: (isMalay && rawQuestion.explanation_ms) ? rawQuestion.explanation_ms : rawQuestion.explanation
     };
-  }, [rawQuestion, i18n.language, retryOptions]);
+  }, [rawQuestion, i18n.language]);
 
   // Render Loading State
   if (loading) {
@@ -799,7 +798,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 </TouchableOpacity>
               )}
 
-              {!isPracticeResult && hasIncorrectAnswers && (
+              {hasIncorrectAnswers && (
                 <TouchableOpacity
                   style={[styles.resumeButton, styles.resumeButtonPrimary]}
                   onPress={() => {
@@ -819,7 +818,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
               )}
 
               <TouchableOpacity
-                style={[styles.resumeButton, (isPracticeResult || (!isPracticeResult && hasIncorrectAnswers)) ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
+                style={[styles.resumeButton, hasIncorrectAnswers ? styles.resumeButtonSecondary : styles.resumeButtonPrimary]}
                 onPress={() => exitQuiz(false)}
                 activeOpacity={0.8}
               >
@@ -931,9 +930,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
           </View>
           <View style={styles.statsRow}>
              <Text style={styles.progressText}>
-                {isPractice && currentIndex >= 30 
+                {currentIndex >= primarySessionLimit 
                   ? (t('quiz.reviewPhaseTitle') || 'Review Mode')
-                  : `${t('quiz.question')} ${currentIndex + 1}/${sessionLimit}`}
+                  : `${t('quiz.question')} ${currentIndex + 1}/${primarySessionLimit}`}
              </Text>
             {!isPractice && (
               <View style={[styles.statItem, {flexDirection: 'row', gap: 4}]}>
@@ -942,10 +941,10 @@ export const QuizScreen = ({ navigation, route }: any) => {
               </View>
             )}
           </View>
-          {/* Retry indicator: shows when user is on 2nd attempt */}
-          {retryOptions && !isPractice && (
+          {/* Retry indicator: shows when user is in Review Phase */}
+          {currentIndex >= primarySessionLimit && (
             <Text style={{ fontSize: 11, fontFamily: typography.fonts.medium, color: colors.status.warning, textAlign: 'center', paddingBottom: 4, letterSpacing: 0.3 }}>
-              ⚠️ {t('quiz.retryAttempt', '2nd Attempt — ½ Mark Available')}
+              ⚠️ {isPractice ? (t('quiz.reviewPhaseTitle') || 'Review Mode') : t('quiz.retryAttempt', '2nd Attempt — ½ Mark Available')}
             </Text>
           )}
         </View>
@@ -1048,19 +1047,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
         {/* Action Buttons */}
         <View style={styles.footer}>
-          {showFeedback ? (
-            <TouchableOpacity 
-              style={[styles.retryButton, nextTimer > 0 && { opacity: 0.5 }]} 
-              onPress={handleRetry}
-              disabled={nextTimer > 0}
-            >
-              <Text style={styles.retryButtonText}>
-                {nextTimer > 0
-                  ? `${t('common.wait', 'Wait...')} (${nextTimer}s)`
-                  : t('quiz.tryAgain', 'Try Again')}
-              </Text>
-            </TouchableOpacity>
-          ) : isAnswered && (
+          {isAnswered && (
             <TouchableOpacity 
               style={[styles.nextButton, nextTimer > 0 && { opacity: 0.5 }]} 
               onPress={handleNext}

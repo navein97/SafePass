@@ -1127,7 +1127,7 @@ export const BatchService = {
                 .select('score')
                 .eq('user_id', userId)
                 .eq('batch_number', 8)
-                .gte('score', 70)
+                .gte('score', 60)
                 .limit(1);
 
             return !!(data && data.length > 0);
@@ -1226,7 +1226,7 @@ export const BatchService = {
 
             const maxScore = 30; // 30 questions
             const score = Math.max(0, Math.round((totalScore / maxScore) * 100));
-            const passed = score >= 70;
+            const passed = score >= 60;
 
             const { data: pastAttempts } = await supabase
                 .from('user_batch_progress')
@@ -1341,12 +1341,9 @@ export const BatchService = {
                     }
                 }
 
-                // Delete question progress so they start fresh on retake
-                await supabase
-                    .from('user_question_progress')
-                    .delete()
-                    .eq('user_id', userId)
-                    .eq('batch_number', batchNumber);
+                // Question progress is intentionally NOT deleted here.
+                // If a driver fails, the failure remains on record and they are locked.
+                // The manager must use the manual "Reset Batch" function to allow a retake.
             }
 
             await this.syncProfileStats(userId);

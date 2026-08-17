@@ -116,7 +116,7 @@ export function MissionScreen() {
 
             return batchNumbers.map((batchNum, index) => {
               const score = scoreResults[index];
-              const passed = score >= 70 || batchNum < profile.current_batch;
+              const passed = score >= 60 || batchNum < profile.current_batch;
               return {
                 batchNumber: batchNum,
                 canAccess: accessResults[index],
@@ -168,15 +168,28 @@ export function MissionScreen() {
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
     const batch = batchStatuses.find(b => b.batchNumber === batchNumber);
     
-    if (selectedMode === 'live' && batch && (batch.dailyCount >= 5 || batch.passed)) {
-      const title = t('quiz.batchCompleted') || 'Goal Done';
-      const message = t('quiz.goalDoneMessage') || `Batch Goal Completed! Try Practice Mode for more study.`;
-      if (Platform.OS === 'web') {
-        window.alert(`${title}\n\n${message}`);
-      } else {
-        Alert.alert(title, message);
+    if (selectedMode === 'live' && batch) {
+      if (batch.passed) {
+        const title = t('quiz.batchCompleted') || 'Goal Done';
+        const message = t('quiz.goalDoneMessage') || `Batch Goal Completed! Try Practice Mode for more study.`;
+        if (Platform.OS === 'web') {
+          window.alert(`${title}\n\n${message}`);
+        } else {
+          Alert.alert(title, message);
+        }
+        return;
       }
-      return;
+      
+      if (batch.dailyCount >= 5) {
+        const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
+        const message = t('quiz.dailyLimitMessage') || `You have reached your limit of 5 questions for this batch today. Come back tomorrow or try Practice Mode!`;
+        if (Platform.OS === 'web') {
+          window.alert(`${title}\n\n${message}`);
+        } else {
+          Alert.alert(title, message);
+        }
+        return;
+      }
     }
 
     // Check general access (locked batch)

@@ -5,6 +5,12 @@ import { Question } from '../types/models';
 const QUIZ_PROGRESS_KEY = 'quiz_progress';
 const DAILY_LIMIT_KEY = 'daily_question_limit';
 
+const getLocalDateString = (d: Date = new Date()) => {
+    // Offset by +8 hours for MYT/SGT
+    const mytDate = new Date(d.getTime() + 8 * 60 * 60 * 1000);
+    return mytDate.toISOString().split('T')[0];
+};
+
 export interface DailyProgress {
     date: string; // YYYY-MM-DD
     count: number;
@@ -24,6 +30,7 @@ export interface SavedQuizProgress {
     questions?: Question[];
     sessionLimit?: number;
     hasAnnouncedReview?: boolean;
+    primarySessionLimit?: number;
 }
 
 export const QuizStorageService = {
@@ -96,7 +103,7 @@ export const QuizStorageService = {
      */
     async getDailyCount(userId: string, batchNumber?: number): Promise<number> {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDateString();
             const key = batchNumber
                 ? `${DAILY_LIMIT_KEY}_${userId}_batch_${batchNumber}`
                 : `${DAILY_LIMIT_KEY}_${userId}`;
@@ -122,7 +129,7 @@ export const QuizStorageService = {
      */
     async incrementDailyCount(userId: string, batchNumber?: number): Promise<number> {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDateString();
 
             // 1. Update Global Record (for Streak/Activity tracking)
             const globalKey = `${DAILY_LIMIT_KEY}_${userId}`;
@@ -138,7 +145,7 @@ export const QuizStorageService = {
                 } else {
                     const yesterday = new Date();
                     yesterday.setDate(yesterday.getDate() - 1);
-                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+                    const yesterdayStr = getLocalDateString(yesterday);
 
                     if (prev.lastActivityDate === yesterdayStr || prev.date === yesterdayStr) {
                         streak = (prev.streak || 0) + 1;
@@ -189,7 +196,7 @@ export const QuizStorageService = {
      * Reset daily count (internal or for testing)
      */
     async resetDailyCount(userId: string): Promise<void> {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateString();
         const key = `${DAILY_LIMIT_KEY}_${userId}`;
         const progress: DailyProgress = { date: today, count: 0, streak: 0, lastActivityDate: today };
         await AsyncStorage.setItem(key, JSON.stringify(progress));
@@ -205,10 +212,10 @@ export const QuizStorageService = {
             if (!data) return 0;
 
             const progress: DailyProgress = JSON.parse(data);
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDateString();
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            const yesterdayStr = getLocalDateString(yesterday);
 
             // Streak is valid if last activity was today or yesterday
             const lastActive = progress.lastActivityDate || progress.date;

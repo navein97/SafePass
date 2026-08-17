@@ -185,7 +185,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
         '- Correct on **2nd attempt** = **0.5 marks**.',
         '- Both attempts wrong = **0 marks**.',
         'Once correct or after 2 failed attempts, the question is completed.',
-        'Your batch is passing if your overall score is **70%** (minimum 21.0 marks out of 30).'
+        'Your batch is passing if your overall score is **60%** (minimum 18.0 marks out of 30).'
       ]
     },
     {
