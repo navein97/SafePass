@@ -279,7 +279,7 @@
     "batchTitle": "Batch {{number}}",
     "oopsTryAgain": "Oops! Sila cuba lagi.",
     "reviewPhaseTitle": "Mod Semakan",
-    "reviewPhaseMessage": "Anda telah sampai ke soalan 30! Sekarang, kita akan menyemak soalan yang anda salah sebelum ini untuk membantu anda menguasainya.",
+    "reviewPhaseMessage": "Sekarang, mari kita semak kesalahan anda.",
     "unableToLoadQuestions": "Tidak dapat Memuatkan Soalan",
     "noQuestionsFoundBatch": "Tiada soalan ditemui untuk batch ini",
     "correctCount": "{{correct}}/{{total}} Betul",
@@ -300,7 +300,7 @@
     "completed": "selesai",
     "failedReviewDesc": "Sila semak penjelasan di bawah sebelum menduduki semula batch ini.",
     "questionNumber": "Soalan {{number}}",
-    "restartBatch": "Kembali & Mula Semula Batch",
+    "restartBatch": "Kembali",
     "tryAgain": "Cuba Lagi"
   },
   "profile": {

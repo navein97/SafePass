@@ -473,8 +473,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
           return shuffled;
         });
 
-        // Append to questions list
-        setQuestions(prev => [...prev, ...shuffledFailedQuestions]);
+        // Insert failed questions right after the current sessionLimit position
+        // so they are the very next questions the user encounters.
+        // (The questions array may contain many more batch questions beyond sessionLimit,
+        // so appending to the end would cause currentIndex to land on an unseen batch question instead.)
+        const insertAt = sessionLimit;
+        setQuestions(prev => [
+          ...prev.slice(0, insertAt),
+          ...shuffledFailedQuestions,
+          ...prev.slice(insertAt),
+        ]);
         // Update sessionLimit
         setSessionLimit(prev => prev + failedQuestions.length);
         // Clear failedQuestions so we don't re-append

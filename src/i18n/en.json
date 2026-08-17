@@ -279,7 +279,7 @@
     "batchTitle": "Batch {{number}}",
     "oopsTryAgain": "Oops! Please try again.",
     "reviewPhaseTitle": "Review Mode",
-    "reviewPhaseMessage": "You've reached question 30! Now, we'll review the questions you missed to help you master them.",
+    "reviewPhaseMessage": "Now, let's review your mistakes.",
     "unableToLoadQuestions": "Unable to Load Questions",
     "noQuestionsFoundBatch": "No questions found for this batch",
     "correctCount": "{{correct}}/{{total}} Correct",
@@ -300,7 +300,7 @@
     "completed": "completed",
     "failedReviewDesc": "Please review the explanations below before retaking this batch.",
     "questionNumber": "Question {{number}}",
-    "restartBatch": "Return & Restart Batch",
+    "restartBatch": "Return",
     "tryAgain": "Try Again"
   },
   "profile": {
