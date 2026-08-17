@@ -111,49 +111,107 @@ export const SuperAdminService = {
   /**
    * Sends targeted messages / notifications to specific master users or beta testers.
    */
+  /**
+   * Sends targeted messages / notifications to specific master users or companies.
+   */
   async sendTargetedNotification({
-    targetType, // 'all_masters' | 'beta_masters' | 'specific_company'
+    targetType,
     companyId,
     title,
     message,
+    recipientScope = 'masters_only',
   }: {
     targetType: 'all_masters' | 'beta_masters' | 'specific_company';
     companyId?: string;
     title: string;
     message: string;
-  }): Promise<{ success: boolean; count: number; error?: string }> {
+    recipientScope?: 'masters_only' | 'all_users';
+  }): Promise<{ success: boolean; count: number; companyName?: string; error?: string }> {
     try {
-      const allCompanies = await this.getAllMasterCompanies();
-      let targetCompanies: MasterCompany[] = [];
+      let recipientUserIds: string[] = [];
+      let companyName: string | undefined;
 
       if (targetType === 'all_masters') {
-        targetCompanies = allCompanies;
+        // Query profiles table directly for all master / manager profiles across the app
+        const { data: masterProfiles, error: profErr } = await supabase
+          .from('profiles')
+          .select('id, role, manager_level')
+          .or('role.eq.manager,role.eq.master,manager_level.eq.1');
+
+        if (!profErr && masterProfiles && masterProfiles.length > 0) {
+          recipientUserIds = masterProfiles.map(p => p.id);
+        } else {
+          // Fallback to getAllMasterCompanies
+          const allCompanies = await this.getAllMasterCompanies();
+          recipientUserIds = allCompanies
+            .map(c => c.master_user?.id)
+            .filter((id): id is string => Boolean(id));
+        }
       } else if (targetType === 'beta_masters') {
-        targetCompanies = allCompanies.filter(c => c.is_beta_tester);
-      } else if (targetType === 'specific_company' && companyId) {
-        targetCompanies = allCompanies.filter(c => c.id === companyId);
+        const allCompanies = await this.getAllMasterCompanies();
+        const betaCompanies = allCompanies.filter(c => c.is_beta_tester);
+        recipientUserIds = betaCompanies
+          .map(c => c.master_user?.id)
+          .filter((id): id is string => Boolean(id));
+      } else if (targetType === 'specific_company') {
+        if (!companyId) {
+          return { success: false, count: 0, error: 'Please select a company.' };
+        }
+
+        // Fetch company details for name
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', companyId)
+          .maybeSingle();
+
+        companyName = comp?.name || 'Selected Company';
+
+        // Fetch company profiles
+        const { data: companyProfiles, error: compProfErr } = await supabase
+          .from('profiles')
+          .select('id, role, manager_level')
+          .eq('company_id', companyId);
+
+        if (compProfErr) throw compProfErr;
+
+        if (companyProfiles && companyProfiles.length > 0) {
+          if (recipientScope === 'masters_only') {
+            const managers = companyProfiles.filter(
+              p => p.role === 'manager' || p.role === 'master' || p.manager_level === 1
+            );
+            // Fallback to all company profiles if no explicit manager profile was flagged
+            recipientUserIds = managers.length > 0
+              ? managers.map(p => p.id)
+              : companyProfiles.map(p => p.id);
+          } else {
+            recipientUserIds = companyProfiles.map(p => p.id);
+          }
+        }
       }
 
-      const masterUserIds = targetCompanies
-        .map(c => c.master_user?.id)
-        .filter((id): id is string => Boolean(id));
+      // Deduplicate user IDs
+      const targetUserIds = Array.from(new Set(recipientUserIds.filter(Boolean)));
 
-      if (masterUserIds.length === 0) {
-        return { success: false, count: 0, error: 'No master users found for the selected filter.' };
+      if (targetUserIds.length === 0) {
+        return { success: false, count: 0, error: 'No recipients found for the selected filter.' };
       }
 
-      let count = 0;
-      for (const userId of masterUserIds) {
-        await NotificationService.sendNotification({
-          userId,
-          title,
-          body: message,
-          data: { type: 'admin_broadcast', sent_at: new Date().toISOString() }
-        });
-        count++;
-      }
+      // Dispatch notifications concurrently using Promise.allSettled
+      const results = await Promise.allSettled(
+        targetUserIds.map(userId =>
+          NotificationService.sendNotification({
+            userId,
+            title,
+            body: message,
+            data: { type: 'admin_broadcast', targetType, sent_at: new Date().toISOString() }
+          })
+        )
+      );
 
-      return { success: true, count };
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+
+      return { success: true, count: successCount, companyName };
     } catch (err: any) {
       console.error('[SuperAdminService] Error sending targeted notification:', err);
       return { success: false, count: 0, error: err.message || 'Failed to send targeted notification' };

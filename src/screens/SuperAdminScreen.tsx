@@ -64,6 +64,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
   // Broadcast State
   const [broadcastTarget, setBroadcastTarget] = useState<'all_masters' | 'beta_masters' | 'specific_company'>('all_masters');
   const [broadcastCompanyId, setBroadcastCompanyId] = useState('');
+  const [recipientScope, setRecipientScope] = useState<'masters_only' | 'all_users'>('masters_only');
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
@@ -171,17 +172,27 @@ export const SuperAdminScreen = ({ navigation }: any) => {
       companyId: broadcastCompanyId,
       title: broadcastTitle.trim(),
       message: broadcastMessage.trim(),
+      recipientScope: broadcastTarget === 'specific_company' ? recipientScope : 'masters_only',
     });
 
     setSendingBroadcast(false);
 
     if (result.success) {
-      Alert.alert('Broadcast Sent', `Successfully dispatched notification to ${result.count} master user(s).`);
+      const selectedComp = companies.find(c => c.id === broadcastCompanyId);
+      const targetLabel = broadcastTarget === 'all_masters' 
+        ? 'All Master Users' 
+        : `${selectedComp?.name || result.companyName || 'Specific Company'} (${recipientScope === 'masters_only' ? 'Master Users' : 'All Company Members'})`;
+
+      Alert.alert(
+        'Broadcast Dispatched',
+        `Successfully dispatched notification to ${result.count} recipient(s) for ${targetLabel}.`
+      );
       setBroadcastTitle('');
       setBroadcastMessage('');
       AnalyticsService.trackEvent('targeted_broadcast_sent', {
         target: broadcastTarget,
         count: result.count,
+        recipient_scope: recipientScope,
       });
     } else {
       Alert.alert('Broadcast Failed', result.error || 'Unable to send broadcast.');
@@ -366,7 +377,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                     <View style={styles.betaLabelGroup}>
                       <Sparkles size={16} color={comp.is_beta_tester ? '#F59E0B' : colors.text.tertiary} />
                       <Text style={[styles.betaToggleLabel, { color: colors.text.primary }]}>
-                        Testing / Beta User Group
+                        Pause this company
                       </Text>
                     </View>
                     <Switch
@@ -391,7 +402,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Targeted Notification Release</Text>
               </View>
               <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
-                Send targeted in-app & push messages to master users for testing and monitoring.
+                Send targeted in-app & push messages to Master Users or specific companies for testing and monitoring.
               </Text>
 
               {/* Target Selector */}
@@ -410,52 +421,101 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 <TouchableOpacity
                   style={[
                     styles.targetOption,
-                    broadcastTarget === 'beta_masters' && { borderColor: colors.primary.DEFAULT, backgroundColor: colors.primary.DEFAULT + '20' }
-                  ]}
-                  onPress={() => setBroadcastTarget('beta_masters')}
-                >
-                  <Text style={[styles.targetOptionText, { color: colors.text.primary }]}>Beta Testers Only</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.targetOption,
                     broadcastTarget === 'specific_company' && { borderColor: colors.primary.DEFAULT, backgroundColor: colors.primary.DEFAULT + '20' }
                   ]}
-                  onPress={() => setBroadcastTarget('specific_company')}
+                  onPress={() => {
+                    setBroadcastTarget('specific_company');
+                    if (!broadcastCompanyId && companies.length > 0) {
+                      setBroadcastCompanyId(companies[0].id);
+                    }
+                  }}
                 >
                   <Text style={[styles.targetOptionText, { color: colors.text.primary }]}>Specific Company</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Company Picker Dropdown if Specific Company */}
+              {/* Company Picker & Recipient Scope if Specific Company */}
               {broadcastTarget === 'specific_company' && (
                 <View style={styles.companyPickerWrapper}>
-                  <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Select Master Company</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
-                    {companies.map(comp => (
-                      <TouchableOpacity
-                        key={comp.id}
-                        style={[
-                          styles.companyChip,
-                          broadcastCompanyId === comp.id && { backgroundColor: colors.primary.DEFAULT }
-                        ]}
-                        onPress={() => setBroadcastCompanyId(comp.id)}
-                      >
-                        <Text style={[styles.chipText, { color: broadcastCompanyId === comp.id ? '#fff' : colors.text.primary }]}>
-                          {comp.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                  <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Select Target Company</Text>
+                  {companies.length === 0 ? (
+                    <Text style={{ color: colors.text.tertiary, fontSize: 12, marginVertical: 6 }}>
+                      No registered companies found. Please refresh list.
+                    </Text>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
+                      {companies.map(comp => (
+                        <TouchableOpacity
+                          key={comp.id}
+                          style={[
+                            styles.companyChip,
+                            broadcastCompanyId === comp.id && { backgroundColor: colors.primary.DEFAULT }
+                          ]}
+                          onPress={() => setBroadcastCompanyId(comp.id)}
+                        >
+                          <Text style={[styles.chipText, { color: broadcastCompanyId === comp.id ? '#fff' : colors.text.primary }]}>
+                            {comp.name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
+
+                  {/* Recipient Scope Selector */}
+                  <Text style={[styles.fieldLabel, { color: colors.text.primary, marginTop: 8 }]}>Recipient Scope</Text>
+                  <View style={styles.targetOptionsRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.targetOption,
+                        recipientScope === 'masters_only' && { borderColor: colors.primary.DEFAULT, backgroundColor: colors.primary.DEFAULT + '20' }
+                      ]}
+                      onPress={() => setRecipientScope('masters_only')}
+                    >
+                      <Text style={[styles.targetOptionText, { color: colors.text.primary }]}>Master Users Only</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.targetOption,
+                        recipientScope === 'all_users' && { borderColor: colors.primary.DEFAULT, backgroundColor: colors.primary.DEFAULT + '20' }
+                      ]}
+                      onPress={() => setRecipientScope('all_users')}
+                    >
+                      <Text style={[styles.targetOptionText, { color: colors.text.primary }]}>All Company Members</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
+
+              {/* Target Summary Badge */}
+              <View style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 12,
+                padding: 12,
+                marginVertical: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <Send size={16} color={colors.primary.DEFAULT} />
+                <Text style={{ color: colors.text.secondary, fontSize: 12, flex: 1 }}>
+                  {broadcastTarget === 'all_masters' ? (
+                    'Broadcasting to all Master Users across all registered workspaces.'
+                  ) : (
+                    `Broadcasting to ${
+                      companies.find(c => c.id === broadcastCompanyId)?.name || 'Selected Company'
+                    } (${recipientScope === 'masters_only' ? 'Master Users Only' : 'All Company Members'}).`
+                  )}
+                </Text>
+              </View>
 
               {/* Title Input */}
               <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Notification Title</Text>
               <TextInput
                 style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]}
-                placeholder="e.g. New Feature Preview: Driver Scoring"
+                placeholder="e.g. System Announcement: Update Available"
                 placeholderTextColor={colors.text.tertiary}
                 value={broadcastTitle}
                 onChangeText={setBroadcastTitle}
@@ -474,7 +534,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
               />
 
               <GlassButton
-                title={sendingBroadcast ? 'Sending Notification...' : 'Dispatch Broadcast'}
+                title={sendingBroadcast ? 'Dispatching Message...' : 'Dispatch Broadcast'}
                 onPress={handleSendBroadcast}
                 variant="primary"
                 loading={sendingBroadcast}
@@ -572,7 +632,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                       {
                         borderColor: limitSaveStatus === 'error' ? colors.status.danger
                           : limitSaveStatus === 'success' ? colors.status.success
-                          : colors.border,
+                            : colors.border,
                         color: colors.text.primary,
                         flex: 1,
                         fontSize: 28,
