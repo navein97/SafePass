@@ -44,6 +44,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const [primarySessionLimit, setPrimarySessionLimit] = useState(isPractice ? 30 : 5);
   const [failedQuestions, setFailedQuestions] = useState<Question[]>([]);
   const [hasAnnouncedReview, setHasAnnouncedReview] = useState(false);
+  const [totalBatchQuestions, setTotalBatchQuestions] = useState(30);
   const [resultData, setResultData] = useState<{
     title: string;
     score: number;
@@ -202,9 +203,15 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
         setQuestions(loadedQuestions);
         
+        let totalBQ = 30;
+        if (!isPractice) {
+          totalBQ = await BatchService.getBatchTotalQuestions(batchNumber, profile.id);
+          setTotalBatchQuestions(totalBQ);
+        }
+
         let sLimit = 30;
         if (!isPractice && dailyStatus) {
-          const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? 30 : Math.max(0, dailyStatus.limit - dailyStatus.completedToday);
+          const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? totalBQ : Math.max(0, dailyStatus.limit - dailyStatus.completedToday);
           sLimit = Math.min(quota, loadedQuestions.length);
         }
         setSessionLimit(sLimit);
@@ -532,8 +539,10 @@ export const QuizScreen = ({ navigation, route }: any) => {
       // Clear local progress since this daily session is resolved
       await QuizStorageService.clearProgress(userId, batchNumber, mode);
 
-      if (completedCount >= 30) {
-        // Evaluated at exactly 30 questions
+      const totalBQ = totalBatchQuestions || await BatchService.getBatchTotalQuestions(batchNumber, userId);
+
+      if (completedCount >= totalBQ) {
+        // Evaluated at total questions in this batch
         const evalResult = await BatchService.evaluateBatch(userId, batchNumber, timeSpentSeconds);
         if (evalResult.success) {
           const title = evalResult.passed ? (t('quiz.batchCompleted') || 'Batch Passed! 🏆') : (t('quiz.batchAttemptRecorded') || 'Batch Failed');
@@ -557,7 +566,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
           passed: false,
           isPractice: false,
           isDailySessionComplete: true, // Custom flag to render differently
-          completedCount: completedCount
+          completedCount: completedCount,
+          totalBatchQuestions: totalBQ
         } as any); // Casting as any to easily append custom fields for rendering
       }
     } catch (error) {
@@ -752,12 +762,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
               {isDailySessionComplete ? (
                 <>
                   <Text style={[styles.resultMessage, { color: colors.text.secondary, marginTop: 12, textAlign: 'center', lineHeight: 22, fontSize: 16 }]}>
-                    {t('quiz.dailySessionCompleteMessage', { count: (resultData as any).completedCount }) || `Great work! You've answered ${(resultData as any).completedCount}/30 questions in this batch. Come back tomorrow to continue your progress.`}
+                    {t('quiz.dailySessionCompleteMessage', { count: (resultData as any).completedCount, total: (resultData as any).totalBatchQuestions || totalBatchQuestions || 30 }) || `Great work! You've answered ${(resultData as any).completedCount}/${(resultData as any).totalBatchQuestions || totalBatchQuestions || 30} questions in this batch. Come back tomorrow to continue your progress.`}
                   </Text>
                   
                   <View style={{ backgroundColor: colors.background.subtle, paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '90%', alignSelf: 'center' }}>
                     <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('profile.currentProgress', 'Current Progress')}</Text>
-                    <Text style={{ fontSize: 28, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{(resultData as any).completedCount}/30</Text>
+                    <Text style={{ fontSize: 28, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{(resultData as any).completedCount}/{(resultData as any).totalBatchQuestions || totalBatchQuestions || 30}</Text>
                   </View>
                 </>
               ) : isPracticeResult ? (

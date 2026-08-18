@@ -164,6 +164,40 @@ export const BatchService = {
     },
 
     /**
+     * Get total number of configured questions in a batch for a user's vehicle category
+     */
+    async getBatchTotalQuestions(batchNumber: number, userId: string): Promise<number> {
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('vehicle_type')
+                .eq('id', userId)
+                .single();
+
+            const { data: dbData, error } = await supabase
+                .from('questions')
+                .select('id, driver_categories')
+                .eq('batch_number', batchNumber);
+
+            if (error || !dbData || dbData.length === 0) return 30;
+
+            const vType = profile?.vehicle_type;
+            if (vType) {
+                const matching = dbData.filter(q => {
+                    if (!q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) {
+                        return true;
+                    }
+                    return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
+                });
+                if (matching.length > 0) return matching.length;
+            }
+            return dbData.length;
+        } catch {
+            return 30;
+        }
+    },
+
+    /**
      * Check if user can access a specific batch
      */
     async canAccessBatch(userId: string, batchNumber: number): Promise<boolean> {
@@ -260,9 +294,10 @@ export const BatchService = {
             qProgress.forEach(a => {
                 totalScore += parseFloat(String(a.score || 0));
             });
-            const score = Math.max(0, Math.round((totalScore / 30) * 100)); // Score out of 30 questions
-            const accuracy = Math.round((qProgress.filter(a => a.is_correct).length / 30) * 100);
-            const completion = Math.round((qProgress.length / 30) * 100);
+            const totalQuestionsInBatch = await this.getBatchTotalQuestions(batchNumber, userId);
+            const score = Math.max(0, Math.round((totalScore / Math.max(1, totalQuestionsInBatch)) * 100));
+            const accuracy = Math.round((qProgress.filter(a => a.is_correct).length / Math.max(1, qProgress.length)) * 100);
+            const completion = Math.min(100, Math.round((qProgress.length / Math.max(1, totalQuestionsInBatch)) * 100));
 
             attempts.push({
                 id: `provisional_${batchNumber}`,
@@ -1224,7 +1259,8 @@ export const BatchService = {
                 totalScore += parseFloat(String(a.score));
             });
 
-            const maxScore = 30; // 30 questions
+            const totalQuestionsInBatch = await this.getBatchTotalQuestions(batchNumber, userId);
+            const maxScore = Math.max(1, totalQuestionsInBatch);
             const score = Math.max(0, Math.round((totalScore / maxScore) * 100));
             const passed = score >= 60;
 

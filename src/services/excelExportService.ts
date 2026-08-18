@@ -125,7 +125,7 @@ export const ExcelExportService = {
                 const batch = user.batches?.find((b: any) => b.batchNumber === num);
                 if (batch && batch.attemptCount > 0) {
                     const isCompleted = batch.completion >= 100 || batch.isCompleted;
-                    const statusText = isCompleted ? 'Completed' : `In Progress (${Math.round((batch.completion / 100) * 30)}/30)`;
+                    const statusText = isCompleted ? 'Completed' : `In Progress (${Math.round(batch.completion)}%)`;
                     row.push(`${batch.accuracy}%`, statusText);
                 } else {
                     row.push('-', 'Not Started');

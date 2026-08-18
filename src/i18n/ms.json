@@ -293,7 +293,7 @@
     "hint": "Petunjuk",
     "nextQuestion": "Soalan Seterusnya →",
     "dailySessionCompleteTitle": "Sesi Selesai!",
-    "dailySessionCompleteMessage": "Bagus! Anda telah menjawab {{count}}/30 soalan dalam batch ini. Kembali esok untuk meneruskan kemajuan anda.",
+    "dailySessionCompleteMessage": "Bagus! Anda telah menjawab {{count}}/{{total}} soalan dalam batch ini. Kembali esok untuk meneruskan kemajuan anda.",
     "reviewIncorrect": "Semak Jawapan Salah",
     "failedReviewTitle": "Semakan Jawapan Salah",
     "batchLockedTitle": "Batch Terkunci",

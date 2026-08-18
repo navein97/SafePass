@@ -57,6 +57,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             const batchNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(userId, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(userId, i)));
+            const totalQuestionsResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchTotalQuestions(i, userId)));
 
             // Query DB question progress to count completed per batch
             const { data: qProgress } = await supabase
@@ -72,15 +73,18 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             }
 
             const summaries = batchNumbers.map((batchNum, index) => {
-                const isPassed = scoreResults[index] >= 60 || batchNum < profile.current_batch;
+                const score = scoreResults[index];
+                const totalQ = totalQuestionsResults[index] || 30;
+                const isPassed = score >= 60 || batchNum < profile.current_batch;
                 const resets = (profile.consecutive_resets && profile.consecutive_resets[String(batchNum)]) || 0;
 
                 return {
                     batchNumber: batchNum,
-                    averageScore: scoreResults[index],
+                    averageScore: score,
                     attemptCount: attemptResults[index].length,
                     passed: isPassed,
-                    completedCount: isPassed ? 30 : (completedCounts[batchNum] || 0),
+                    completedCount: isPassed ? totalQ : (completedCounts[batchNum] || 0),
+                    totalQuestions: totalQ,
                     resets
                 };
             });
@@ -345,7 +349,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                             <View style={styles.statsGrid}>
                                 <View style={styles.statBox}>
                                     <Text style={styles.statBoxLabel}>{t('user.progress', 'Progress')}</Text>
-                                    <Text style={styles.statBoxVal}>{selectedSummary.completedCount}/30</Text>
+                                    <Text style={styles.statBoxVal}>{selectedSummary.completedCount}/{selectedSummary.totalQuestions || 30}</Text>
                                 </View>
                                 <View style={styles.statBox}>
                                     <Text style={styles.statBoxLabel}>{t('user.averageScore', 'Average Score')}</Text>

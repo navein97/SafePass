@@ -31,6 +31,7 @@ interface BatchStatus {
   passed: boolean;
   dailyCount: number;
   completedCount: number;
+  totalQuestions?: number;
 }
 
 export function MissionScreen() {
@@ -102,6 +103,8 @@ export function MissionScreen() {
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(profile.id, i)));
             const dailyStatuses = await Promise.all(batchNumbers.map(i => BatchService.getDailyLimitStatus(profile.id, i)));
             
+            const totalQuestionsResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchTotalQuestions(i, profile.id)));
+            
             const { data: qProgress } = await supabase
               .from('user_question_progress')
               .select('batch_number')
@@ -116,6 +119,7 @@ export function MissionScreen() {
 
             return batchNumbers.map((batchNum, index) => {
               const score = scoreResults[index];
+              const totalQ = totalQuestionsResults[index] || 30;
               const passed = score >= 60 || batchNum < profile.current_batch;
               return {
                 batchNumber: batchNum,
@@ -124,7 +128,8 @@ export function MissionScreen() {
                 attemptCount: attemptResults[index].length,
                 passed,
                 dailyCount: dailyStatuses[index].completedToday,
-                completedCount: passed ? 30 : (completedCounts[batchNum] || 0)
+                completedCount: passed ? totalQ : (completedCounts[batchNum] || 0),
+                totalQuestions: totalQ
               };
             });
           };
@@ -342,7 +347,7 @@ export function MissionScreen() {
                       <>
                         <View style={styles.statRow}>
                           <Text style={styles.statLabel}>{t('mission.progress', 'Progress')}</Text>
-                          <Text style={styles.statValue}>{batch.completedCount}/30 {t('quiz.completed', 'completed')}</Text>
+                          <Text style={styles.statValue}>{batch.completedCount}/{batch.totalQuestions || 30} {t('quiz.completed', 'completed')}</Text>
                         </View>
                         {selectedMode !== 'practice' && batch.averageScore > 0 && (
                           <View style={styles.statRow}>
