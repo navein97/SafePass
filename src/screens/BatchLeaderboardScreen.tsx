@@ -376,7 +376,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
 
   return (
     <GradientBackground>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{t('leaderboard.title')}</Text>
           {isManager && (
@@ -546,6 +546,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingBottom: 120,
   },
   loadingContainer: {
     paddingVertical: 60,

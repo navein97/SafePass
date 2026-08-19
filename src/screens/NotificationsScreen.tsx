@@ -221,7 +221,7 @@ export function NotificationsScreen() {
   const unreadCount = notifications.filter(n => !n.isRead).length;
   
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
         {unreadCount > 0 && (
@@ -315,6 +315,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.primary.DEFAULT,
   },
   bottomPadding: {
-    height: 100,
+    height: 120,
   },
 });

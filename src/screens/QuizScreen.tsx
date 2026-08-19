@@ -214,8 +214,6 @@ export const QuizScreen = ({ navigation, route }: any) => {
           const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? totalBQ : Math.max(0, dailyStatus.limit - dailyStatus.completedToday);
           sLimit = Math.min(quota, loadedQuestions.length);
         }
-        setSessionLimit(sLimit);
-        setPrimarySessionLimit(sLimit);
         
         // Wait for next tick to ensure questions state is accessible if needed
         // then check for saved progress
@@ -224,6 +222,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
           setSavedProgress(saved);
           setShowResumePrompt(true);
         } else {
+          setSessionLimit(sLimit);
+          setPrimarySessionLimit(sLimit);
           setStartTime(Date.now());
         }
       } catch (qError) {
@@ -252,7 +252,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
   // Restore saved progress
   const restoreProgress = () => {
     if (savedProgress) {
-      // If we have saved questions (for practice mode), use them
+      // If we have saved questions (for practice mode or saved order), use them
       if (savedProgress.questions && savedProgress.questions.length > 0) {
         setQuestions(savedProgress.questions);
       }
@@ -270,6 +270,14 @@ export const QuizScreen = ({ navigation, route }: any) => {
         setPrimarySessionLimit(savedProgress.primarySessionLimit);
       } else {
         setPrimarySessionLimit(isPractice ? 30 : 5);
+      }
+
+      if (savedProgress.totalBatchQuestions !== undefined) {
+        setTotalBatchQuestions(savedProgress.totalBatchQuestions);
+      }
+
+      if (savedProgress.failedQuestions) {
+        setFailedQuestions(savedProgress.failedQuestions);
       }
 
       // Restore review announcement state
@@ -295,6 +303,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
     if (userId) {
       await QuizStorageService.clearProgress(userId, batchNumber, mode);
     }
+    setCurrentIndex(0);
+    setAnswers([]);
+    setAttemptCounts({});
+    setFailedQuestions([]);
+    setHasAnnouncedReview(false);
     setStartTime(Date.now());
     setShowResumePrompt(false);
     setSavedProgress(null);
@@ -312,9 +325,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
         savedAt: Date.now(),
         userId,
         mode,
-        questions, // Crucial for Practice Mode to save the randomized session
+        questions, // Crucial for Practice Mode & mid-session retry positions
         sessionLimit,
         primarySessionLimit,
+        totalBatchQuestions,
+        failedQuestions,
         hasAnnouncedReview,
       });
     }
@@ -325,7 +340,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     if (!loading && userId && questions.length > 0 && (answers.length > 0 || currentIndex > 0)) {
       saveProgressLocally();
     }
-  }, [currentIndex, answers.length, hasAnnouncedReview]);
+  }, [currentIndex, answers.length, hasAnnouncedReview, failedQuestions.length]);
 
   const exitQuiz = async (save = false) => {
     if (save) {

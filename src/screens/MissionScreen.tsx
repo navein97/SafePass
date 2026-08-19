@@ -246,7 +246,7 @@ export function MissionScreen() {
 
   return (
     <GradientBackground>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <StatusBar barStyle="light-content" />
         
         <View style={styles.header}>
@@ -311,6 +311,15 @@ export function MissionScreen() {
                 {/* Spacer to keep title truly centered */}
                 <View style={{ width: 40 }} />
               </View>
+
+              {selectedMode === 'live' && (
+                <View style={styles.dailyRefreshBanner}>
+                  <Text style={styles.dailyRefreshIcon}>🕛</Text>
+                  <Text style={styles.dailyRefreshText}>
+                    {t('mission.dailyRefreshNote', 'Daily question limit refreshes every midnight (12:00 AM)')}
+                  </Text>
+                </View>
+              )}
               
               {batchStatuses.map((batch) => (
                 <TouchableOpacity
@@ -459,6 +468,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingBottom: 120,
     gap: 16,
   },
   batchCard: {
@@ -678,5 +688,27 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.bold,
     color: '#FF6B6B',
     marginLeft: 6,
+  },
+  dailyRefreshBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.mode === 'dark' ? 'rgba(37, 99, 235, 0.15)' : 'rgba(37, 99, 235, 0.08)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.mode === 'dark' ? 'rgba(37, 99, 235, 0.3)' : 'rgba(37, 99, 235, 0.18)',
+    gap: 8,
+    marginBottom: 4,
+  },
+  dailyRefreshIcon: {
+    fontSize: 16,
+  },
+  dailyRefreshText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: typography.fonts.medium,
+    color: colors.mode === 'dark' ? '#93C5FD' : '#1D4ED8',
+    lineHeight: 18,
   },
 });

@@ -31,6 +31,8 @@ export interface SavedQuizProgress {
     sessionLimit?: number;
     hasAnnouncedReview?: boolean;
     primarySessionLimit?: number;
+    failedQuestions?: Question[];
+    totalBatchQuestions?: number;
 }
 
 export const QuizStorageService = {

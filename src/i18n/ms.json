@@ -212,7 +212,8 @@
     "comingSoon": "Akan Datang",
     "howItWorks": "Cara ia berfungsi:",
     "inProgress": "Dalam Proses",
-    "progress": "Kemajuan"
+    "progress": "Kemajuan",
+    "dailyRefreshNote": "Had soalan harian akan diperbaharui setiap tengah malam (12:00 AM)"
   },
   "manager": {
     "dashboardTitle": "Papan Pemuka Pengurusan",

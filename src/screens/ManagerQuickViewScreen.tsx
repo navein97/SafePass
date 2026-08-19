@@ -145,7 +145,7 @@ export const ManagerQuickViewScreen = ({ navigation }: any) => {
 
   return (
     <GradientBackground>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.backButton}>
@@ -248,6 +248,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 120,
   },
   banner: {
     alignItems: 'center',

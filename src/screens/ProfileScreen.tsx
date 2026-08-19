@@ -70,6 +70,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [quizHistory, setQuizHistory] = useState<any[]>([]);
   const [totalXP, setTotalXP] = useState(0);
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
+  const [totalMCQsCount, setTotalMCQsCount] = useState(240);
 
   
   const [age, setAge] = useState('');
@@ -198,16 +199,20 @@ export const ProfileScreen = ({ navigation }: any) => {
           }
       }
 
-      // Load Daily Trends for Chart
+      // Load Daily Trends for Chart & Dynamic MCQ total across all 8 batches
       if (userProfile.id && userProfile.role !== 'manager') {
-          const [trends, xp, answeredQs] = await Promise.all([
+          const batchNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
+          const [trends, xp, answeredQs, batchTotals] = await Promise.all([
               QuizService.getDailyTrends(userProfile.id),
               BatchService.getTotalXP(userProfile.id),
-              BatchService.getTotalAnsweredQuestions(userProfile.id)
+              BatchService.getTotalAnsweredQuestions(userProfile.id),
+              Promise.all(batchNumbers.map(b => BatchService.getBatchTotalQuestions(b, userProfile.id)))
           ]);
           setQuizHistory(trends);
           setTotalXP(xp);
           setTotalQuestionsAnswered(answeredQs);
+          const totalAllBatches = batchTotals.reduce((sum, count) => sum + count, 0);
+          setTotalMCQsCount(totalAllBatches > 0 ? totalAllBatches : 240);
       }
 
       // Check if Master User needs a plan
@@ -420,7 +425,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   return (
     <GradientBackground>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <Toast 
             visible={toastVisible} 
             message={toastMessage} 
@@ -785,7 +790,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                         {totalQuestionsAnswered}
                       </Text>
                       <Text style={styles.mcqProgressTotal}>
-                        / 120
+                        / {totalMCQsCount}
                       </Text>
                     </View>
                     {/* Mini progress bar */}
@@ -796,7 +801,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                         end={{ x: 1, y: 0 }}
                         style={[
                           styles.mcqMiniFill,
-                          { width: `${Math.min((totalQuestionsAnswered / 120) * 100, 100)}%` }
+                          { width: `${Math.min((totalQuestionsAnswered / (totalMCQsCount || 240)) * 100, 100)}%` }
                         ]}
                       />
                     </View>

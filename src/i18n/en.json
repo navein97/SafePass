@@ -212,7 +212,8 @@
     "comingSoon": "Coming Soon",
     "howItWorks": "How it works:",
     "inProgress": "In Progress",
-    "progress": "Progress"
+    "progress": "Progress",
+    "dailyRefreshNote": "Daily question limit refreshes every midnight (12:00 AM)"
   },
   "manager": {
     "dashboardTitle": "Management Dashboard",

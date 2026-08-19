@@ -260,7 +260,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
 
     return (
         <GradientBackground>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <ChevronLeft color={colors.text.primary} size={24} />
@@ -542,7 +542,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     listContent: {
         padding: 20,
-        paddingBottom: 20,
+        paddingBottom: 120,
     },
     userCard: {
         flexDirection: 'row',
