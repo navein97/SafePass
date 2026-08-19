@@ -262,7 +262,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             </Text>
           </TouchableOpacity>
 
-          {/* <TouchableOpacity
+          <TouchableOpacity
             style={[styles.tabItem, activeTab === 'broadcast' && { backgroundColor: colors.primary.DEFAULT }]}
             onPress={() => setActiveTab('broadcast')}
           >
@@ -270,7 +270,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             <Text style={[styles.tabText, { color: activeTab === 'broadcast' ? '#fff' : colors.text.secondary }]}>
               Messaging
             </Text>
-          </TouchableOpacity> */}
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.tabItem, activeTab === 'analytics' && { backgroundColor: colors.primary.DEFAULT }]}
@@ -393,7 +393,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
           </ScrollView>
         )}
 
-        {/* TAB 2: TARGETED MESSAGING (HIDDEN FOR NOW) 
+        {/* TAB 2: TARGETED MESSAGING */}
         {activeTab === 'broadcast' && (
           <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
             <GlassCard style={styles.broadcastCard}>
@@ -537,8 +537,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             </GlassCard>
           </ScrollView>
         )}
-        */
-        }
 
         {/* TAB 3: USAGE ANALYTICS & EVENT LOGS */}
         {activeTab === 'analytics' && (

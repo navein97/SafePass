@@ -131,63 +131,29 @@ export const SuperAdminService = {
       let recipientUserIds: string[] = [];
       let companyName: string | undefined;
 
-      if (targetType === 'all_masters') {
-        // Query profiles table directly for all master / manager profiles across the app
-        const { data: masterProfiles, error: profErr } = await supabase
-          .from('profiles')
-          .select('id, role, manager_level')
-          .or('role.eq.manager,role.eq.master,manager_level.eq.1');
+      // Use the new RPC to bypass RLS and fetch all target user IDs
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('get_broadcast_target_ids', {
+        p_target_type: targetType,
+        p_company_id: companyId || null,
+        p_recipient_scope: recipientScope
+      });
 
-        if (!profErr && masterProfiles && masterProfiles.length > 0) {
-          recipientUserIds = masterProfiles.map(p => p.id);
-        } else {
-          // Fallback to getAllMasterCompanies
-          const allCompanies = await this.getAllMasterCompanies();
-          recipientUserIds = allCompanies
-            .map(c => c.master_user?.id)
-            .filter((id): id is string => Boolean(id));
-        }
-      } else if (targetType === 'beta_masters') {
-        const allCompanies = await this.getAllMasterCompanies();
-        const betaCompanies = allCompanies.filter(c => c.is_beta_tester);
-        recipientUserIds = betaCompanies
-          .map(c => c.master_user?.id)
-          .filter((id): id is string => Boolean(id));
-      } else if (targetType === 'specific_company') {
-        if (!companyId) {
-          return { success: false, count: 0, error: 'Please select a company.' };
-        }
+      if (rpcErr) {
+        throw rpcErr;
+      }
 
-        // Fetch company details for name
+      if (rpcData && rpcData.length > 0) {
+        recipientUserIds = rpcData.map((row: any) => row.user_id);
+      }
+
+      // If targeting a specific company, fetch its name for the success alert
+      if (targetType === 'specific_company' && companyId) {
         const { data: comp } = await supabase
           .from('companies')
           .select('name')
           .eq('id', companyId)
           .maybeSingle();
-
         companyName = comp?.name || 'Selected Company';
-
-        // Fetch company profiles
-        const { data: companyProfiles, error: compProfErr } = await supabase
-          .from('profiles')
-          .select('id, role, manager_level')
-          .eq('company_id', companyId);
-
-        if (compProfErr) throw compProfErr;
-
-        if (companyProfiles && companyProfiles.length > 0) {
-          if (recipientScope === 'masters_only') {
-            const managers = companyProfiles.filter(
-              p => p.role === 'manager' || p.role === 'master' || p.manager_level === 1
-            );
-            // Fallback to all company profiles if no explicit manager profile was flagged
-            recipientUserIds = managers.length > 0
-              ? managers.map(p => p.id)
-              : companyProfiles.map(p => p.id);
-          } else {
-            recipientUserIds = companyProfiles.map(p => p.id);
-          }
-        }
       }
 
       // Deduplicate user IDs
