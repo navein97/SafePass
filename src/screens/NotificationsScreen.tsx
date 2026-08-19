@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import {
@@ -18,12 +18,14 @@ import {
   MessageCircle, 
   Bell,
   Star,
+  Send
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Notification {
   id: string;
-  type: 'streak' | 'mention' | 'like' | 'comment' | 'leaderboard' | 'shield';
+  type: 'streak' | 'mention' | 'like' | 'comment' | 'leaderboard' | 'shield' | 'admin_broadcast' | 'system';
   title: string;
   message: string;
   timestamp: string;
@@ -107,6 +109,8 @@ function NotificationItem({ notification, onPress }: { notification: Notificatio
         return <Shield color={colors.status.success} size={24} />;
       case 'mention':
         return <Star color={colors.primary.DEFAULT} size={24} />;
+      case 'admin_broadcast':
+        return <Send color={colors.primary.DEFAULT} size={24} />;
       default:
         return <Bell color={colors.text.secondary} size={24} />;
     }
@@ -143,9 +147,11 @@ export function NotificationsScreen() {
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadNotifications();
+    }, [])
+  );
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -169,7 +175,7 @@ export function NotificationsScreen() {
       if (data) {
         setNotifications(data.map((n: any) => ({
           id: n.id,
-          type: n.type || 'system',
+          type: n.type || (n.data && n.data.type) || 'system',
           title: n.title,
           message: n.message,
           timestamp: new Date(n.created_at).toLocaleDateString() + ' ' + new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
