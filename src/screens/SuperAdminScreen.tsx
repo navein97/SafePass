@@ -262,7 +262,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={[styles.tabItem, activeTab === 'broadcast' && { backgroundColor: colors.primary.DEFAULT }]}
             onPress={() => setActiveTab('broadcast')}
           >
@@ -270,7 +270,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             <Text style={[styles.tabText, { color: activeTab === 'broadcast' ? '#fff' : colors.text.secondary }]}>
               Messaging
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             style={[styles.tabItem, activeTab === 'analytics' && { backgroundColor: colors.primary.DEFAULT }]}
@@ -393,7 +393,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
           </ScrollView>
         )}
 
-        {/* TAB 2: TARGETED MESSAGING */}
+        {/* TAB 2: TARGETED MESSAGING (HIDDEN FOR NOW) 
         {activeTab === 'broadcast' && (
           <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
             <GlassCard style={styles.broadcastCard}>
@@ -405,7 +405,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 Send targeted in-app & push messages to Master Users or specific companies for testing and monitoring.
               </Text>
 
-              {/* Target Selector */}
               <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Target Audience</Text>
               <View style={styles.targetOptionsRow}>
                 <TouchableOpacity
@@ -434,7 +433,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
               </View>
 
-              {/* Company Picker & Recipient Scope if Specific Company */}
               {broadcastTarget === 'specific_company' && (
                 <View style={styles.companyPickerWrapper}>
                   <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Select Target Company</Text>
@@ -461,7 +459,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                     </ScrollView>
                   )}
 
-                  {/* Recipient Scope Selector */}
                   <Text style={[styles.fieldLabel, { color: colors.text.primary, marginTop: 8 }]}>Recipient Scope</Text>
                   <View style={styles.targetOptionsRow}>
                     <TouchableOpacity
@@ -487,7 +484,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 </View>
               )}
 
-              {/* Target Summary Badge */}
               <View style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 borderWidth: 1,
@@ -511,7 +507,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 </Text>
               </View>
 
-              {/* Title Input */}
               <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Notification Title</Text>
               <TextInput
                 style={[styles.input, { borderColor: colors.border, color: colors.text.primary }]}
@@ -521,7 +516,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 onChangeText={setBroadcastTitle}
               />
 
-              {/* Message Input */}
               <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Message Body</Text>
               <TextInput
                 style={[styles.textArea, { borderColor: colors.border, color: colors.text.primary }]}
@@ -543,6 +537,8 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             </GlassCard>
           </ScrollView>
         )}
+        */
+        }
 
         {/* TAB 3: USAGE ANALYTICS & EVENT LOGS */}
         {activeTab === 'analytics' && (
