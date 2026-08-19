@@ -82,7 +82,7 @@ export const NotificationService = {
                     user_id: userId,
                     title,
                     message: body,
-                    data,
+                    type: data?.type || 'system',
                     is_read: false,
                     created_at: new Date().toISOString()
                 });
