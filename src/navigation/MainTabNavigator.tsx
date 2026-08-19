@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { 
   User, 
@@ -98,10 +98,10 @@ export function MainTabNavigator() {
           bottom: 0,
           left: 0,
           right: 0,
-          backgroundColor: 'transparent', // Important for BlurView to show through
+          backgroundColor: Platform.OS === 'android' ? (theme === 'dark' ? 'rgba(18, 18, 26, 0.7)' : 'rgba(255, 255, 255, 0.8)') : 'transparent', 
           borderTopWidth: StyleSheet.hairlineWidth || 0.5,
           borderTopColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
-          height: 60 + bottomInset,
+          height: Platform.OS === 'web' ? 70 + bottomInset : 60 + bottomInset,
           paddingBottom: bottomInset,
           paddingTop: 8,
           elevation: 0, // Remove android shadow so it's truly transparent
@@ -110,6 +110,7 @@ export function MainTabNavigator() {
           <BlurView 
             tint={theme === 'dark' ? 'dark' : 'light'} 
             intensity={90} 
+            experimentalBlurMethod="dimezisBlurView"
             style={StyleSheet.absoluteFill} 
           />
         ),
