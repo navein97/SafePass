@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
+import { BlurView } from 'expo-blur';
 
 // Screens
 // Screens
@@ -97,18 +98,21 @@ export function MainTabNavigator() {
           bottom: 0,
           left: 0,
           right: 0,
-          backgroundColor: theme === 'dark' ? 'rgba(18, 18, 26, 0.88)' : 'rgba(255, 255, 255, 0.90)',
+          backgroundColor: 'transparent', // Important for BlurView to show through
           borderTopWidth: StyleSheet.hairlineWidth || 0.5,
-          borderTopColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+          borderTopColor: theme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
           height: 60 + bottomInset,
           paddingBottom: bottomInset,
           paddingTop: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: theme === 'dark' ? 0.3 : 0.06,
-          shadowRadius: 12,
-          elevation: 12,
+          elevation: 0, // Remove android shadow so it's truly transparent
         },
+        tabBarBackground: () => (
+          <BlurView 
+            tint={theme === 'dark' ? 'dark' : 'light'} 
+            intensity={90} 
+            style={StyleSheet.absoluteFill} 
+          />
+        ),
         tabBarActiveTintColor: colors.primary.DEFAULT, // Theme primary tint
         tabBarInactiveTintColor: colors.text.tertiary,
         tabBarShowLabel: true,
