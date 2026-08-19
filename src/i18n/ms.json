@@ -257,7 +257,7 @@
     "resumeButton": "Sambung dari S{{question}}",
     "startFreshButton": "Mula Semula",
     "dailyLimitTitle": "Had Harian Dicapai",
-    "dailyLimitMessage": "Anda telah mencapai had 5 soalan untuk batch ini hari ini. Sila datang lagi esok atau cuba Mod Latihan!",
+    "dailyLimitMessage": "Anda telah mencapai had harian untuk batch ini hari ini. Sila datang lagi esok atau cuba Mod Latihan!",
     "batchLocked": "Batch Terkunci",
     "batchLockedMessage": "Anda perlu melengkapkan Batch {{prevBatch}} dengan purata markah sekurang-kurangnya 60% untuk membuka batch ini.",
     "loadingQuestions": "Memuatkan soalan {{mode}}...",

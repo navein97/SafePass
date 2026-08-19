@@ -23,10 +23,10 @@ export const QuizScreen = ({ navigation, route }: any) => {
   const mode = route.params?.mode || 'live'; // 'live' or 'practice'
   const isPractice = mode === 'practice';
 
-  
+
   const { t, i18n } = useTranslation();
   const { colors, theme } = useTheme();
-  
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: string; attempts: number; isCorrect: boolean }[]>([]);
@@ -65,7 +65,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     }
   }, [nextTimer]);
 
-  
+
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -82,21 +82,21 @@ export const QuizScreen = ({ navigation, route }: any) => {
       setLoading(true);
 
       setLoadingStatus(t('common.fetchingProfile'));
-      
+
       // Add timeout to prevent infinite hang (25s to account for slow mobile network / dev server)
       const profilePromise = AuthService.getUserProfile();
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Profile fetch timeout')), 25000)
       );
-      
+
       const result = await Promise.race([profilePromise, timeoutPromise]) as any;
       const profile = result.profile;
       const error = result.error;
-      
+
       if (error || !profile) {
         console.error('Profile load error:', error);
         Alert.alert(
-          t('common.error'), 
+          t('common.error'),
           t('auth.sessionError') || 'Your session may have expired. Please log in again.',
           [
             { text: t('common.retry'), onPress: () => loadQuiz() },
@@ -107,7 +107,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       }
 
       setUserId(profile.id);
-      
+
       if (profile.role === 'manager') {
         navigation.replace('ManagerQuickView');
         return;
@@ -152,7 +152,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
           setLoading(false);
           const title = t('quiz.batchLocked') || 'Batch Locked';
           const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 70% average score to unlock this batch.`;
-          
+
           if (Platform.OS === 'web') {
             window.alert(`${title}\n\n${message}`);
             navigation.goBack();
@@ -169,7 +169,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         if (!dailyStatus.isAccessGranted) {
           setLoading(false);
           const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
-          const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your limit of 5 questions for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
+          const message = t('quiz.dailyLimitMessage', { number: batchNumber }) || `You have reached your daily limit for Batch ${batchNumber} today. Come back tomorrow or try Practice Mode!`;
           if (Platform.OS === 'web') {
             window.alert(`${title}\n\n${message}`);
             navigation.goBack();
@@ -185,7 +185,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       // Load batch questions
       try {
         let loadedQuestions;
-        
+
         if (isPractice) {
           // Use PracticeService for Practice Mode (Smart + Randomized)
           const { PracticeService } = await import('../services/practiceService');
@@ -196,13 +196,13 @@ export const QuizScreen = ({ navigation, route }: any) => {
           loadedQuestions = await BatchService.getBatchQuestions(batchNumber, profile.id);
 
         }
-        
+
         if (!loadedQuestions || loadedQuestions.length === 0) {
           throw new Error('Questions array is empty');
         }
 
         setQuestions(loadedQuestions);
-        
+
         let totalBQ = 30;
         if (!isPractice) {
           totalBQ = await BatchService.getBatchTotalQuestions(batchNumber, profile.id);
@@ -214,7 +214,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
           const quota = (dailyStatus.isOverridden || dailyStatus.isWaived) ? totalBQ : Math.max(0, dailyStatus.limit - dailyStatus.completedToday);
           sLimit = Math.min(quota, loadedQuestions.length);
         }
-        
+
         // Wait for next tick to ensure questions state is accessible if needed
         // then check for saved progress
         const saved = await QuizStorageService.loadProgress(profile.id, batchNumber, mode);
@@ -256,7 +256,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       if (savedProgress.questions && savedProgress.questions.length > 0) {
         setQuestions(savedProgress.questions);
       }
-      
+
       // Use saved session limit if available
       if (savedProgress.sessionLimit !== undefined) {
         setSessionLimit(savedProgress.sessionLimit);
@@ -288,7 +288,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       // Safety check: ensure saved index is within question set
       const questionSet = savedProgress.questions || questions;
       const validIndex = Math.min(savedProgress.currentIndex, questionSet.length - 1);
-      
+
       setCurrentIndex(validIndex);
       setAnswers(savedProgress.answers);
       setAttemptCounts(savedProgress.attemptCounts);
@@ -350,11 +350,11 @@ export const QuizScreen = ({ navigation, route }: any) => {
     }
     navigation.navigate('MainTabs', { screen: 'Mission', params: { refresh: true } });
   };
-  
+
   const handleBack = () => {
     // Platform-agnostic confirmation with save option
     const title = t('common.exitQuiz') || 'Exit Quiz?';
-    const message = t('common.saveExitMessage') || 
+    const message = t('common.saveExitMessage') ||
       'Would you like to save your progress and continue later?';
 
     if (Platform.OS === 'web') {
@@ -369,12 +369,12 @@ export const QuizScreen = ({ navigation, route }: any) => {
         message,
         [
           { text: t('common.cancel') || 'Cancel', style: 'cancel' },
-          { 
+          {
             text: t('common.saveAndExitButton') || 'Save & Exit',
             onPress: () => exitQuiz(true)
           },
-          { 
-            text: t('common.exitWithoutSaving') || 'Exit Without Saving', 
+          {
+            text: t('common.exitWithoutSaving') || 'Exit Without Saving',
             style: 'destructive',
             onPress: () => exitQuiz(false)
           }
@@ -391,7 +391,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
     const currentBatchQuestion = questions[currentIndex];
     const isCorrect = index === currentBatchQuestion.correctOptionIndex;
-    
+
     // Count previous attempts for this specific question
     const prevAttempts = answers.filter(a => a.questionId === currentBatchQuestion.id).length;
     const currentAttempts = prevAttempts + 1;
@@ -409,7 +409,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         isCorrect: true
       }]);
       setShowFeedback(false);
-      
+
       if (!isPractice) {
         // First attempt = 1.0 mark, Re-attempt = 0.5 mark
         const score = currentAttempts === 1 ? 1.0 : 0.5;
@@ -452,7 +452,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
         setNextTimer(4);
       }
     }
-    
+
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
@@ -523,16 +523,16 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
       setLoading(true);
       setLoadingStatus(t('quiz.submitting'));
-      
+
       if (isPractice) {
         // Clear saved progress on completion
         await QuizStorageService.clearProgress(userId, batchNumber, mode);
-        
+
         // Calculate practice session results based on unique questions
         const uniqueCorrect = new Set(answers.filter(a => a.isCorrect).map(a => a.questionId)).size;
         const uniqueAttempted = new Set(answers.map(a => a.questionId)).size;
         const accuracy = uniqueAttempted > 0 ? Math.round((uniqueCorrect / uniqueAttempted) * 100) : 0;
-        
+
         const title = accuracy >= 80 ? t('quiz.excellentPractice') : accuracy >= 60 ? t('quiz.goodPractice') : t('quiz.keepPracticing');
 
         // Always show full-screen celebration card (works on both web and native)
@@ -541,7 +541,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       }
 
       const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000);
-      
+
       const { count } = await supabase
         .from('user_question_progress')
         .select('*', { count: 'exact', head: true })
@@ -664,23 +664,23 @@ export const QuizScreen = ({ navigation, route }: any) => {
     const savedQuestion = savedProgress.currentIndex + 1;
     const totalQuestions = questions.length;
     const answeredCount = savedProgress.answers.length;
-    
+
     return (
       <GradientBackground>
         <SafeAreaView style={styles.resumeContainer}>
           <View style={styles.resumeCard}>
             <Text style={styles.resumeTitle}>{t('quiz.savedProgressTitle') || 'Resume Quiz?'}</Text>
             <Text style={styles.resumeMessage}>
-              {t('quiz.savedProgressMessage', { 
-                question: savedQuestion, 
+              {t('quiz.savedProgressMessage', {
+                question: savedQuestion,
                 total: totalQuestions,
-                answered: answeredCount 
+                answered: answeredCount
               }) || `You have saved progress at Question ${savedQuestion}.\n\n${answeredCount} questions answered.`}
             </Text>
-            
+
             <View style={styles.resumeButtons}>
-              <TouchableOpacity 
-                style={[styles.resumeButton, styles.resumeButtonPrimary]} 
+              <TouchableOpacity
+                style={[styles.resumeButton, styles.resumeButtonPrimary]}
                 onPress={restoreProgress}
                 activeOpacity={0.8}
               >
@@ -694,9 +694,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   {t('quiz.resumeButton', { question: savedQuestion }) || `Resume from Q${savedQuestion}`}
                 </Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.resumeButton, styles.resumeButtonSecondary]} 
+
+              <TouchableOpacity
+                style={[styles.resumeButton, styles.resumeButtonSecondary]}
                 onPress={startFresh}
               >
                 <Text style={styles.resumeButtonTextSecondary}>
@@ -715,18 +715,18 @@ export const QuizScreen = ({ navigation, route }: any) => {
     return (
       <GradientBackground>
         <SafeAreaView style={styles.resumeContainer}>
-           <StatusBar barStyle="light-content" />
-           <View style={styles.resumeCard}>
+          <StatusBar barStyle="light-content" />
+          <View style={styles.resumeCard}>
             <View style={styles.reviewIconContainer}>
-               <Check size={48} color={colors.primary.DEFAULT} />
+              <Check size={48} color={colors.primary.DEFAULT} />
             </View>
             <Text style={styles.resumeTitle}>{t('quiz.reviewPhaseTitle') || 'Review Mode'}</Text>
             <Text style={styles.resumeMessage}>
               {t('quiz.reviewPhaseMessage') || "You've reached question 30! Now, we'll review the questions you missed to help you master them."}
             </Text>
-            
-            <TouchableOpacity 
-              style={[styles.resumeButton, styles.resumeButtonPrimary]} 
+
+            <TouchableOpacity
+              style={[styles.resumeButton, styles.resumeButtonPrimary]}
               onPress={() => setHasAnnouncedReview(true)}
               activeOpacity={0.8}
             >
@@ -750,7 +750,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
   if (resultData) {
     const isPracticeResult = resultData.isPractice;
     const isDailySessionComplete = (resultData as any).isDailySessionComplete;
-    
+
     let celebrationEmoji = '🏆';
     let accentColor: string;
     if (isDailySessionComplete) {
@@ -774,44 +774,44 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
             <Text style={[styles.resumeTitle, { color: accentColor }]}>{resultData.title}</Text>
 
-              {isDailySessionComplete ? (
-                <>
-                  <Text style={[styles.resultMessage, { color: colors.text.secondary, marginTop: 12, textAlign: 'center', lineHeight: 22, fontSize: 16 }]}>
-                    {t('quiz.dailySessionCompleteMessage', { count: (resultData as any).completedCount, total: (resultData as any).totalBatchQuestions || totalBatchQuestions || 30 }) || `Great work! You've answered ${(resultData as any).completedCount}/${(resultData as any).totalBatchQuestions || totalBatchQuestions || 30} questions in this batch. Come back tomorrow to continue your progress.`}
-                  </Text>
-                  
-                  <View style={{ backgroundColor: colors.background.subtle, paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '90%', alignSelf: 'center' }}>
-                    <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('profile.currentProgress', 'Current Progress')}</Text>
-                    <Text style={{ fontSize: 28, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{(resultData as any).completedCount}/{(resultData as any).totalBatchQuestions || totalBatchQuestions || 30}</Text>
-                  </View>
-                </>
-              ) : isPracticeResult ? (
-                <>
-                  <Text style={styles.resultScoreText}>{t('quiz.correctCount', { correct: resultData.correct, total: resultData.total })}</Text>
-                  <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.score}%</Text>
-                  <Text style={styles.resultSubLabel}>{t('quiz.accuracy')}</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.resultSubLabel}>{t('quiz.scoreLabel').replace(':', '')}</Text>
-                  <Text style={[styles.resultScoreValue, { color: accentColor, marginTop: -4 }]}>{resultData.score.toFixed(1)}%</Text>
-                  
-                  <View style={{ backgroundColor: colors.background.subtle, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '80%', alignSelf: 'center' }}>
-                    <Text style={{ fontSize: 12, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('quiz.averageScore')}</Text>
-                    <Text style={{ fontSize: 22, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{resultData.avgScore.toFixed(1)}%</Text>
-                  </View>
+            {isDailySessionComplete ? (
+              <>
+                <Text style={[styles.resultMessage, { color: colors.text.secondary, marginTop: 12, textAlign: 'center', lineHeight: 22, fontSize: 16 }]}>
+                  {t('quiz.dailySessionCompleteMessage', { count: (resultData as any).completedCount, total: (resultData as any).totalBatchQuestions || totalBatchQuestions || 30 }) || `Great work! You've answered ${(resultData as any).completedCount}/${(resultData as any).totalBatchQuestions || totalBatchQuestions || 30} questions in this batch. Come back tomorrow to continue your progress.`}
+                </Text>
 
-                  {resultData.passed ? (
-                    <Text style={[styles.resultMessage, { color: '#00C853', marginTop: 8 }]}>
-                      ✅ {batchNumber < 4 ? t('quiz.nextBatchUnlocked', { number: batchNumber + 1 }) : t('quiz.allBatchesComplete')}
-                    </Text>
-                  ) : (
-                    <Text style={[styles.resultMessage, { color: colors.text.secondary, marginTop: 8 }]}>
-                      {t('mission.needMoreToPass', { percent: (60 - resultData.avgScore).toFixed(1) })}
-                    </Text>
-                  )}
-                </>
-              )}
+                <View style={{ backgroundColor: colors.background.subtle, paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '90%', alignSelf: 'center' }}>
+                  <Text style={{ fontSize: 13, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('profile.currentProgress', 'Current Progress')}</Text>
+                  <Text style={{ fontSize: 28, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{(resultData as any).completedCount}/{(resultData as any).totalBatchQuestions || totalBatchQuestions || 30}</Text>
+                </View>
+              </>
+            ) : isPracticeResult ? (
+              <>
+                <Text style={styles.resultScoreText}>{t('quiz.correctCount', { correct: resultData.correct, total: resultData.total })}</Text>
+                <Text style={[styles.resultScoreValue, { color: accentColor }]}>{resultData.score}%</Text>
+                <Text style={styles.resultSubLabel}>{t('quiz.accuracy')}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.resultSubLabel}>{t('quiz.scoreLabel').replace(':', '')}</Text>
+                <Text style={[styles.resultScoreValue, { color: accentColor, marginTop: -4 }]}>{resultData.score.toFixed(1)}%</Text>
+
+                <View style={{ backgroundColor: colors.background.subtle, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, marginTop: 24, marginBottom: 8, alignItems: 'center', width: '80%', alignSelf: 'center' }}>
+                  <Text style={{ fontSize: 12, fontFamily: typography.fonts.medium, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('quiz.averageScore')}</Text>
+                  <Text style={{ fontSize: 22, fontFamily: typography.fonts.bold, color: accentColor, marginTop: 4 }}>{resultData.avgScore.toFixed(1)}%</Text>
+                </View>
+
+                {resultData.passed ? (
+                  <Text style={[styles.resultMessage, { color: '#00C853', marginTop: 8 }]}>
+                    ✅ {batchNumber < 4 ? t('quiz.nextBatchUnlocked', { number: batchNumber + 1 }) : t('quiz.allBatchesComplete')}
+                  </Text>
+                ) : (
+                  <Text style={[styles.resultMessage, { color: colors.text.secondary, marginTop: 8 }]}>
+                    {t('mission.needMoreToPass', { percent: (60 - resultData.avgScore).toFixed(1) })}
+                  </Text>
+                )}
+              </>
+            )}
 
             {/* Buttons */}
             <View style={{ gap: 12, width: '100%', marginTop: 24 }}>
@@ -855,17 +855,17 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 onPress={() => exitQuiz(false)}
                 activeOpacity={0.8}
               >
-                  {!isPracticeResult && resultData.passed && (
-                    <LinearGradient
-                      colors={colors.gradients.primary as any}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
-                    />
-                  )}
-                  <Text style={(isPracticeResult || (!isPracticeResult && !resultData.passed)) ? styles.resumeButtonTextSecondary : styles.resumeButtonTextPrimary}>
-                    {t('quiz.backToMenu')}
-                  </Text>
+                {!isPracticeResult && resultData.passed && (
+                  <LinearGradient
+                    colors={colors.gradients.primary as any}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[StyleSheet.absoluteFill, { borderRadius: 12 }]}
+                  />
+                )}
+                <Text style={(isPracticeResult || (!isPracticeResult && !resultData.passed)) ? styles.resumeButtonTextSecondary : styles.resumeButtonTextPrimary}>
+                  {t('quiz.backToMenu')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -910,7 +910,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                     {t('quiz.questionNumber', { number: index + 1 }) || `Question ${index + 1}`}
                   </Text>
                   <Text style={[styles.questionText, { fontSize: 15, lineHeight: 22, marginBottom: 8 }]}>{text}</Text>
-                  
+
                   <View style={{ backgroundColor: colors.mode === 'dark' ? '#0A2412' : '#F0FBF4', padding: 10, borderRadius: 8, marginVertical: 6 }}>
                     <Text style={{ fontSize: 13, color: colors.status.success, fontFamily: typography.fonts.bold }}>✓ {t('quiz.correctAnswer', 'Correct Answer')}:</Text>
                     <Text style={{ fontSize: 14, color: colors.status.success, marginTop: 2, fontFamily: typography.fonts.medium }}>{localizedCorrectOptionText}</Text>
@@ -925,8 +925,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
                 </View>
               );
             })}
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.nextButton}
               onPress={() => exitQuiz(false)}
               activeOpacity={0.8}
@@ -949,7 +949,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
@@ -957,18 +957,18 @@ export const QuizScreen = ({ navigation, route }: any) => {
               <ArrowLeft size={20} color={colors.text.primary} />
             </TouchableOpacity>
             <Text style={styles.batchTitle}>
-                {isPractice ? (t('mission.practiceModeTitle') || 'Practice') : t('quiz.batchTitle', { number: batchNumber })}
+              {isPractice ? (t('mission.practiceModeTitle') || 'Practice') : t('quiz.batchTitle', { number: batchNumber })}
             </Text>
             <View style={{ width: 20 }} />
           </View>
           <View style={styles.statsRow}>
-             <Text style={styles.progressText}>
-                {currentIndex >= primarySessionLimit 
-                  ? (t('quiz.reviewPhaseTitle') || 'Review Mode')
-                  : `${t('quiz.question')} ${currentIndex + 1}/${primarySessionLimit}`}
-             </Text>
+            <Text style={styles.progressText}>
+              {currentIndex >= primarySessionLimit
+                ? (t('quiz.reviewPhaseTitle') || 'Review Mode')
+                : `${t('quiz.question')} ${currentIndex + 1}/${primarySessionLimit}`}
+            </Text>
             {!isPractice && (
-              <View style={[styles.statItem, {flexDirection: 'row', gap: 4}]}>
+              <View style={[styles.statItem, { flexDirection: 'row', gap: 4 }]}>
                 <Text style={styles.statLabel}>{t('quiz.accuracy')}:</Text>
                 <Text style={styles.statValue}>{accuracy.toFixed(0)}%</Text>
               </View>
@@ -982,10 +982,10 @@ export const QuizScreen = ({ navigation, route }: any) => {
           )}
         </View>
 
-        <ScrollView 
+        <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={styles.content} 
-          bounces={true} 
+          contentContainerStyle={styles.content}
+          bounces={true}
           showsVerticalScrollIndicator={false}
         >
           {/* Question Card */}
@@ -1030,7 +1030,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
                   ]}>
                     {option}
                   </Text>
-                  
+
                   {showAsCorrect && (
                     <Check size={24} color={colors.status.success} strokeWidth={3} />
                   )}
@@ -1081,8 +1081,8 @@ export const QuizScreen = ({ navigation, route }: any) => {
         {/* Action Buttons */}
         <View style={styles.footer}>
           {isAnswered && (
-            <TouchableOpacity 
-              style={[styles.nextButton, nextTimer > 0 && { opacity: 0.5 }]} 
+            <TouchableOpacity
+              style={[styles.nextButton, nextTimer > 0 && { opacity: 0.5 }]}
               onPress={handleNext}
               disabled={nextTimer > 0}
               activeOpacity={0.8}
@@ -1137,7 +1137,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 30,
     textAlign: 'center',
   },
-  
+
   content: {
     padding: 16,
     paddingBottom: 40,
@@ -1266,7 +1266,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   optionTextWrong: {
     color: colors.status.danger,
   },
-  
+
   // Feedback
   feedbackCard: {
     flexDirection: 'column',
@@ -1282,7 +1282,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.medium,
     color: colors.status.danger,
   },
-  
+
   // Coaching
   coachingCard: {
     backgroundColor: colors.background.subtle,
@@ -1302,7 +1302,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.primary,
     lineHeight: 22,
   },
-  
+
   // Footer
   footer: {
     padding: 20,
@@ -1340,7 +1340,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontFamily: typography.fonts.bold,
     color: '#FFFFFF',
   },
-  
+
   // Resume Prompt Styles
   resumeContainer: {
     flex: 1,

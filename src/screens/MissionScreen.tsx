@@ -45,7 +45,7 @@ export function MissionScreen() {
   const [batchStatuses, setBatchStatuses] = useState<BatchStatus[]>([]);
   const [selectedMode, setSelectedMode] = useState<'live' | 'practice' | null>(null);
   const [maxBatches, setMaxBatches] = useState(8); // 1 = trial, 8 = subscribed
-  
+
   // Ref to track if it's the very first load to avoid spinner on subsequent visits
   const isFirstLoadRef = useRef(true);
   // Cache timestamp
@@ -60,11 +60,11 @@ export function MissionScreen() {
       const loadData = async () => {
         // Check if we need to force refresh from QuizScreen params
         const shouldRefresh = route.params?.refresh === true;
-        
+
         // Cache Check: Skip if data is fresh and we aren't forced to refresh
         const now = Date.now();
         if (!shouldRefresh && lastLoadTime.current > 0 && (now - lastLoadTime.current) < CACHE_DURATION_MS) {
-          return; 
+          return;
         }
 
         // Clear the refresh param so we don't loop
@@ -102,9 +102,9 @@ export function MissionScreen() {
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(profile.id, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(profile.id, i)));
             const dailyStatuses = await Promise.all(batchNumbers.map(i => BatchService.getDailyLimitStatus(profile.id, i)));
-            
+
             const totalQuestionsResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchTotalQuestions(i, profile.id)));
-            
+
             const { data: qProgress } = await supabase
               .from('user_question_progress')
               .select('batch_number')
@@ -135,12 +135,12 @@ export function MissionScreen() {
           };
 
           // Race the fetch against a 10-second timeout
-          const timeoutPromise = new Promise((_, reject) => 
+          const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timed out')), 10000)
           );
 
           const [resultStatuses] = await Promise.race([
-            Promise.all([fetchPromise()]), 
+            Promise.all([fetchPromise()]),
             timeoutPromise
           ]) as [BatchStatus[]];
 
@@ -172,7 +172,7 @@ export function MissionScreen() {
 
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
     const batch = batchStatuses.find(b => b.batchNumber === batchNumber);
-    
+
     if (selectedMode === 'live' && batch) {
       if (batch.passed) {
         const title = t('quiz.batchCompleted') || 'Goal Done';
@@ -184,10 +184,10 @@ export function MissionScreen() {
         }
         return;
       }
-      
+
       if (batch.dailyCount >= 5) {
         const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
-        const message = t('quiz.dailyLimitMessage') || `You have reached your limit of 5 questions for this batch today. Come back tomorrow or try Practice Mode!`;
+        const message = t('quiz.dailyLimitMessage') || `You have reached your daily limit for this batch today. Come back tomorrow or try Practice Mode!`;
         if (Platform.OS === 'web') {
           window.alert(`${title}\n\n${message}`);
         } else {
@@ -201,7 +201,7 @@ export function MissionScreen() {
     if (!canAccess && selectedMode === 'live') {
       const title = t('quiz.batchLocked');
       const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 });
-      
+
       if (Platform.OS === 'web') {
         window.alert(`${title}\n\n${message}`);
       } else {
@@ -248,7 +248,7 @@ export function MissionScreen() {
     <GradientBackground>
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <StatusBar barStyle="light-content" />
-        
+
         <View style={styles.header}>
           <Text style={styles.title}>{t('mission.trainingTitle')}</Text>
           <Text style={styles.subtitle}>{t('mission.trainingSubtitle')}</Text>
@@ -257,8 +257,8 @@ export function MissionScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           {!selectedMode ? (
             <View style={styles.selectionContainer}>
-              <TouchableOpacity 
-                style={[styles.modeCard, { borderColor: colors.status.success }]} 
+              <TouchableOpacity
+                style={[styles.modeCard, { borderColor: colors.status.success }]}
                 onPress={() => setSelectedMode('live')}
               >
                 <View style={[styles.modeIconContainer, { backgroundColor: colors.status.success + '20' }]}>
@@ -272,8 +272,8 @@ export function MissionScreen() {
                 </View>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.modeCard, { borderColor: colors.primary.DEFAULT }]} 
+              <TouchableOpacity
+                style={[styles.modeCard, { borderColor: colors.primary.DEFAULT }]}
                 onPress={() => setSelectedMode('practice')}
               >
                 <View style={[styles.modeIconContainer, { backgroundColor: colors.primary.DEFAULT + '20' }]}>
@@ -320,7 +320,7 @@ export function MissionScreen() {
                   </Text>
                 </View>
               )}
-              
+
               {batchStatuses.map((batch) => (
                 <TouchableOpacity
                   key={batch.batchNumber}

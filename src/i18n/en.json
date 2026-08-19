@@ -257,7 +257,7 @@
     "resumeButton": "Resume from Q{{question}}",
     "startFreshButton": "Start Fresh",
     "dailyLimitTitle": "Daily Limit Reached",
-    "dailyLimitMessage": "You have reached your limit of 5 questions for this batch today. Come back tomorrow or try Practice Mode!",
+    "dailyLimitMessage": "You have reached your daily limit of questions for this batch today. Come back tomorrow or try Practice Mode!",
     "batchLocked": "Batch Locked",
     "batchLockedMessage": "You must complete Batch {{prevBatch}} with at least 60% average score to unlock this batch.",
     "loadingQuestions": "Loading {{mode}} questions...",
