@@ -73,14 +73,7 @@ export const ScoringService = {
     },
 
     calculateWeightedAverage(currentScore: number, history: number[]): number {
-        // Updated to Simple Average as requested
-        if (history.length === 0) return currentScore;
-
-        const historySum = history.reduce((sum, val) => sum + val, 0);
-        // Add current score to history sum for total average
-        const totalSum = historySum + currentScore;
-        const totalCount = history.length + 1;
-
-        return Math.round(totalSum / totalCount);
+        // Latest Attempt method: Return current score directly without historic degradation
+        return currentScore;
     }
 };

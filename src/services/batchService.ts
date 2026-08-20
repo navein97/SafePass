@@ -222,7 +222,7 @@ export const BatchService = {
     },
 
     /**
-     * Get average score for a batch across all attempts
+     * Get score for a batch using the latest attempt
      */
     async getBatchAverageScore(userId: string, batchNumber: number): Promise<number> {
         const attempts = await this.getBatchAttempts(userId, batchNumber);
@@ -230,9 +230,9 @@ export const BatchService = {
             return 0;
         }
 
-        // Simple average of all attempts (including provisional if any)
-        const total = attempts.reduce((sum, attempt) => sum + attempt.score, 0);
-        return total / attempts.length;
+        // Return latest attempt score for this batch
+        const latestAttempt = attempts[attempts.length - 1];
+        return latestAttempt ? latestAttempt.score : 0;
     },
 
     /**
@@ -505,58 +505,9 @@ export const BatchService = {
             }
 
 
-            // --- POST-INSERT: Update profile with averaged stats ---
-            // Now that the new attempt is saved, compute rolling safety_index
-            // and average component scores from DB (includes the just-inserted row)
+            // --- POST-INSERT: Update profile with latest attempt stats ---
             try {
-                // Safety index: rolling average of last 5 attempts (includes new row)
-                const { data: recentAttempts } = await supabase
-                    .from('user_batch_progress')
-                    .select('score')
-                    .eq('user_id', userId)
-                    .order('completed_at', { ascending: false })
-                    .limit(5);
-
-                const recentScores = recentAttempts?.map((a: any) => a.score) || [score];
-                const avgSafetyIndex = Math.round(
-                    recentScores.reduce((sum: number, s: number) => sum + s, 0) / recentScores.length
-                );
-
-                // Average component scores: take latest attempt per batch, then average across batches
-                const { data: allAttempts } = await supabase
-                    .from('user_batch_progress')
-                    .select('batch_number, component_scores')
-                    .eq('user_id', userId)
-                    .order('completed_at', { ascending: false });
-
-                const processedBatches = new Set<number>();
-                let opTotal = 0, discTotal = 0, profTotal = 0, batchCount = 0;
-                (allAttempts || []).forEach((a: any) => {
-                    if (!processedBatches.has(a.batch_number) && a.component_scores) {
-                        opTotal += a.component_scores.operation || 0;
-                        discTotal += a.component_scores.discipline || 0;
-                        profTotal += a.component_scores.professionalism || 0;
-                        batchCount++;
-                        processedBatches.add(a.batch_number);
-                    }
-                });
-
-                const avgComponentScores = {
-                    operation: batchCount > 0 ? Math.round(opTotal / batchCount) : componentScores.operation,
-                    discipline: batchCount > 0 ? Math.round(discTotal / batchCount) : componentScores.discipline,
-                    professionalism: batchCount > 0 ? Math.round(profTotal / batchCount) : componentScores.professionalism,
-                };
-
-                await supabase
-                    .from('profiles')
-                    .update({
-                        safety_index: avgSafetyIndex,
-                        component_scores: avgComponentScores,
-                        total_score: avgSafetyIndex,
-                    })
-                    .eq('id', userId);
-
-
+                await this.syncProfileStats(userId);
             } catch (profileUpdateError) {
                 console.warn('[BatchService] Profile stats update failed (non-critical):', profileUpdateError);
             }
@@ -837,16 +788,15 @@ export const BatchService = {
                         };
                     }
 
-                    // Sort by attempt number just in case
+                    // Sort by attempt number to get the latest attempt
                     attempts.sort((a, b) => a.attemptNumber - b.attemptNumber);
 
-                    const avgScore = attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length;
-                    const totalTime = attempts.reduce((sum, a) => sum + (a.timeSpentSeconds || 0), 0);
                     const latestAttempt = attempts[attempts.length - 1];
+                    const totalTime = attempts.reduce((sum, a) => sum + (a.timeSpentSeconds || 0), 0);
 
                     return {
                         batchNumber: batchNum,
-                        averageScore: Math.round(avgScore * 100) / 100,
+                        averageScore: latestAttempt.score,
                         accuracy: latestAttempt.accuracyPercentage,
                         completion: latestAttempt.completionPercentage,
                         attemptCount: attempts.length,
@@ -949,70 +899,38 @@ export const BatchService = {
                 return;
             }
 
-            // 2. Calculate Safety Index (rolling average of last 5 unique batch attempts)
-            // Strategy: Get the BEST score from each batch, then average them
-            const batchBestScores = new Map<number, number>();
-            attempts.forEach(a => {
-                const currentBest = batchBestScores.get(a.batch_number) || 0;
-                if (a.score > currentBest) {
-                    batchBestScores.set(a.batch_number, a.score);
-                }
-            });
-
-            const scores = Array.from(batchBestScores.values());
-            const avgSafetyIndex = Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
-
-            // 3. Aggregate Component Scores (Average from latest attempts of each batch)
-            let opTotal = 0, discTotal = 0, profTotal = 0, count = 0;
-
-            const processedBatches = new Set<number>();
-            attempts.forEach(a => {
-                if (!processedBatches.has(a.batch_number)) {
-                    processedBatches.add(a.batch_number);
-                    // Only add to component score totals if this row actually has component data
-                    if (a.component_scores) {
-                        opTotal += a.component_scores.operation || 0;
-                        discTotal += a.component_scores.discipline || 0;
-                        profTotal += a.component_scores.professionalism || 0;
-                        count++;
-                    }
-                }
-            });
-
-            // If no attempt had component_scores (e.g. all old data), derive from safety_index as approximation
-            const componentScores = count > 0 ? {
-                operation: Math.round(opTotal / count),
-                discipline: Math.round(discTotal / count),
-                professionalism: Math.round(profTotal / count),
-            } : {
-                operation: avgSafetyIndex,
-                discipline: avgSafetyIndex,
-                professionalism: avgSafetyIndex,
+            // 2. Latest Attempt Evaluation (Driver's most recent active batch performance)
+            const latestAttempt = attempts[0];
+            const latestScore = latestAttempt.score ?? 0;
+            const componentScores = latestAttempt.component_scores || {
+                operation: latestScore,
+                discipline: latestScore,
+                professionalism: latestScore,
             };
 
-            let passedBatchesCount = 0;
-            for (const score of batchBestScores.values()) {
-                if (score >= 60) {
-                    passedBatchesCount++;
+            // 3. Count unique passed batches (score >= 60 in any attempt)
+            const passedBatches = new Set<number>();
+            attempts.forEach(a => {
+                if (a.score >= 60) {
+                    passedBatches.add(a.batch_number);
                 }
-            }
+            });
+            const passedBatchesCount = passedBatches.size;
 
-            // 4. Update Profile
-
+            // 4. Update Profile with Latest Attempt metrics (No cross-batch mixing)
             await supabase
                 .from('profiles')
                 .update({
-                    safety_index: avgSafetyIndex,
-                    component_scores: componentScores,
-                    total_score: avgSafetyIndex,
+                    safety_index: latestScore, // Represents driver's latest attempt score
+                    component_scores: componentScores, // Represents driver's latest attempt DOP
+                    total_score: latestScore,
                     total_batches_completed: passedBatchesCount
                 })
                 .eq('id', userId);
 
-            // 5. Ensure trending exists (Create initial log for chart if missing)
+            // 5. Update compliance logs for trending chart with latest attempt score
             const now = new Date();
             const year = now.getFullYear();
-            // Simple week calculation
             const firstDayOfYear = new Date(year, 0, 1);
             const pastDaysOfYear = (now.getTime() - firstDayOfYear.getTime()) / 86400000;
             const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
@@ -1023,7 +941,7 @@ export const BatchService = {
                     user_id: userId,
                     week_number: weekNumber,
                     year: year,
-                    score: avgSafetyIndex,
+                    score: latestScore,
                     component_scores: componentScores,
                     updated_at: now.toISOString()
                 }, {
@@ -1427,14 +1345,8 @@ export const BatchService = {
 
             if (qProgressError) throw qProgressError;
 
-            // Delete all batch attempt records for this batch (fixes scores/attempts not clearing)
-            const { error: batchProgressError } = await supabase
-                .from('user_batch_progress')
-                .delete()
-                .eq('user_id', userId)
-                .eq('batch_number', batchNumber);
-
-            if (batchProgressError) throw batchProgressError;
+            // Intentionally NOT deleting user_batch_progress here.
+            // We must preserve the audit trail of past failed attempts for compliance tracking.
 
             // Reset consecutive resets count for this batch
             const { data: profile } = await supabase
