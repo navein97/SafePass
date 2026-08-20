@@ -175,7 +175,7 @@ export function MainTabNavigator() {
       />
       <Tab.Screen
         name="Leaderboard"
-        component={role === 'manager' ? ManagerQuickViewScreen : BatchLeaderboardScreen}
+        component={BatchLeaderboardScreen}
         options={{
           tabBarLabel: t('navigation.leaderboard'), // Translate label
           tabBarIcon: ({ color, size }: TabIconProps) => (

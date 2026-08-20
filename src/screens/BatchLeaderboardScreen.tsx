@@ -250,12 +250,36 @@ export function BatchLeaderboardScreen({ navigation }: any) {
   const renderLeaderboardItem = (entry: LeaderboardEntry, index: number) => {
     const rank = index + 1;
     const passed = entry.averageScore >= 60;
-    const isExpanded = expandedUserId === entry.userId;
+    const isExpanded = isManager && expandedUserId === entry.userId;
 
+    if (!isManager) {
+      // Driver view: Name and percentage only, no dropdown or subtext
+      return (
+        <View key={entry.userId} style={styles.leaderboardItem}>
+          <View style={styles.leaderboardItemHeader}>
+            <View style={styles.rankBadge}>
+              <Text style={styles.rankText}>{rank}</Text>
+            </View>
+
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>{entry.userName}</Text>
+            </View>
+
+            <View style={styles.scoreInfo}>
+              <Text style={[styles.scoreText, passed && styles.scoreTextPassed, !passed && styles.scoreTextFailed]}>
+                {entry.averageScore.toFixed(1)}%
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // Manager / Master User view: Full information with dropdown
     return (
       <TouchableOpacity 
         key={entry.userId} 
-        style={[styles.leaderboardItem, !passed && styles.leaderboardItemFailed]}
+        style={styles.leaderboardItem}
         onPress={() => setExpandedUserId(isExpanded ? null : entry.userId)}
         activeOpacity={0.7}
       >
@@ -629,9 +653,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   leaderboardItemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  leaderboardItemFailed: {
-    opacity: 0.6,
   },
   rankBadge: {
     width: 32,
