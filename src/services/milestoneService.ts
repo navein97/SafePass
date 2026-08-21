@@ -18,96 +18,96 @@ export interface Milestone {
 export const MILESTONE_DEFINITIONS = [
     // 1. Volume Milestones (MCQs Completed)
     {
-        id: 'vol_100',
+        id: 'vol_25',
         category: 'volume' as const,
-        title: 'Century Scholar',
-        description: 'Completed 100 MCQs in ProHayat180',
-        threshold: 100,
+        title: 'First Steps',
+        description: 'Completed 25 MCQs in SafePass',
+        threshold: 25,
         icon: 'book-open',
         color: '#3B82F6',
     },
     {
-        id: 'vol_250',
+        id: 'vol_50',
         category: 'volume' as const,
-        title: 'Safety Specialist',
-        description: 'Completed 250 MCQs in ProHayat180',
-        threshold: 250,
+        title: 'Halfway There',
+        description: 'Completed 50 MCQs in SafePass',
+        threshold: 50,
         icon: 'award',
         color: '#8B5CF6',
     },
     {
-        id: 'vol_500',
+        id: 'vol_100',
         category: 'volume' as const,
-        title: 'Road Veteran',
-        description: 'Completed 500 MCQs in ProHayat180',
-        threshold: 500,
+        title: 'Safety Scholar',
+        description: 'Completed 100 MCQs in SafePass',
+        threshold: 100,
         icon: 'shield',
         color: '#EC4899',
     },
     {
-        id: 'vol_1000',
+        id: 'vol_200',
         category: 'volume' as const,
-        title: 'Grandmaster of Safety',
-        description: 'Completed 1,000 MCQs in ProHayat180',
-        threshold: 1000,
+        title: 'Program Graduate',
+        description: 'Completed 200 MCQs across all batches',
+        threshold: 200,
         icon: 'crown',
         color: '#F59E0B',
     },
 
-    // 2. Mastery Milestones (Perfect Sessions - 100% score)
+    // 2. Training Batches Completed
     {
-        id: 'mas_10',
+        id: 'batch_1',
         category: 'mastery' as const,
-        title: 'Sharp Shooter (10)',
-        description: 'Achieved 10 perfect 100% quiz sessions',
-        threshold: 10,
-        icon: 'target',
+        title: 'First Batch Completed',
+        description: 'Completed your first training batch',
+        threshold: 1,
+        icon: 'check-circle',
         color: '#10B981',
     },
     {
-        id: 'mas_25',
+        id: 'batch_4',
         category: 'mastery' as const,
-        title: 'Flawless Navigator (25)',
-        description: 'Achieved 25 perfect 100% quiz sessions',
-        threshold: 25,
+        title: 'Halfway Checkpoint (4 Batches)',
+        description: 'Completed 4 training batches',
+        threshold: 4,
         icon: 'zap',
         color: '#06B6D4',
     },
     {
-        id: 'mas_50',
+        id: 'batch_8',
         category: 'mastery' as const,
-        title: 'Master of Precision (50)',
-        description: 'Achieved 50 perfect 100% quiz sessions',
-        threshold: 50,
+        title: 'All Batches Mastered (8 Batches)',
+        description: 'Completed all 8 training batches',
+        threshold: 8,
         icon: 'star',
         color: '#F59E0B',
     },
 
     // 3. Habit / Active Days Milestones
     {
-        id: 'hab_30',
+        id: 'hab_7',
         category: 'habit' as const,
-        title: 'Dedicated Driver',
-        description: 'Maintained 30 active learning days / streak',
-        threshold: 30,
+        title: 'First Week Streak',
+        description: 'Maintained 7 active learning days / streak',
+        threshold: 7,
         icon: 'flame',
         color: '#EF4444',
     },
     {
-        id: 'hab_60',
+        id: 'hab_14',
         category: 'habit' as const,
-        title: 'Safety Guardian',
-        description: 'Maintained 60 active learning days / streak',
-        threshold: 60,
+        title: 'Consistent Learner',
+        description: 'Maintained 14 active learning days / streak',
+        threshold: 14,
         icon: 'shield-check',
         color: '#F97316',
     },
     {
-        id: 'hab_100',
+        id: 'hab_30',
         category: 'habit' as const,
-        title: 'Century of Consistency',
-        description: 'Maintained 100 active learning days / streak',
-        threshold: 100,
+        title: 'Monthly Habit',
+        description: 'Maintained 30 active learning days / streak',
+        threshold: 30,
         icon: 'trophy',
         color: '#FBBF24',
     },
@@ -159,24 +159,29 @@ export const MilestoneService = {
             // Fetch profile for streak & csi
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('streak')
+                .select('streak, total_batches_completed')
                 .eq('id', userId)
                 .single();
 
             const streak = profile?.streak || 0;
 
-            // Fetch CSI score
+            // Fetch Overall Score
             const csiData = await BatchService.getCumulativeSafetyIndex(userId);
             const csiScore = csiData.score;
 
-            // Fetch perfect attempts (score = 100) from user_batch_progress and quiz_attempts
-            const { data: perfectBatchData } = await supabase
+            // Count unique completed batches
+            const { data: batchData } = await supabase
                 .from('user_batch_progress')
-                .select('id')
-                .eq('user_id', userId)
-                .gte('score', 100);
+                .select('batch_number, completion_percentage, is_completed')
+                .eq('user_id', userId);
 
-            const perfectAttemptsCount = perfectBatchData?.length || 0;
+            const completedSet = new Set<number>();
+            (batchData || []).forEach((b: any) => {
+                if (b.is_completed || (b.completion_percentage && b.completion_percentage >= 100)) {
+                    completedSet.add(b.batch_number);
+                }
+            });
+            const completedBatchesCount = Math.max(completedSet.size, csiData.passedBatchesCount || 0, profile?.total_batches_completed || 0);
 
             // Fetch milestone notifications already awarded
             const { data: awardedNotifs } = await supabase
@@ -184,8 +189,6 @@ export const MilestoneService = {
                 .select('title, created_at')
                 .eq('user_id', userId)
                 .eq('type', 'leaderboard');
-
-            const awardedTitles = new Set(awardedNotifs?.map(n => n.title) || []);
 
             const milestones: Milestone[] = MILESTONE_DEFINITIONS.map(def => {
                 let currentValue = 0;
@@ -195,8 +198,8 @@ export const MilestoneService = {
                     currentValue = totalMCQs;
                     isUnlocked = totalMCQs >= def.threshold;
                 } else if (def.category === 'mastery') {
-                    currentValue = perfectAttemptsCount;
-                    isUnlocked = perfectAttemptsCount >= def.threshold;
+                    currentValue = completedBatchesCount;
+                    isUnlocked = completedBatchesCount >= def.threshold;
                 } else if (def.category === 'habit') {
                     currentValue = streak;
                     isUnlocked = streak >= def.threshold;

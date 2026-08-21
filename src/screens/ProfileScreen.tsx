@@ -967,7 +967,7 @@ export const ProfileScreen = ({ navigation }: any) => {
             </View>
 
             <Text style={{ fontSize: 13, color: colors.text.secondary, marginHorizontal: 20, marginBottom: 14 }}>
-              Earn badges by completing questions, scoring perfect sessions, building streaks, and advancing ranks!
+              Earn badges by completing questions, finishing batches, building streaks, and advancing ranks!
             </Text>
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
