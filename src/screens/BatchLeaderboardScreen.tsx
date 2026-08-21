@@ -129,7 +129,17 @@ export function BatchLeaderboardScreen({ navigation }: any) {
           };
         })
         .filter(entry => entry.attemptCount > 0) // Only show users who have attempted
-        .sort((a, b) => b.averageScore - a.averageScore); // Sort by score descending
+        .sort((a, b) => {
+          const aCompleted = a.completion >= 100;
+          const bCompleted = b.completion >= 100;
+          // Completed drivers always rank above in-progress
+          if (aCompleted && !bCompleted) return -1;
+          if (!aCompleted && bCompleted) return 1;
+          // Both completed: sort by final score descending
+          if (aCompleted && bCompleted) return b.averageScore - a.averageScore;
+          // Both in-progress: sort by completion % descending
+          return b.completion - a.completion;
+        });
 
       setLeaderboard(batchLeaderboard);
     } catch (error) {
