@@ -403,14 +403,13 @@ export const UserManagementScreen = ({ navigation }: any) => {
                     </View>
                 )}
 
-                <View style={styles.fabContainer}>
-                    <GlassButton 
-                        title={t('user.createUser', 'Add User')}
-                        icon={<UserPlus size={20} color={colors.text.inverse} />}
-                        onPress={() => setShowCreateModal(true)}
-                        style={styles.fab}
-                    />
-                </View>
+                <TouchableOpacity 
+                    style={[styles.fab, { backgroundColor: colors.primary.DEFAULT }]}
+                    onPress={() => setShowCreateModal(true)}
+                    activeOpacity={0.8}
+                >
+                    <UserPlus size={24} color={colors.text.inverse} />
+                </TouchableOpacity>
 
                 <CreateUserModal 
                     visible={showCreateModal}
@@ -625,7 +624,7 @@ const createStyles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 10,
         gap: 16,
-        marginBottom: 70, // Space for FAB
+        marginBottom: 80,
     },
     pageButton: {
         padding: 8,
@@ -640,14 +639,21 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontFamily: typography.fonts.bold,
         color: colors.primary.DEFAULT,
     },
-    fabContainer: {
-        position: 'absolute',
-        bottom: 20,
-        left: 20,
-        right: 20,
-    },
     fab: {
-        width: '100%',
+        position: 'absolute',
+        bottom: 85,
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        zIndex: 999,
     },
     quotaContainer: {
         paddingHorizontal: 20,
