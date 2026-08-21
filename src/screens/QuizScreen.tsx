@@ -556,6 +556,14 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
       const totalBQ = totalBatchQuestions || await BatchService.getBatchTotalQuestions(batchNumber, userId);
 
+      // Check for any newly earned milestones
+      try {
+        const { MilestoneService } = await import('../services/milestoneService');
+        await MilestoneService.checkAndAwardMilestones(userId);
+      } catch (mErr) {
+        console.warn('Milestone check failed:', mErr);
+      }
+
       if (completedCount >= totalBQ) {
         // Evaluated at total questions in this batch
         const evalResult = await BatchService.evaluateBatch(userId, batchNumber, timeSpentSeconds);

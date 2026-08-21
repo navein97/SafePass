@@ -35,6 +35,11 @@ interface LeaderboardEntry {
   attemptCount: number;
   age: number | null;
   vehicleType: string | null;
+  overallScore?: number;
+  rank?: string;
+  csiPercentage?: number;
+  proHayatBand?: string;
+  proHayatBandLabel?: string;
   componentScores: {
     operation: number;
     discipline: number;
@@ -42,14 +47,13 @@ interface LeaderboardEntry {
   };
 }
 
-type BatchTab = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-
 export function BatchLeaderboardScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [selectedBatch, setSelectedBatch] = useState<BatchTab>(1);
+  const [availableBatches, setAvailableBatches] = useState<number[]>([1, 2, 3, 4, 5, 6, 7, 8]);
+  const [selectedBatch, setSelectedBatch] = useState<number>(1);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,6 +94,9 @@ export function BatchLeaderboardScreen({ navigation }: any) {
     try {
       setLoading(true);
       
+      const batches = await BatchService.getAvailableBatchNumbers();
+      setAvailableBatches(batches);
+
       // Get all users' batch stats
       const stats = await BatchService.getAllUsersBatchStats();
       
@@ -97,6 +104,8 @@ export function BatchLeaderboardScreen({ navigation }: any) {
       const batchLeaderboard: LeaderboardEntry[] = stats
         .map(user => {
           const batchData = user.batches.find(b => b.batchNumber === selectedBatch);
+          const score = user.overallScore ?? user.csiPercentage ?? 0;
+          const userRank = user.rank || user.proHayatBand || 'D Rank';
           return {
             userId: user.userId,
             userName: user.userName,
@@ -107,6 +116,11 @@ export function BatchLeaderboardScreen({ navigation }: any) {
             attemptCount: batchData?.attemptCount || 0,
             age: (user as any).age || null,
             vehicleType: (user as any).vehicleType || null,
+            overallScore: score,
+            rank: userRank,
+            csiPercentage: score,
+            proHayatBand: userRank,
+            proHayatBandLabel: userRank,
             componentScores: batchData?.componentScores || {
               operation: 0,
               discipline: 0,
@@ -182,7 +196,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
         showsHorizontalScrollIndicator={false} 
         contentContainerStyle={styles.tabsContainer}
       >
-        {([1, 2, 3, 4, 5, 6, 7, 8] as BatchTab[]).map((batch) => (
+        {availableBatches.map((batch) => (
           <TouchableOpacity
             key={batch}
             activeOpacity={0.8}
@@ -248,27 +262,37 @@ export function BatchLeaderboardScreen({ navigation }: any) {
   };
 
   const renderLeaderboardItem = (entry: LeaderboardEntry, index: number) => {
+    const isExpanded = expandedUserId === entry.userId;
     const rank = index + 1;
     const passed = entry.averageScore >= 60;
-    const isExpanded = isManager && expandedUserId === entry.userId;
 
+    // Driver view: Redacted information
+    const isCompleted = entry.completion >= 100;
+
+    // Regular driver view
     if (!isManager) {
-      // Driver view: Name and percentage only, no dropdown or subtext
       return (
         <View key={entry.userId} style={styles.leaderboardItem}>
           <View style={styles.leaderboardItemHeader}>
             <View style={styles.rankBadge}>
               <Text style={styles.rankText}>{rank}</Text>
             </View>
-
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{entry.userName}</Text>
+              <Text style={styles.userSubtext}>Driver</Text>
             </View>
-
             <View style={styles.scoreInfo}>
-              <Text style={[styles.scoreText, passed && styles.scoreTextPassed, !passed && styles.scoreTextFailed]}>
-                {entry.averageScore.toFixed(1)}%
-              </Text>
+              {isCompleted ? (
+                <Text style={[styles.scoreText, passed && styles.scoreTextPassed, !passed && styles.scoreTextFailed]}>
+                  {entry.averageScore.toFixed(1)}%
+                </Text>
+              ) : (
+                <View style={[styles.inProgressBadge, { backgroundColor: '#F59E0B20', borderColor: '#F59E0B', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }]}>
+                  <Text style={[styles.inProgressText, { color: '#F59E0B', fontSize: 11 }]}>
+                    {t('leaderboard.inProgress', 'In Progress')} ({Math.round(entry.completion)}%)
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -290,20 +314,23 @@ export function BatchLeaderboardScreen({ navigation }: any) {
 
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{entry.userName}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <Text style={styles.userSubtext}>{entry.staffId}</Text>
-              {entry.completion < 100 && (
-                <View style={styles.inProgressBadge}>
-                  <Text style={styles.inProgressText}>{t('leaderboard.inProgress', 'In Progress')}</Text>
-                </View>
-              )}
             </View>
           </View>
 
           <View style={styles.scoreInfo}>
-            <Text style={[styles.scoreText, passed && styles.scoreTextPassed, !passed && styles.scoreTextFailed]}>
-              {entry.averageScore.toFixed(1)}%
-            </Text>
+            {isCompleted ? (
+              <Text style={[styles.scoreText, passed && styles.scoreTextPassed, !passed && styles.scoreTextFailed]}>
+                {entry.averageScore.toFixed(1)}%
+              </Text>
+            ) : (
+              <View style={[styles.inProgressBadge, { backgroundColor: '#F59E0B20', borderColor: '#F59E0B', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }]}>
+                <Text style={[styles.inProgressText, { color: '#F59E0B', fontSize: 11 }]}>
+                  {t('leaderboard.inProgress', 'In Progress')} ({Math.round(entry.completion)}%)
+                </Text>
+              </View>
+            )}
             <Text style={styles.scoreSubtext}>
               {entry.attemptCount} {entry.attemptCount === 1 ? t('leaderboard.attempt') : t('leaderboard.attempts')}
             </Text>

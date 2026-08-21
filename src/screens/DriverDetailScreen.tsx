@@ -18,6 +18,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
 
     const [loading, setLoading] = useState(true);
     const [driverProfile, setDriverProfile] = useState<any>(null);
+    const [csiData, setCsiData] = useState<any>(null);
     const [batchProgress, setBatchProgress] = useState<any[]>([]);
     const [selectedBatch, setSelectedBatch] = useState<number>(1);
     const [batchQuestions, setBatchQuestions] = useState<any[]>([]);
@@ -53,8 +54,11 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             if (error) throw error;
             setDriverProfile(profile);
 
-            // Fetch batch attempt summaries
-            const batchNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
+            // Fetch dynamic batch numbers and CSI
+            const batchNumbers = await BatchService.getAvailableBatchNumbers();
+            const csi = await BatchService.getCumulativeSafetyIndex(userId);
+            setCsiData(csi);
+
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(userId, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(userId, i)));
             const totalQuestionsResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchTotalQuestions(i, userId)));
@@ -65,7 +69,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 .select('batch_number')
                 .eq('user_id', userId);
 
-            const completedCounts = new Array(9).fill(0);
+            const completedCounts: Record<number, number> = {};
             if (qProgress) {
                 qProgress.forEach(p => {
                     completedCounts[p.batch_number] = (completedCounts[p.batch_number] || 0) + 1;
@@ -302,6 +306,19 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         <View style={styles.profileRow}>
                             <Text style={styles.profileLabel}>{t('user.currentBatch', 'Current Batch:')}</Text>
                             <Text style={styles.profileVal}>{t('quiz.batchTitle', { number: driverProfile?.current_batch })}</Text>
+                        </View>
+                        <View style={styles.profileRow}>
+                            <Text style={styles.profileLabel}>Overall Score:</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={[styles.profileVal, { color: csiData?.rankColor || csiData?.bandColor || colors.primary.DEFAULT }]}>
+                                    {csiData?.score || 0}%
+                                </Text>
+                                <View style={[styles.bandBadge, { backgroundColor: (csiData?.rankColor || csiData?.bandColor || '#3B82F6') + '20', borderColor: csiData?.rankColor || csiData?.bandColor || '#3B82F6' }]}>
+                                    <Text style={[styles.bandBadgeText, { color: csiData?.rankColor || csiData?.bandColor || '#3B82F6' }]}>
+                                        {csiData?.rank || csiData?.band || 'D Rank'}
+                                    </Text>
+                                </View>
+                            </View>
                         </View>
                     </GlassCard>
 
@@ -693,5 +710,15 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
         fontSize: 14,
         fontFamily: typography.fonts.bold,
         color: colors.text.primary,
+    },
+    bandBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+        borderWidth: 1,
+    },
+    bandBadgeText: {
+        fontSize: 11,
+        fontFamily: typography.fonts.bold,
     },
 });

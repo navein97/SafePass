@@ -93,8 +93,7 @@ export function MissionScreen() {
           if (isActive) setMaxBatches(batches);
 
           // 2. Fetch Batch Data Sequentially to prevent network hang
-          // (Fetching 12 requests at once can freeze the network layer on mobile)
-          const batchNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
+          const batchNumbers = await BatchService.getAvailableBatchNumbers();
           const statuses: BatchStatus[] = [];
 
           const fetchPromise = async () => {
@@ -110,7 +109,7 @@ export function MissionScreen() {
               .select('batch_number')
               .eq('user_id', profile.id);
 
-            const completedCounts = new Array(9).fill(0);
+            const completedCounts: Record<number, number> = {};
             if (qProgress) {
               qProgress.forEach(p => {
                 completedCounts[p.batch_number] = (completedCounts[p.batch_number] || 0) + 1;
@@ -395,11 +394,6 @@ export function MissionScreen() {
                       </>
                     ) : (batch.canAccess || selectedMode === 'practice') && batch.batchNumber <= maxBatches ? (
                       <Text style={styles.notStartedText}>{t('mission.tapToStart')}</Text>
-                    ) : batch.batchNumber > 4 ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                        <Lock size={16} color="#999" />
-                        <Text style={styles.lockedText}>{t('mission.comingSoon', 'Coming Soon')}</Text>
-                      </View>
                     ) : batch.batchNumber > maxBatches ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                         <Lock size={16} color={colors.primary.DEFAULT} />

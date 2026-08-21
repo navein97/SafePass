@@ -80,36 +80,49 @@ export const ExcelExportService = {
     },
 
     /**
-     * Internal helper to create the complex worksheet structure (V2.0 Layout - 26 Columns)
+     * Internal helper to create the dynamic worksheet structure
      */
     createMasterUserWorksheet(stats: any[]): XLSX.WorkSheet {
+        // Determine batch numbers present in the data (fallback to 1-8)
+        const batchNumbers = stats.length > 0 && stats[0].batches
+            ? stats[0].batches.map((b: any) => b.batchNumber)
+            : [1, 2, 3, 4, 5, 6, 7, 8];
+
         // ROW 1: Merged Group Headers
-        const row1 = [
+        const row1: string[] = [
             '', '', '', '', // Driver Info (4 cols)
-            'Batch 1', '', 'Batch 2', '', 'Batch 3', '', 'Batch 4', '',
-            'Batch 5', '', 'Batch 6', '', 'Batch 7', '', 'Batch 8', '', // Batch Data (16 cols)
-            'DPI (Latest Completed Batch)', '', '', // DPI (3 cols)
-            'Management Intelligence', '', '' // Management Intelligence (3 cols)
+            'Overall Performance', '', // Overall Score & Rank (2 cols)
         ];
 
+        // Add Batch Headers
+        batchNumbers.forEach((num: number) => {
+            row1.push(`Batch ${num}`, '');
+        });
+
+        // Add DPI and Management Intelligence headers
+        row1.push(
+            'DPI (Latest Completed Batch)', '', '', // DPI (3 cols)
+            'Management Intelligence', '', '' // Management Intelligence (3 cols)
+        );
+
         // ROW 2: Sub-headers
-        const row2 = [
+        const row2: string[] = [
             'Driver Name', 'Staff ID', 'Vehicle Type', 'Region',
-            'B1 Score', 'B1 Status',
-            'B2 Score', 'B2 Status',
-            'B3 Score', 'B3 Status',
-            'B4 Score', 'B4 Status',
-            'B5 Score', 'B5 Status',
-            'B6 Score', 'B6 Status',
-            'B7 Score', 'B7 Status',
-            'B8 Score', 'B8 Status',
+            'Overall Score (%)', 'Rank',
+        ];
+
+        batchNumbers.forEach((num: number) => {
+            row2.push(`B${num} Score`, `B${num} Status`);
+        });
+
+        row2.push(
             'Operational Effectiveness (Latest Batch)',
             'Operational Discipline (Latest Batch)',
             'Professional Conduct (Latest Batch)',
             'Priority #1 Focus Area',
             'Current Risk Level',
             'Management Action'
-        ];
+        );
 
         // Prepare data rows
         const dataRows = stats.map(user => {
@@ -117,11 +130,13 @@ export const ExcelExportService = {
                 user.userName,
                 user.staffId,
                 user.vehicleType || '-',
-                user.region
+                user.region,
+                `${user.overallScore ?? user.csiPercentage ?? 0}%`,
+                `${user.rank || user.proHayatBand || 'D Rank'}`,
             ];
 
-            // 1. Add Batch Data (16 columns: 8 batches x [Score, Status])
-            [1, 2, 3, 4, 5, 6, 7, 8].forEach(num => {
+            // 1. Add Batch Data (2 cols per batch: Score, Status)
+            batchNumbers.forEach((num: number) => {
                 const batch = user.batches?.find((b: any) => b.batchNumber === num);
                 if (batch && batch.attemptCount > 0) {
                     const isCompleted = batch.completion >= 100 || batch.isCompleted;
@@ -132,11 +147,10 @@ export const ExcelExportService = {
                 }
             });
 
-            // 2. Determine Latest Completed Batch (or fallback to latest attempted)
+            // 2. Determine Latest Completed Batch
             const completedBatches = user.batches?.filter((b: any) => (b.completion >= 100 || b.isCompleted) && b.componentScores) || [];
             let latestBatch = completedBatches.length > 0 ? completedBatches[completedBatches.length - 1] : null;
 
-            // Fallback if no completed batch exists yet
             if (!latestBatch) {
                 const attempted = user.batches?.filter((b: any) => b.attemptCount > 0 && b.componentScores) || [];
                 if (attempted.length > 0) {
@@ -164,29 +178,38 @@ export const ExcelExportService = {
 
         const ws = XLSX.utils.aoa_to_sheet([row1, row2, ...dataRows]);
 
-        // Define Merges for Row 1
-        ws['!merges'] = [
-            { s: { r: 0, c: 4 }, e: { r: 0, c: 5 } },   // Batch 1
-            { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } },   // Batch 2
-            { s: { r: 0, c: 8 }, e: { r: 0, c: 9 } },   // Batch 3
-            { s: { r: 0, c: 10 }, e: { r: 0, c: 11 } }, // Batch 4
-            { s: { r: 0, c: 12 }, e: { r: 0, c: 13 } }, // Batch 5
-            { s: { r: 0, c: 14 }, e: { r: 0, c: 15 } }, // Batch 6
-            { s: { r: 0, c: 16 }, e: { r: 0, c: 17 } }, // Batch 7
-            { s: { r: 0, c: 18 }, e: { r: 0, c: 19 } }, // Batch 8
-            { s: { r: 0, c: 20 }, e: { r: 0, c: 22 } }, // DPI
-            { s: { r: 0, c: 23 }, e: { r: 0, c: 25 } }, // Management Intelligence
-            // Merge header & subheader for first 4 columns
+        // Dynamic Merges for Row 1
+        const merges: XLSX.Range[] = [
+            // Overall Performance (cols 4, 5)
+            { s: { r: 0, c: 4 }, e: { r: 0, c: 5 } },
+        ];
+
+        let colIdx = 6;
+        batchNumbers.forEach(() => {
+            merges.push({ s: { r: 0, c: colIdx }, e: { r: 0, c: colIdx + 1 } });
+            colIdx += 2;
+        });
+
+        // DPI
+        merges.push({ s: { r: 0, c: colIdx }, e: { r: 0, c: colIdx + 2 } });
+        colIdx += 3;
+
+        // Management Intelligence
+        merges.push({ s: { r: 0, c: colIdx }, e: { r: 0, c: colIdx + 2 } });
+
+        // Merge header & subheader for first 4 columns
+        merges.push(
             { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
             { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
             { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
-            { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
-        ];
+            { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } }
+        );
+
+        ws['!merges'] = merges;
 
         // Column widths
         ws['!cols'] = [
             { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, // Basic Info
-            ...Array(16).fill({ wch: 14 }), // 8 batches x 2 cols
             { wch: 36 }, { wch: 34 }, { wch: 32 }, // DPI (Latest Batch)
             { wch: 28 }, { wch: 18 }, { wch: 65 }  // Management Intelligence
         ];

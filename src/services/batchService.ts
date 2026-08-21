@@ -28,14 +28,56 @@ export interface BatchProgress {
 }
 
 export const BatchService = {
+    _availableBatchesCache: null as number[] | null,
+
+    /**
+     * Dynamically fetch all unique batch numbers available in the database
+     */
+    async getAvailableBatchNumbers(forceRefresh = false): Promise<number[]> {
+        if (!forceRefresh && this._availableBatchesCache && this._availableBatchesCache.length > 0) {
+            return this._availableBatchesCache;
+        }
+        try {
+            const { data, error } = await supabase
+                .from('questions')
+                .select('batch_number');
+
+            if (error) throw error;
+
+            const batchSet = new Set<number>();
+            data?.forEach(row => {
+                const b = parseInt(String(row.batch_number), 10);
+                if (!isNaN(b) && b > 0) {
+                    batchSet.add(b);
+                }
+            });
+
+            const sorted = Array.from(batchSet).sort((a, b) => a - b);
+            this._availableBatchesCache = sorted.length > 0 ? sorted : [1, 2, 3, 4, 5, 6, 7, 8];
+            return this._availableBatchesCache;
+        } catch (err) {
+            console.error('Error fetching available batch numbers:', err);
+            return [1, 2, 3, 4, 5, 6, 7, 8];
+        }
+    },
+
+    /**
+     * Get maximum batch number currently configured
+     */
+    async getMaxBatchNumber(): Promise<number> {
+        const batches = await this.getAvailableBatchNumbers();
+        return batches.length > 0 ? Math.max(...batches) : 8;
+    },
+
     /**
      * Get questions for a specific batch based on Smart Learning logic:
      * 1. Unseen questions first
      * 2. Questions answered wrong previously
      * 3. Random pool (Reshuffle all) if all were answered correctly
+     * Caps pool at maximum 30 questions per batch.
      */
     async getBatchQuestions(batchNumber: number, userId: string): Promise<Question[]> {
-        if (batchNumber < 1 || batchNumber > 8) {
+        if (batchNumber < 1) {
             throw new Error(`Invalid batch number: ${batchNumber}`);
         }
 
@@ -59,8 +101,6 @@ export const BatchService = {
         let vType = profile?.vehicle_type;
         let batchData = rawQuestions;
 
-
-
         if (vType && rawQuestions.length > 0) {
             const matching = rawQuestions.filter(q => {
                 if (!q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) {
@@ -71,14 +111,12 @@ export const BatchService = {
 
             if (matching.length > 0) {
                 batchData = matching;
-            } else {
-
             }
         }
 
         // Failsafe: If the batch has no questions at all in DB, fallback to any available questions
         if (!batchData || batchData.length === 0) {
-            const { data: fallbackDb, error: fallbackErr } = await supabase.from('questions').select('*').limit(30);
+            const { data: fallbackDb } = await supabase.from('questions').select('*').limit(30);
             batchData = fallbackDb || [];
         }
 
@@ -114,8 +152,9 @@ export const BatchService = {
         // use all batch questions so the driver can retake/review the batch.
         const pool = (uncompletedData && uncompletedData.length > 0) ? uncompletedData : batchData;
 
-        // Shuffle remaining questions
-        const shuffledData = [...pool];
+        // Shuffle remaining questions and cap at max 30 questions
+        const cappedPool = pool.slice(0, 30);
+        const shuffledData = [...cappedPool];
         for (let i = shuffledData.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffledData[i], shuffledData[j]] = [shuffledData[j], shuffledData[i]];
@@ -160,11 +199,13 @@ export const BatchService = {
             } as Question;
         });
 
-        return questions;
+        return questions.slice(0, 30);
     },
 
     /**
-     * Get total number of configured questions in a batch for a user's vehicle category
+     * Get total number of configured questions in a batch for a user's vehicle category.
+     * If <= 30 (e.g. 24 for Box Van), returns the exact count (24).
+     * If > 30 (e.g. 80 for Curtain Sider), caps at 30.
      */
     async getBatchTotalQuestions(batchNumber: number, userId: string): Promise<number> {
         try {
@@ -182,6 +223,7 @@ export const BatchService = {
             if (error || !dbData || dbData.length === 0) return 30;
 
             const vType = profile?.vehicle_type;
+            let matchingCount = dbData.length;
             if (vType) {
                 const matching = dbData.filter(q => {
                     if (!q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) {
@@ -189,9 +231,13 @@ export const BatchService = {
                     }
                     return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
                 });
-                if (matching.length > 0) return matching.length;
+                if (matching.length > 0) {
+                    matchingCount = matching.length;
+                }
             }
-            return dbData.length;
+
+            // Cap at 30 max, but preserve exact count if below 30 (e.g. 24)
+            return Math.min(30, matchingCount);
         } catch {
             return 30;
         }
@@ -520,11 +566,12 @@ export const BatchService = {
             if (avgScore >= 60) {
                 const currentBatch = await this.getCurrentBatch(userId);
                 if (batchNumber === currentBatch) {
-
+                    const maxBatches = await this.getMaxBatchNumber();
+                    const nextBatch = batchNumber < maxBatches ? batchNumber + 1 : maxBatches;
                     const { error: updateError } = await supabase
                         .from('profiles')
                         .update({
-                            current_batch: batchNumber < 8 ? batchNumber + 1 : 8,
+                            current_batch: nextBatch,
                             total_batches_completed: batchNumber,
                         })
                         .eq('id', userId);
@@ -611,6 +658,123 @@ export const BatchService = {
     },
 
     /**
+     * Calculate Overall Score (%) and Rank (S Rank, A Rank, B Rank, C Rank, D Rank) across all history.
+     */
+    async getCumulativeSafetyIndex(userId: string): Promise<{
+        score: number; // percentage (0 - 100)
+        rank: 'S Rank' | 'A Rank' | 'B Rank' | 'C Rank' | 'D Rank';
+        rankColor: string;
+        band: string;
+        bandLabel: string;
+        bandColor: string;
+        passedBatchesCount: number;
+        totalMCQsAnswered: number;
+        componentScores: { operation: number; discipline: number; professionalism: number };
+    }> {
+        try {
+            // Get all completed batch attempts
+            const { data: attempts, error } = await supabase
+                .from('user_batch_progress')
+                .select('*')
+                .eq('user_id', userId)
+                .order('batch_number', { ascending: true });
+
+            if (error) throw error;
+
+            // Also check profile for safety_index and total_batches_completed
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('safety_index, total_batches_completed, component_scores')
+                .eq('id', userId)
+                .single();
+
+            // Unique passed batches map (best score per batch)
+            const batchBestScores = new Map<number, number>();
+            (attempts || []).forEach(a => {
+                const currentBest = batchBestScores.get(a.batch_number) || 0;
+                if ((a.score || 0) > currentBest) {
+                    batchBestScores.set(a.batch_number, a.score);
+                }
+            });
+
+            // Total MCQs answered
+            const totalMCQs = await this.getTotalAnsweredQuestions(userId);
+
+            let csiScore = 0;
+            if (batchBestScores.size > 0) {
+                let sum = 0;
+                batchBestScores.forEach(s => { sum += s; });
+                csiScore = Math.round(sum / batchBestScores.size);
+            } else if (profile?.safety_index && profile.safety_index > 0) {
+                csiScore = Math.round(profile.safety_index);
+            } else {
+                // Provisional calculation from in-progress questions
+                const { data: qProgress } = await supabase
+                    .from('user_question_progress')
+                    .select('score, is_correct')
+                    .eq('user_id', userId);
+
+                if (qProgress && qProgress.length > 0) {
+                    const totalEarned = qProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
+                    csiScore = Math.min(100, Math.round((totalEarned / Math.max(1, qProgress.length)) * 100));
+                }
+            }
+
+            // Determine Rank (S Rank, A Rank, B Rank, C Rank, D Rank)
+            let rank: 'S Rank' | 'A Rank' | 'B Rank' | 'C Rank' | 'D Rank' = 'D Rank';
+            let rankColor = '#EF4444';
+
+            if (csiScore >= 90) {
+                rank = 'S Rank';
+                rankColor = '#E11D48';
+            } else if (csiScore >= 80) {
+                rank = 'A Rank';
+                rankColor = '#8B5CF6';
+            } else if (csiScore >= 70) {
+                rank = 'B Rank';
+                rankColor = '#3B82F6';
+            } else if (csiScore >= 60) {
+                rank = 'C Rank';
+                rankColor = '#F59E0B';
+            } else {
+                rank = 'D Rank';
+                rankColor = '#EF4444';
+            }
+
+            const componentScores = profile?.component_scores || {
+                operation: csiScore,
+                discipline: csiScore,
+                professionalism: csiScore,
+            };
+
+            return {
+                score: csiScore,
+                rank,
+                rankColor,
+                band: rank,
+                bandLabel: rank,
+                bandColor: rankColor,
+                passedBatchesCount: batchBestScores.size,
+                totalMCQsAnswered: totalMCQs,
+                componentScores,
+            };
+        } catch (error) {
+            console.error('[BatchService] Error getting Overall Score:', error);
+            return {
+                score: 0,
+                rank: 'D Rank',
+                rankColor: '#EF4444',
+                band: 'D Rank',
+                bandLabel: 'D Rank',
+                bandColor: '#EF4444',
+                passedBatchesCount: 0,
+                totalMCQsAnswered: 0,
+                componentScores: { operation: 0, discipline: 0, professionalism: 0 },
+            };
+        }
+    },
+
+    /**
      * Get batch statistics for all users (for managers)
      */
     async getAllUsersBatchStats(): Promise<
@@ -620,6 +784,13 @@ export const BatchService = {
             staffId: string;
             division: string;
             region: string;
+            age: number | null;
+            vehicleType: string | null;
+            overallScore: number;
+            rank: string;
+            csiPercentage: number;
+            proHayatBand: string;
+            proHayatBandLabel: string;
             batches: Array<{
                 batchNumber: number;
                 averageScore: number;
@@ -627,12 +798,15 @@ export const BatchService = {
                 completion: number;
                 attemptCount: number;
                 totalTimeSeconds: number;
-                componentScores: { operation: number; discipline: number; professionalism: number };
+                componentScores?: { operation: number; discipline: number; professionalism: number };
             }>;
             totalTimeMinutes: number;
         }>
     > {
         try {
+            // Get available batch numbers dynamically
+            const availableBatches = await this.getAvailableBatchNumbers();
+
             // Get current user's company to filter
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
@@ -658,9 +832,6 @@ export const BatchService = {
 
             if (userError) throw userError;
 
-            // 2. Get ALL progress data at once to avoid N+1 queries. 
-            // Note: If RLS is enabled, this will ONLY return rows the user is allowed to see.
-            // But we filter by user IDs anyway for extra safety.
             const userIds = users?.map(u => u.id) || [];
 
             if (userIds.length === 0) return [];
@@ -670,10 +841,9 @@ export const BatchService = {
                 .select('*')
                 .in('user_id', userIds);
 
-
             if (progressError) throw progressError;
 
-            // 3. Group progress by user and batch
+            // Group progress by user and batch
             const progressMap = new Map<string, BatchProgress[]>();
 
             (allProgress || []).forEach((row: any) => {
@@ -699,26 +869,24 @@ export const BatchService = {
                 progressMap.get(key)?.push(attempt);
             });
 
-            // --- PROVISIONAL SCORE LOGIC ---
-            // Fetch in-progress questions for all users
+            // Provisional in-progress questions for all users
             const { data: allQProgress } = await supabase
                 .from('user_question_progress')
                 .select('*')
                 .in('user_id', userIds);
 
             if (allQProgress && allQProgress.length > 0) {
-                // Fetch all questions to calculate component weights
                 const { data: questionsData } = await supabase
                     .from('questions')
-                    .select('id, batch_number, component_weights');
+                    .select('id, batch_number, component_weights, driver_categories');
                 
                 const questions = (questionsData || []).map(q => ({
                     id: q.id,
                     batchNumber: q.batch_number,
-                    componentWeights: q.component_weights || (q as any).componentWeights
-                })) as unknown as Question[];
+                    componentWeights: q.component_weights || (q as any).componentWeights,
+                    driverCategories: q.driver_categories || (q as any).driverCategories,
+                })) as unknown as (Question & { batchNumber?: number; driverCategories?: string[] })[];
 
-                // Group qProgress by user and batch
                 const qProgressMap = new Map<string, any[]>();
                 allQProgress.forEach((row: any) => {
                     const key = `${row.user_id}_${row.batch_number}`;
@@ -729,6 +897,8 @@ export const BatchService = {
                 qProgressMap.forEach((qRows, key) => {
                     const [userId, batchStr] = key.split('_');
                     const batchNum = parseInt(batchStr, 10);
+                    const userObj = users?.find(u => u.id === userId);
+                    const vType = (userObj as any)?.vehicle_type;
                     
                     const mappedAnswers = qRows.map(a => ({
                         questionId: a.question_id,
@@ -736,17 +906,22 @@ export const BatchService = {
                         isCorrect: a.is_correct
                     }));
 
-                    const batchQuestions = questions.filter(q => (q as any).batchNumber === batchNum);
-                    const componentScores = this.calculateComponentScores(batchQuestions, mappedAnswers);
+                    const batchQuestions = questions.filter(q => {
+                        if (q.batchNumber !== batchNum) return false;
+                        if (!vType || !q.driverCategories || q.driverCategories.length === 0) return true;
+                        return q.driverCategories.includes(vType) || q.driverCategories.includes('All');
+                    });
+                    const componentScores = this.calculateComponentScores(batchQuestions as any, mappedAnswers);
                     
                     let totalScore = 0;
                     qRows.forEach(a => {
                         totalScore += parseFloat(String(a.score || 0));
                     });
                     
-                    const score = Math.max(0, Math.round((totalScore / 30) * 100)); // Out of 30
-                    const accuracy = Math.round((qRows.filter(a => a.is_correct).length / 30) * 100);
-                    const completion = Math.round((qRows.length / 30) * 100);
+                    const totalQuestionsInBatch = Math.min(30, Math.max(1, batchQuestions.length > 0 ? batchQuestions.length : 30));
+                    const score = Math.max(0, Math.round((totalScore / totalQuestionsInBatch) * 100));
+                    const accuracy = Math.round((qRows.filter(a => a.is_correct).length / Math.max(1, qRows.length)) * 100);
+                    const completion = Math.min(100, Math.round((qRows.length / totalQuestionsInBatch) * 100));
 
                     if (!progressMap.has(key)) {
                         progressMap.set(key, []);
@@ -769,11 +944,10 @@ export const BatchService = {
                     });
                 });
             }
-            // --- END PROVISIONAL SCORE LOGIC ---
 
-            // 4. Build statistics
+            // Build statistics with dynamic batch numbers
             const stats = (users || []).map(user => {
-                const batches = [1, 2, 3, 4, 5, 6, 7, 8].map(batchNum => {
+                const batches = availableBatches.map(batchNum => {
                     const attempts = progressMap.get(`${user.id}_${batchNum}`) || [];
 
                     if (attempts.length === 0) {
@@ -784,11 +958,9 @@ export const BatchService = {
                             completion: 0,
                             attemptCount: 0,
                             totalTimeSeconds: 0,
-                            componentScores: { operation: 0, discipline: 0, professionalism: 0 },
                         };
                     }
 
-                    // Sort by attempt number to get the latest attempt
                     attempts.sort((a, b) => a.attemptNumber - b.attemptNumber);
 
                     const latestAttempt = attempts[attempts.length - 1];
@@ -807,6 +979,18 @@ export const BatchService = {
 
                 const totalTime = batches.reduce((sum, b) => sum + (b.totalTimeSeconds || 0), 0);
 
+                // Compute Overall Score percentage across batches with attempts
+                const attemptedBatches = batches.filter(b => b.attemptCount > 0);
+                const overallScore = attemptedBatches.length > 0
+                    ? Math.round(attemptedBatches.reduce((s, b) => s + b.averageScore, 0) / attemptedBatches.length)
+                    : 0;
+
+                let rank = 'D Rank';
+                if (overallScore >= 90) rank = 'S Rank';
+                else if (overallScore >= 80) rank = 'A Rank';
+                else if (overallScore >= 70) rank = 'B Rank';
+                else if (overallScore >= 60) rank = 'C Rank';
+
                 return {
                     userId: user.id,
                     userName: user.full_name || 'Staff',
@@ -815,6 +999,11 @@ export const BatchService = {
                     region: user.region || 'MY',
                     age: (user as any).age || null,
                     vehicleType: (user as any).vehicle_type || null,
+                    overallScore,
+                    rank,
+                    csiPercentage: overallScore,
+                    proHayatBand: rank,
+                    proHayatBandLabel: rank,
                     totalTimeMinutes: Math.round((totalTime / 60) * 100) / 100,
                     batches,
                 };
@@ -1074,12 +1263,13 @@ export const BatchService = {
             return true;
         }
 
-        if (batchNumber === 8) {
+        const maxBatches = await this.getMaxBatchNumber();
+        if (batchNumber === maxBatches) {
             const { data } = await supabase
                 .from('user_batch_progress')
                 .select('score')
                 .eq('user_id', userId)
-                .eq('batch_number', 8)
+                .eq('batch_number', maxBatches)
                 .gte('score', 60)
                 .limit(1);
 
@@ -1237,7 +1427,8 @@ export const BatchService = {
             if (passed) {
                 resetsMap[String(batchNumber)] = 0;
 
-                const nextBatch = batchNumber < 8 ? batchNumber + 1 : 8;
+                const maxBatches = await this.getMaxBatchNumber();
+                const nextBatch = batchNumber < maxBatches ? batchNumber + 1 : maxBatches;
                 await supabase
                     .from('profiles')
                     .update({

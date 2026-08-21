@@ -6,11 +6,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp, CreditCard, HelpCircle } from 'lucide-react-native';
+import { LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, ChevronUp, CreditCard, HelpCircle, Trophy, Award, Zap, CheckCircle2, Lock, X } from 'lucide-react-native';
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { BatchService } from '../services/batchService';
 import { PracticeService } from '../services/practiceService';
+import { MilestoneService } from '../services/milestoneService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -21,12 +22,12 @@ import { CreateUserModal } from '../components/CreateUserModal';
 import { CompanySettingsModal } from '../components/CompanySettingsModal';
 import { CompanySettingsService } from '../services/companySettingsService';
 import { PerformanceChart } from '../components/PerformanceChart';
-import { MilestoneTracker } from '../components/MilestoneTracker';
 import { Building, BookOpen } from 'lucide-react-native';
 import { QuizAttempt } from '../types/models';
 import { SubscriptionService } from '../services/subscriptionService';
 import { supabase } from '../lib/supabase';
 import { Validation } from '../utils/validation';
+import { Modal } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -71,6 +72,9 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [totalXP, setTotalXP] = useState(0);
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
   const [totalMCQsCount, setTotalMCQsCount] = useState(240);
+  const [csiData, setCsiData] = useState<any>(null);
+  const [milestoneSummary, setMilestoneSummary] = useState<any>(null);
+  const [showAchievementsModal, setShowAchievementsModal] = useState(false);
 
   
   const [age, setAge] = useState('');
@@ -199,18 +203,22 @@ export const ProfileScreen = ({ navigation }: any) => {
           }
       }
 
-      // Load Daily Trends for Chart & Dynamic MCQ total across all 8 batches
+      // Load Daily Trends for Chart & Dynamic MCQ total across all batches
       if (userProfile.id && userProfile.role !== 'manager') {
-          const batchNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
-          const [trends, xp, answeredQs, batchTotals] = await Promise.all([
+          const batchNumbers = await BatchService.getAvailableBatchNumbers();
+          const [trends, xp, answeredQs, batchTotals, csi, milestones] = await Promise.all([
               QuizService.getDailyTrends(userProfile.id),
               BatchService.getTotalXP(userProfile.id),
               BatchService.getTotalAnsweredQuestions(userProfile.id),
-              Promise.all(batchNumbers.map(b => BatchService.getBatchTotalQuestions(b, userProfile.id)))
+              Promise.all(batchNumbers.map(b => BatchService.getBatchTotalQuestions(b, userProfile.id))),
+              BatchService.getCumulativeSafetyIndex(userProfile.id),
+              MilestoneService.getUserMilestones(userProfile.id),
           ]);
           setQuizHistory(trends);
           setTotalXP(xp);
           setTotalQuestionsAnswered(answeredQs);
+          setCsiData(csi);
+          setMilestoneSummary(milestones);
           const totalAllBatches = batchTotals.reduce((sum, count) => sum + count, 0);
           setTotalMCQsCount(totalAllBatches > 0 ? totalAllBatches : 240);
       }
@@ -509,6 +517,19 @@ export const ProfileScreen = ({ navigation }: any) => {
                       </Text>
                     </View>
                   ) : null}
+                  {!isManager && (
+                    <View style={[
+                      styles.csiProfileBadge,
+                      { 
+                        backgroundColor: (csiData?.bandColor || '#3B82F6') + '20',
+                        borderColor: csiData?.bandColor || '#3B82F6',
+                      }
+                    ]}>
+                      <Text style={[styles.csiProfileBadgeText, { color: csiData?.bandColor || '#3B82F6' }]}>
+                        ⭐ Overall Score: {csiData?.score || 0}% • {csiData?.rank || csiData?.band || 'D Rank'}
+                      </Text>
+                    </View>
+                  )}
                   {isManager && profile?.subscription_tier && (
                     <View style={[
                       styles.regionBadge,
@@ -809,8 +830,57 @@ export const ProfileScreen = ({ navigation }: any) => {
 
              </GlassCard>
 
-             {/* Milestone Tracker */}
-             <MilestoneTracker currentPoints={totalXP} />
+             {/* Minimalist Milestone Banner */}
+             <GlassCard style={{ marginTop: 14 }}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 }}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                   <View style={{
+                     width: 44,
+                     height: 44,
+                     borderRadius: 22,
+                     backgroundColor: colors.primary.DEFAULT + '20',
+                     alignItems: 'center',
+                     justifyContent: 'center'
+                   }}>
+                     <Trophy size={22} color={colors.primary.DEFAULT} />
+                   </View>
+                   <View style={{ flex: 1 }}>
+                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <Text style={{ fontSize: 15, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
+                         Personal Milestones
+                       </Text>
+                       <View style={{
+                         backgroundColor: '#10B98120',
+                         paddingHorizontal: 6,
+                         paddingVertical: 2,
+                         borderRadius: 6
+                       }}>
+                         <Text style={{ fontSize: 11, fontFamily: typography.fonts.bold, color: '#10B981' }}>
+                           {milestoneSummary?.totalUnlocked || 0} / {milestoneSummary?.totalCount || 12}
+                         </Text>
+                       </View>
+                     </View>
+                     <Text style={{ fontSize: 12, fontFamily: typography.fonts.regular, color: colors.text.secondary, marginTop: 2 }} numberOfLines={1}>
+                       {milestoneSummary?.latestUnlocked ? `Latest: ${milestoneSummary.latestUnlocked.title}` : 'Tap to view achievement badges'}
+                     </Text>
+                   </View>
+                 </View>
+
+                 <TouchableOpacity
+                   onPress={() => setShowAchievementsModal(true)}
+                   style={{
+                     backgroundColor: colors.primary.DEFAULT,
+                     paddingHorizontal: 12,
+                     paddingVertical: 8,
+                     borderRadius: 10,
+                   }}
+                 >
+                   <Text style={{ color: '#FFF', fontSize: 12, fontFamily: typography.fonts.bold }}>
+                     View Badges
+                   </Text>
+                 </TouchableOpacity>
+               </View>
+             </GlassCard>
 
              {/* Performance Chart */}
              <GlassCard style={{marginTop: 16}}>
@@ -876,6 +946,102 @@ export const ProfileScreen = ({ navigation }: any) => {
          visible={showCompanySettings}
          onClose={() => setShowCompanySettings(false)}
       />
+
+      {/* Achievements / Badges Modal */}
+      <Modal
+        visible={showAchievementsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAchievementsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background.card }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Trophy size={24} color={colors.primary.DEFAULT} />
+                <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Driver Achievements</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAchievementsModal(false)} style={styles.closeBtn}>
+                <X size={20} color={colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, color: colors.text.secondary, marginHorizontal: 20, marginBottom: 14 }}>
+              Earn badges by completing questions, scoring perfect sessions, building streaks, and advancing ranks!
+            </Text>
+
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+              {milestoneSummary?.milestones.map((m: any) => (
+                <View
+                  key={m.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: colors.background.subtle,
+                    borderRadius: 14,
+                    padding: 14,
+                    marginBottom: 10,
+                    borderWidth: 1,
+                    borderColor: m.isUnlocked ? (m.color + '60') : colors.border,
+                    opacity: m.isUnlocked ? 1 : 0.7,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: (m.isUnlocked ? m.color : '#9E9E9E') + '20',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    {m.isUnlocked ? (
+                      <Award size={22} color={m.color} />
+                    ) : (
+                      <Lock size={18} color={colors.text.tertiary} />
+                    )}
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 14, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
+                        {m.title}
+                      </Text>
+                      {m.isUnlocked ? (
+                        <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>UNLOCKED ✓</Text>
+                        </View>
+                      ) : (
+                        <Text style={{ fontSize: 11, fontFamily: typography.fonts.medium, color: colors.text.tertiary }}>
+                          {m.currentValue} / {m.threshold}
+                        </Text>
+                      )}
+                    </View>
+
+                    <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 2, marginBottom: 6 }}>
+                      {m.description}
+                    </Text>
+
+                    {/* Progress bar */}
+                    <View style={{ height: 5, backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                      <View
+                        style={{
+                          height: '100%',
+                          width: `${m.progressPercentage}%`,
+                          backgroundColor: m.isUnlocked ? m.color : colors.primary.DEFAULT,
+                          borderRadius: 3,
+                        }}
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </GradientBackground>
   );
 };
@@ -888,6 +1054,43 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  csiProfileBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  csiProfileBadgeText: {
+    fontSize: 12,
+    fontFamily: typography.fonts.bold,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    paddingTop: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: typography.fonts.bold,
+  },
+  closeBtn: {
+    padding: 6,
+    borderRadius: 20,
   },
   content: {
     padding: 20,
