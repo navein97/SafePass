@@ -630,62 +630,31 @@ export const QuizService = {
             const now = new Date();
             const weekStart = startOfWeek(now, { weekStartsOn: 1 });
 
-            // 1. All-time batch scores to compute current overall average
-            const { data: allData, error: allError } = await supabase
-                .from('user_batch_progress')
-                .select('score, batch_number')
-                .eq('user_id', userId);
-
-            if (allError) throw allError;
-
-            // 2. This week's completed batch records — to find active days
-            const { data: weekData, error: weekError } = await supabase
-                .from('user_batch_progress')
-                .select('completed_at')
-                .eq('user_id', userId)
-                .gte('completed_at', weekStart.toISOString());
-
-            if (weekError) throw weekError;
-
-            // 3. PROVISIONAL: Also check user_question_progress for in-progress activity this week
+            // Fetch user_question_progress for activity this week
             const { data: qWeekData } = await supabase
                 .from('user_question_progress')
                 .select('completed_at, score')
                 .eq('user_id', userId)
                 .gte('completed_at', weekStart.toISOString());
 
-            // 4. Compute overall avg from completed batches
-            const batchMap = new Map<number, number[]>();
-            (allData || []).forEach((a: any) => {
-                if (!batchMap.has(a.batch_number)) batchMap.set(a.batch_number, []);
-                batchMap.get(a.batch_number)!.push(a.score);
-            });
-
-            const batchAvgs = Array.from(batchMap.values()).map(
-                scores => scores.reduce((s: number, v: number) => s + v, 0) / scores.length
-            );
-
-            // 4b. PROVISIONAL: If no completed batches yet, estimate from in-progress questions
-            let overallAvg = batchAvgs.length > 0
-                ? Math.round(batchAvgs.reduce((s: number, v: number) => s + v, 0) / batchAvgs.length)
-                : 0;
-
-            if (overallAvg === 0 && qWeekData && qWeekData.length > 0) {
-                const totalRaw = qWeekData.reduce((sum: number, a: any) => sum + parseFloat(String(a.score || 0)), 0);
-                overallAvg = Math.round((totalRaw / 30) * 100);
-            }
-
-            // 5. Build Mon–Sun chart: show overallAvg on active days (batch OR in-progress), 0 on inactive
+            // Build Mon–Sun chart: calculate the average score of questions answered on each specific day
             const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
             return dayLabels.map((label, i) => {
                 const dayDate = addDays(weekStart, i);
-                const hadBatchActivity = (weekData || []).some((log: any) =>
-                    isSameDay(new Date(log.completed_at), dayDate)
+                
+                // Get questions answered on this specific day
+                const dayQuestions = (qWeekData || []).filter((q: any) =>
+                    isSameDay(new Date(q.completed_at), dayDate)
                 );
-                const hadInProgressActivity = (qWeekData || []).some((log: any) =>
-                    isSameDay(new Date(log.completed_at), dayDate)
-                );
-                return { value: (hadBatchActivity || hadInProgressActivity) ? overallAvg : 0, label };
+
+                let dailyAvg = 0;
+                if (dayQuestions.length > 0) {
+                    const totalRaw = dayQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
+                    // Average = (Total Marks Earned / Total Questions Answered That Day) * 100
+                    dailyAvg = Math.round((totalRaw / dayQuestions.length) * 100);
+                }
+
+                return { value: dailyAvg, label };
             });
 
         } catch (error) {

@@ -421,174 +421,9 @@ export const ProfileScreen = ({ navigation }: any) => {
     }
   };
 
-  if (loading) {
-    return (
-      <GradientBackground>
-        <SafeAreaView style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-        </SafeAreaView>
-      </GradientBackground>
-    );
-  }
 
-  return (
-    <GradientBackground>
-      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-        <Toast 
-            visible={toastVisible} 
-            message={toastMessage} 
-            type={toastType} 
-            onHide={() => setToastVisible(false)} 
-        />
-        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-        <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
-          
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{t('profile.title')}</Text>
-            <View style={styles.headerActions}>
-               <TouchableOpacity 
-                style={styles.settingsButton}
-                onPress={toggleTheme}
-              >
-                 {theme === 'dark' ? (
-                  <Sun color={colors.text.accent} size={24} />
-                ) : (
-                  <Moon color={colors.primary.DEFAULT} size={24} />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.languageButton}
-                onPress={toggleLanguage}
-              >
-                 <Text style={styles.languageText}>{i18n.language === 'en' ? 'EN' : 'BM'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Profile Card */}
-          <GlassCard style={styles.profileCard}>
-            <View style={styles.avatarContainer}>
-              <LinearGradient
-                colors={colors.gradients.gold as any}
-                style={styles.avatar}
-              >
-                <User size={36} color={colors.text.inverse} />
-              </LinearGradient>
-              <View style={styles.profileInfo}>
-                <Text style={styles.name}>{profile?.full_name || 'Driver'}</Text>
-                <Text style={styles.id}>{profile?.employee_id || 'EMP-001'}</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                  <View style={styles.regionBadge}>
-                    <Text style={styles.regionText}>
-                      {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : profile?.region}
-                    </Text>
-                  </View>
-                  {isManager && (
-                    <View style={[
-                      styles.regionBadge,
-                      { 
-                        backgroundColor: profile?.managerLevel === 1
-                          ? 'rgba(225, 37, 124, 0.2)'
-                          : 'rgba(100, 149, 237, 0.2)',
-                        borderColor: profile?.managerLevel === 1
-                          ? 'rgba(225, 37, 124, 0.5)'
-                          : 'rgba(100, 149, 237, 0.5)',
-                      }
-                      ]}>
-                        <Text style={[
-                          styles.regionText,
-                          { color: profile?.managerLevel === 1 ? '#E1257C' : '#6495ED' }
-                        ]}>
-                          {profile?.managerLevel === 1 ? t('profile.roles.masterUser') : t('profile.roles.manager')}
-                        </Text>
-                      </View>
-                  )}
-                  {!isManager && vehicleType ? (
-                    <View style={[
-                      styles.regionBadge,
-                      { 
-                        backgroundColor: 'rgba(100, 255, 180, 0.15)',
-                        borderColor: 'rgba(100, 255, 180, 0.35)',
-                      }
-                    ]}>
-                      <Text style={[styles.regionText, { color: '#4CAF96' }]}>
-                        🚛 {vehicleType}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {!isManager && (
-                    <View style={[
-                      styles.csiProfileBadge,
-                      { 
-                        backgroundColor: (csiData?.bandColor || '#3B82F6') + '20',
-                        borderColor: csiData?.bandColor || '#3B82F6',
-                      }
-                    ]}>
-                      <Text style={[styles.csiProfileBadgeText, { color: csiData?.bandColor || '#3B82F6' }]}>
-                        ⭐ Overall Score: {csiData?.score || 0}% • {csiData?.rank || csiData?.band || 'D Rank'}
-                      </Text>
-                    </View>
-                  )}
-                  {isManager && profile?.subscription_tier && (
-                    <View style={[
-                      styles.regionBadge,
-                      { 
-                        backgroundColor: profile.subscription_tier === 'trial' ? 'rgba(158, 158, 158, 0.2)' : 'rgba(100, 255, 218, 0.15)',
-                        borderColor: profile.subscription_tier === 'trial' ? 'rgba(158, 158, 158, 0.5)' : 'rgba(100, 255, 218, 0.3)',
-                      }
-                      ]}>
-                        <Text style={[
-                          styles.regionText,
-                          { color: profile.subscription_tier === 'trial' ? '#9E9E9E' : '#64FFDA' }
-                        ]}>
-                          {profile.subscription_tier === 'trial' ? t('billing.tierTrial') :
-                           profile.subscription_tier === 'standard' ? t('billing.tierStandard') :
-                           t('billing.tierEnterprise')}
-                        </Text>
-                      </View>
-                  )}
-                </View>
-              </View>
-            </View>
-          </GlassCard>
-
-          {/* Nudge Banner - Choose a Plan */}
-          {profile?.role === 'manager' && profile?.managerLevel === 1 && hasNoPlan && (
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('Billing')}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.primary.DEFAULT, '#6C63FF'] as any}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  borderRadius: 16,
-                  padding: 20,
-                  marginTop: 10,
-                  marginBottom: 4,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 14,
-                }}
-              >
-                <Text style={{ fontSize: 28 }}>🚀</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#FFF', fontSize: 16, fontFamily: typography.fonts.bold }}>
-                    {t('profile.choosePlanTitle')}
-                  </Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: typography.fonts.regular, marginTop: 4 }}>
-                    {t('profile.choosePlanSubtitle')}
-                  </Text>
-                </View>
-                <Text style={{ color: '#FFF', fontSize: 20 }}>→</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-
-          {/* Master Profile Details - For ALL Users */}
-          <GlassCard style={styles.inputCard}>
+  const renderProfileDetails = () => (
+    <GlassCard style={styles.inputCard}>
                  <TouchableOpacity 
                     style={{ 
                         flexDirection: 'row', 
@@ -697,6 +532,176 @@ export const ProfileScreen = ({ navigation }: any) => {
                    style={{ marginTop: 8 }}
                  />
           </GlassCard>
+  );
+
+  if (loading) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
+  return (
+    <GradientBackground>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <Toast 
+            visible={toastVisible} 
+            message={toastMessage} 
+            type={toastType} 
+            onHide={() => setToastVisible(false)} 
+        />
+        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+        <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
+          
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>{t('profile.title')}</Text>
+            <View style={styles.headerActions}>
+               <TouchableOpacity 
+                style={styles.settingsButton}
+                onPress={toggleTheme}
+              >
+                 {theme === 'dark' ? (
+                  <Sun color={colors.text.accent} size={24} />
+                ) : (
+                  <Moon color={colors.primary.DEFAULT} size={24} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.languageButton}
+                onPress={toggleLanguage}
+              >
+                 <Text style={styles.languageText}>{i18n.language === 'en' ? 'EN' : 'BM'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Profile Card */}
+          <GlassCard style={styles.profileCard}>
+            <View style={styles.avatarContainer}>
+              <LinearGradient
+                colors={colors.gradients.gold as any}
+                style={styles.avatar}
+              >
+                <User size={36} color={colors.text.inverse} />
+              </LinearGradient>
+              <View style={styles.profileInfo}>
+                <Text style={styles.name}>{profile?.full_name || 'Driver'}</Text>
+                <Text style={styles.id}>{profile?.employee_id || 'EMP-001'}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  <View style={styles.regionBadge}>
+                    <Text style={styles.regionText}>
+                      {profile?.region === 'MY' ? `🇲🇾 ${t('common.malaysia')}` : profile?.region}
+                    </Text>
+                  </View>
+                  {isManager && (
+                    <View style={[
+                      styles.regionBadge,
+                      { 
+                        backgroundColor: profile?.managerLevel === 1
+                          ? 'rgba(225, 37, 124, 0.2)'
+                          : 'rgba(100, 149, 237, 0.2)',
+                        borderColor: profile?.managerLevel === 1
+                          ? 'rgba(225, 37, 124, 0.5)'
+                          : 'rgba(100, 149, 237, 0.5)',
+                      }
+                      ]}>
+                        <Text style={[
+                          styles.regionText,
+                          { color: profile?.managerLevel === 1 ? '#E1257C' : '#6495ED' }
+                        ]}>
+                          {profile?.managerLevel === 1 ? t('profile.roles.masterUser') : t('profile.roles.manager')}
+                        </Text>
+                      </View>
+                  )}
+                  {!isManager && vehicleType ? (
+                    <View style={[
+                      styles.regionBadge,
+                      { 
+                        backgroundColor: 'rgba(100, 255, 180, 0.15)',
+                        borderColor: 'rgba(100, 255, 180, 0.35)',
+                      }
+                    ]}>
+                      <Text style={[styles.regionText, { color: '#4CAF96' }]}>
+                        🚛 {vehicleType}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {!isManager && (
+                    <View style={[
+                      styles.csiProfileBadge,
+                      { 
+                        backgroundColor: (csiData?.bandColor || '#3B82F6') + '20',
+                        borderColor: csiData?.bandColor || '#3B82F6',
+                      }
+                    ]}>
+                      <Text style={[styles.csiProfileBadgeText, { color: csiData?.bandColor || '#3B82F6' }]}>
+                        ⭐ {t('profile.overallScore', 'Overall Score')}: {csiData?.score || 0}% • {csiData?.rank || csiData?.band || 'D Rank'}
+                      </Text>
+                    </View>
+                  )}
+                  {isManager && profile?.subscription_tier && (
+                    <View style={[
+                      styles.regionBadge,
+                      { 
+                        backgroundColor: profile.subscription_tier === 'trial' ? 'rgba(158, 158, 158, 0.2)' : 'rgba(100, 255, 218, 0.15)',
+                        borderColor: profile.subscription_tier === 'trial' ? 'rgba(158, 158, 158, 0.5)' : 'rgba(100, 255, 218, 0.3)',
+                      }
+                      ]}>
+                        <Text style={[
+                          styles.regionText,
+                          { color: profile.subscription_tier === 'trial' ? '#9E9E9E' : '#64FFDA' }
+                        ]}>
+                          {profile.subscription_tier === 'trial' ? t('billing.tierTrial') :
+                           profile.subscription_tier === 'standard' ? t('billing.tierStandard') :
+                           t('billing.tierEnterprise')}
+                        </Text>
+                      </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </GlassCard>
+
+          {/* Nudge Banner - Choose a Plan */}
+          {profile?.role === 'manager' && profile?.managerLevel === 1 && hasNoPlan && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Billing')}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[colors.primary.DEFAULT, '#6C63FF'] as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  borderRadius: 16,
+                  padding: 20,
+                  marginTop: 10,
+                  marginBottom: 4,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 14,
+                }}
+              >
+                <Text style={{ fontSize: 28 }}>🚀</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#FFF', fontSize: 16, fontFamily: typography.fonts.bold }}>
+                    {t('profile.choosePlanTitle')}
+                  </Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: typography.fonts.regular, marginTop: 4 }}>
+                    {t('profile.choosePlanSubtitle')}
+                  </Text>
+                </View>
+                <Text style={{ color: '#FFF', fontSize: 20 }}>→</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {/* renderProfileDetails() goes here for manager */}
+          {isManager && renderProfileDetails()}
 
           {/* Manager Settings */}
           {isManager && profile?.managerLevel === 1 ? (
@@ -727,6 +732,48 @@ export const ProfileScreen = ({ navigation }: any) => {
             </GlassCard>
           ) : !isManager ? (
             <View>
+
+             {/* Minimalist Milestone Banner */}
+             <GlassCard style={{ marginTop: 14 }}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 }}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                   <View style={{
+                     width: 44,
+                     height: 44,
+                     borderRadius: 22,
+                     backgroundColor: colors.primary.DEFAULT + '20',
+                     alignItems: 'center',
+                     justifyContent: 'center'
+                   }}>
+                     <Trophy size={22} color={colors.primary.DEFAULT} />
+                   </View>
+                   <View style={{ flex: 1 }}>
+                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <Text style={{ fontSize: 15, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
+                         {t('profile.personalMilestones', 'Personal Milestones')}
+                       </Text>
+                     </View>
+                      <Text style={{ fontSize: 12, fontFamily: typography.fonts.regular, color: colors.text.secondary, marginTop: 2 }} numberOfLines={1}>
+                        {milestoneSummary?.latestUnlocked ? `${t('common.latest', 'Latest')}: ${t(`milestones.${milestoneSummary.latestUnlocked.id}.title`, milestoneSummary.latestUnlocked.title)}` : t('profile.tapToViewBadges', 'Tap to view achievement badges')}
+                      </Text>
+                   </View>
+                 </View>
+
+                 <TouchableOpacity
+                   onPress={() => setShowAchievementsModal(true)}
+                   style={{
+                     backgroundColor: colors.primary.DEFAULT,
+                     paddingHorizontal: 12,
+                     paddingVertical: 8,
+                     borderRadius: 10,
+                   }}
+                 >
+                   <Text style={{ color: '#FFF', fontSize: 12, fontFamily: typography.fonts.bold }}>
+                     {t('profile.viewBadges', 'View Badges')}
+                   </Text>
+                 </TouchableOpacity>
+               </View>
+             </GlassCard>
 
              {/* Driver Performance Dashboard */}
              <GlassCard style={styles.dashboardCard}>
@@ -804,7 +851,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                   {/* MCQ Progress Summary */}
                   <View style={styles.mcqProgressSection}>
                     <Text style={styles.mcqProgressLabel}>
-                      TOTAL MCQs COMPLETED
+                      {t('profile.totalMcqsCompleted', 'TOTAL MCQs COMPLETED')}
                     </Text>
                     <View style={styles.mcqProgressRow}>
                       <Text style={styles.mcqProgressValue}>
@@ -828,58 +875,6 @@ export const ProfileScreen = ({ navigation }: any) => {
                     </View>
                   </View>
 
-             </GlassCard>
-
-             {/* Minimalist Milestone Banner */}
-             <GlassCard style={{ marginTop: 14 }}>
-               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 }}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                   <View style={{
-                     width: 44,
-                     height: 44,
-                     borderRadius: 22,
-                     backgroundColor: colors.primary.DEFAULT + '20',
-                     alignItems: 'center',
-                     justifyContent: 'center'
-                   }}>
-                     <Trophy size={22} color={colors.primary.DEFAULT} />
-                   </View>
-                   <View style={{ flex: 1 }}>
-                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                       <Text style={{ fontSize: 15, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
-                         Personal Milestones
-                       </Text>
-                       <View style={{
-                         backgroundColor: '#10B98120',
-                         paddingHorizontal: 6,
-                         paddingVertical: 2,
-                         borderRadius: 6
-                       }}>
-                         <Text style={{ fontSize: 11, fontFamily: typography.fonts.bold, color: '#10B981' }}>
-                           {milestoneSummary?.totalUnlocked || 0} / {milestoneSummary?.totalCount || 12}
-                         </Text>
-                       </View>
-                     </View>
-                     <Text style={{ fontSize: 12, fontFamily: typography.fonts.regular, color: colors.text.secondary, marginTop: 2 }} numberOfLines={1}>
-                       {milestoneSummary?.latestUnlocked ? `Latest: ${milestoneSummary.latestUnlocked.title}` : 'Tap to view achievement badges'}
-                     </Text>
-                   </View>
-                 </View>
-
-                 <TouchableOpacity
-                   onPress={() => setShowAchievementsModal(true)}
-                   style={{
-                     backgroundColor: colors.primary.DEFAULT,
-                     paddingHorizontal: 12,
-                     paddingVertical: 8,
-                     borderRadius: 10,
-                   }}
-                 >
-                   <Text style={{ color: '#FFF', fontSize: 12, fontFamily: typography.fonts.bold }}>
-                     View Badges
-                   </Text>
-                 </TouchableOpacity>
-               </View>
              </GlassCard>
 
              {/* Performance Chart */}
@@ -911,6 +906,9 @@ export const ProfileScreen = ({ navigation }: any) => {
                  {t('profile.batchesCompleted', { count: profile?.total_batches_completed || 0 })}
                </Text>
              </GlassCard>
+
+             {/* Profile Details for Driver */}
+             {renderProfileDetails()}
              
              </View>
           ) : null}
@@ -959,7 +957,7 @@ export const ProfileScreen = ({ navigation }: any) => {
             <View style={styles.modalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Trophy size={24} color={colors.primary.DEFAULT} />
-                <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Driver Achievements</Text>
+                <Text style={[styles.modalTitle, { color: colors.text.primary }]}>{t('profile.driverAchievements', 'Driver Achievements')}</Text>
               </View>
               <TouchableOpacity onPress={() => setShowAchievementsModal(false)} style={styles.closeBtn}>
                 <X size={20} color={colors.text.secondary} />
@@ -967,7 +965,7 @@ export const ProfileScreen = ({ navigation }: any) => {
             </View>
 
             <Text style={{ fontSize: 13, color: colors.text.secondary, marginHorizontal: 20, marginBottom: 14 }}>
-              Earn badges by completing questions, finishing batches, building streaks, and advancing ranks!
+              {t('profile.achievementsSubtitle', 'Earn badges by completing questions, finishing batches, building streaks, and advancing ranks!')}
             </Text>
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
@@ -1007,11 +1005,11 @@ export const ProfileScreen = ({ navigation }: any) => {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Text style={{ fontSize: 14, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
-                        {m.title}
+                        {String(t(`milestones.${m.id}.title`, m.title))}
                       </Text>
                       {m.isUnlocked ? (
                         <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>UNLOCKED ✓</Text>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>{t('profile.unlocked', 'UNLOCKED ✓')}</Text>
                         </View>
                       ) : (
                         <Text style={{ fontSize: 11, fontFamily: typography.fonts.medium, color: colors.text.tertiary }}>
@@ -1021,7 +1019,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                     </View>
 
                     <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 2, marginBottom: 6 }}>
-                      {m.description}
+                      {String(t(`milestones.${m.id}.description`, m.description))}
                     </Text>
 
                     {/* Progress bar */}

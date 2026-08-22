@@ -700,24 +700,18 @@ export const BatchService = {
             // Total MCQs answered
             const totalMCQs = await this.getTotalAnsweredQuestions(userId);
 
+            // Fetch all answered questions to compute true Cumulative Average Score
+            const { data: qProgress } = await supabase
+                .from('user_question_progress')
+                .select('score, is_correct')
+                .eq('user_id', userId);
+
             let csiScore = 0;
-            if (batchBestScores.size > 0) {
-                let sum = 0;
-                batchBestScores.forEach(s => { sum += s; });
-                csiScore = Math.round(sum / batchBestScores.size);
+            if (qProgress && qProgress.length > 0) {
+                const totalEarned = qProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
+                csiScore = Math.min(100, Math.round((totalEarned / Math.max(1, qProgress.length)) * 100));
             } else if (profile?.safety_index && profile.safety_index > 0) {
                 csiScore = Math.round(profile.safety_index);
-            } else {
-                // Provisional calculation from in-progress questions
-                const { data: qProgress } = await supabase
-                    .from('user_question_progress')
-                    .select('score, is_correct')
-                    .eq('user_id', userId);
-
-                if (qProgress && qProgress.length > 0) {
-                    const totalEarned = qProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
-                    csiScore = Math.min(100, Math.round((totalEarned / Math.max(1, qProgress.length)) * 100));
-                }
             }
 
             // Determine Rank (S Rank, A Rank, B Rank, C Rank, D Rank)
@@ -1106,13 +1100,25 @@ export const BatchService = {
             });
             const passedBatchesCount = passedBatches.size;
 
-            // 4. Update Profile with Latest Attempt metrics (No cross-batch mixing)
+            // Fetch all answered questions from user_question_progress to calculate true cumulative average
+            const { data: qProgress } = await supabase
+                .from('user_question_progress')
+                .select('score, is_correct')
+                .eq('user_id', userId);
+
+            let cumulativeScore = latestScore;
+            if (qProgress && qProgress.length > 0) {
+                const totalEarned = qProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
+                cumulativeScore = Math.min(100, Math.round((totalEarned / Math.max(1, qProgress.length)) * 100));
+            }
+
+            // 4. Update Profile with Cumulative Score & Latest DOP
             await supabase
                 .from('profiles')
                 .update({
-                    safety_index: latestScore, // Represents driver's latest attempt score
+                    safety_index: cumulativeScore, // True Cumulative Average Score
                     component_scores: componentScores, // Represents driver's latest attempt DOP
-                    total_score: latestScore,
+                    total_score: cumulativeScore,
                     total_batches_completed: passedBatchesCount
                 })
                 .eq('id', userId);
