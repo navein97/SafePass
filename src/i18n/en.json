@@ -5,6 +5,7 @@
         "fetchingProfile": "Fetching user profile...",
         "error": "Error",
         "save": "Save",
+        "lastUpdated": "Last updated",
         "cancel": "Cancel",
         "back": "Back",
         "next": "Next",

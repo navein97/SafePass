@@ -204,8 +204,8 @@ export const MilestoneService = {
                     currentValue = streak;
                     isUnlocked = streak >= def.threshold;
                 } else if (def.category === 'progression') {
-                    currentValue = csiScore;
-                    isUnlocked = csiScore >= def.threshold;
+                    currentValue = csiScore || 0;
+                    isUnlocked = csiScore !== null && csiScore >= def.threshold;
                 }
 
                 const progressPercentage = Math.min(100, Math.round((currentValue / Math.max(1, def.threshold)) * 100));

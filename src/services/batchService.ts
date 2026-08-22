@@ -661,8 +661,8 @@ export const BatchService = {
      * Calculate Overall Score (%) and Rank (S Rank, A Rank, B Rank, C Rank, D Rank) across all history.
      */
     async getCumulativeSafetyIndex(userId: string): Promise<{
-        score: number; // percentage (0 - 100)
-        rank: 'S Rank' | 'A Rank' | 'B Rank' | 'C Rank' | 'D Rank';
+        score: number | null; // percentage (0 - 100) or null if no batches completed
+        rank: 'S Rank' | 'A Rank' | 'B Rank' | 'C Rank' | 'D Rank' | '-';
         rankColor: string;
         band: string;
         bandLabel: string;
@@ -688,7 +688,7 @@ export const BatchService = {
                 .eq('id', userId)
                 .single();
 
-            // Unique passed batches map (best score per batch)
+            // Unique completed batches map (best score per completed batch)
             const batchBestScores = new Map<number, number>();
             (attempts || []).forEach(a => {
                 const currentBest = batchBestScores.get(a.batch_number) || 0;
@@ -700,49 +700,43 @@ export const BatchService = {
             // Total MCQs answered
             const totalMCQs = await this.getTotalAnsweredQuestions(userId);
 
-            // Fetch all answered questions to compute true Cumulative Average Score
-            const { data: qProgress } = await supabase
-                .from('user_question_progress')
-                .select('score, is_correct')
-                .eq('user_id', userId);
+            let csiScore: number | null = null;
+            let rank: 'S Rank' | 'A Rank' | 'B Rank' | 'C Rank' | 'D Rank' | '-' = '-';
+            let rankColor = '#9E9E9E';
 
-            let csiScore = 0;
-            if (qProgress && qProgress.length > 0) {
-                const totalEarned = qProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
-                csiScore = Math.min(100, Math.round((totalEarned / Math.max(1, qProgress.length)) * 100));
-            } else if (profile?.safety_index && profile.safety_index > 0) {
-                csiScore = Math.round(profile.safety_index);
-            }
+            // CGPA Calculation: Only computed when at least one batch has been completed
+            if (batchBestScores.size > 0) {
+                let sum = 0;
+                batchBestScores.forEach(s => { sum += s; });
+                csiScore = Math.round(sum / batchBestScores.size);
 
-            // Determine Rank (S Rank, A Rank, B Rank, C Rank, D Rank)
-            let rank: 'S Rank' | 'A Rank' | 'B Rank' | 'C Rank' | 'D Rank' = 'D Rank';
-            let rankColor = '#EF4444';
-
-            if (csiScore >= 90) {
-                rank = 'S Rank';
-                rankColor = '#E11D48';
-            } else if (csiScore >= 80) {
-                rank = 'A Rank';
-                rankColor = '#8B5CF6';
-            } else if (csiScore >= 70) {
-                rank = 'B Rank';
-                rankColor = '#3B82F6';
-            } else if (csiScore >= 60) {
-                rank = 'C Rank';
-                rankColor = '#F59E0B';
-            } else {
-                rank = 'D Rank';
-                rankColor = '#EF4444';
+                // Determine Rank
+                if (csiScore >= 90) {
+                    rank = 'S Rank';
+                    rankColor = '#E11D48';
+                } else if (csiScore >= 80) {
+                    rank = 'A Rank';
+                    rankColor = '#8B5CF6';
+                } else if (csiScore >= 70) {
+                    rank = 'B Rank';
+                    rankColor = '#3B82F6';
+                } else if (csiScore >= 60) {
+                    rank = 'C Rank';
+                    rankColor = '#F59E0B';
+                } else {
+                    rank = 'D Rank';
+                    rankColor = '#EF4444';
+                }
             }
 
             const componentScores = profile?.component_scores || {
-                operation: csiScore,
-                discipline: csiScore,
-                professionalism: csiScore,
+                operation: csiScore || 0,
+                discipline: csiScore || 0,
+                professionalism: csiScore || 0,
             };
 
             return {
-                score: csiScore,
+                score: csiScore as any,
                 rank,
                 rankColor,
                 band: rank,
@@ -1100,25 +1094,29 @@ export const BatchService = {
             });
             const passedBatchesCount = passedBatches.size;
 
-            // Fetch all answered questions from user_question_progress to calculate true cumulative average
-            const { data: qProgress } = await supabase
-                .from('user_question_progress')
-                .select('score, is_correct')
-                .eq('user_id', userId);
+            // Calculate CGPA across all completed batches (best score per batch)
+            const batchBestScores = new Map<number, number>();
+            attempts.forEach(a => {
+                const currentBest = batchBestScores.get(a.batch_number) || 0;
+                if ((a.score || 0) > currentBest) {
+                    batchBestScores.set(a.batch_number, a.score);
+                }
+            });
 
-            let cumulativeScore = latestScore;
-            if (qProgress && qProgress.length > 0) {
-                const totalEarned = qProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
-                cumulativeScore = Math.min(100, Math.round((totalEarned / Math.max(1, qProgress.length)) * 100));
+            let cgpaScore = 0;
+            if (batchBestScores.size > 0) {
+                let sum = 0;
+                batchBestScores.forEach(s => { sum += s; });
+                cgpaScore = Math.round(sum / batchBestScores.size);
             }
 
-            // 4. Update Profile with Cumulative Score & Latest DOP
+            // 4. Update Profile with CGPA Score & Latest DOP
             await supabase
                 .from('profiles')
                 .update({
-                    safety_index: cumulativeScore, // True Cumulative Average Score
+                    safety_index: cgpaScore, // CGPA across completed batches
                     component_scores: componentScores, // Represents driver's latest attempt DOP
-                    total_score: cumulativeScore,
+                    total_score: cgpaScore,
                     total_batches_completed: passedBatchesCount
                 })
                 .eq('id', userId);

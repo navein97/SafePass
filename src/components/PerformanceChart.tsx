@@ -35,8 +35,8 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
     ? [{ value: 0, label: '0%' }, ...data]
     : data;
 
-  // Chart Config - Increased horizontal padding to prevent cutoff
-  const hPadding = 45; 
+  // Chart Config - Balanced horizontal padding for symmetrical edge spacing
+  const hPadding = 28; 
   const vPadding = 30;
   const chartHeight = height - vPadding * 2;
   const chartWidth = screenWidth - hPadding * 2;
@@ -109,17 +109,19 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
                     strokeWidth="2" 
                 />
                 
-                {/* Score Label above point */}
-                <SvgText
-                    x={getX(index)}
-                    y={getY(point.value) - 10}
-                    fontSize="10"
-                    fontFamily={typography.fonts.bold}
-                    fill={colors.text.primary}
-                    textAnchor="middle"
-                >
-                    {point.value}%
-                </SvgText>
+                {/* Score Label above point - Only show when value > 0 */}
+                {point.value > 0 && (
+                  <SvgText
+                      x={getX(index)}
+                      y={getY(point.value) - 10}
+                      fontSize="10"
+                      fontFamily={typography.fonts.bold}
+                      fill={colors.text.primary}
+                      textAnchor="middle"
+                  >
+                      {point.value}%
+                  </SvgText>
+                )}
 
                 {/* X-Axis Labels */}
                 <SvgText

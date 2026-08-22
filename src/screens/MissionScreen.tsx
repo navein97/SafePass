@@ -22,6 +22,7 @@ import { typography } from '../theme/typography';
 import { Lock, CheckCircle, PlayCircle, AlertCircle, Target, ArrowLeft } from 'lucide-react-native';
 import { SubscriptionService } from '../services/subscriptionService';
 import { supabase } from '../lib/supabase';
+import { CacheService, formatTimeAgo, isDataEqual } from '../services/cacheService';
 
 interface BatchStatus {
   batchNumber: number;
@@ -46,11 +47,21 @@ export function MissionScreen() {
   const [selectedMode, setSelectedMode] = useState<'live' | 'practice' | null>(null);
   const [maxBatches, setMaxBatches] = useState(8); // 1 = trial, 8 = subscribed
 
-  // Ref to track if it's the very first load to avoid spinner on subsequent visits
   const isFirstLoadRef = useRef(true);
-  // Cache timestamp
-  const lastLoadTime = useRef<number>(0);
-  const CACHE_DURATION_MS = 10000; // 10 seconds
+
+  // SWR Caching & Last Updated State
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<number | null>(null);
+  const [lastUpdatedText, setLastUpdatedText] = useState<string>('');
+
+  // Live timer update for "Last updated X ago"
+  React.useEffect(() => {
+    if (!lastUpdatedTime) return;
+    setLastUpdatedText(formatTimeAgo(lastUpdatedTime));
+    const interval = setInterval(() => {
+      setLastUpdatedText(formatTimeAgo(lastUpdatedTime));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [lastUpdatedTime]);
 
   // useFocusEffect is safer than useEffect for screen focus events
   useFocusEffect(
@@ -58,27 +69,27 @@ export function MissionScreen() {
       let isActive = true; // Prevents state updates if screen unmounts
 
       const loadData = async () => {
-        // Check if we need to force refresh from QuizScreen params
-        const shouldRefresh = route.params?.refresh === true;
-
-        // Cache Check: Skip if data is fresh and we aren't forced to refresh
-        const now = Date.now();
-        if (!shouldRefresh && lastLoadTime.current > 0 && (now - lastLoadTime.current) < CACHE_DURATION_MS) {
-          return;
-        }
-
         // Clear the refresh param so we don't loop
-        if (shouldRefresh) {
+        if (route.params?.refresh === true) {
           navigation.setParams({ refresh: undefined } as any);
         }
 
-        // Only show spinner on the very first mount or explicit refresh
-        if (isFirstLoadRef.current) {
-          setLoading(true);
+        // 1. Instant Cache-First Read (Stale-While-Revalidate)
+        const cached = await CacheService.get<BatchStatus[]>('mission_batch_statuses');
+        if (cached && cached.data && cached.data.length > 0) {
+          if (isActive) {
+            setBatchStatuses(cached.data);
+            setLastUpdatedTime(cached.lastUpdated);
+            setLastUpdatedText(formatTimeAgo(cached.lastUpdated));
+            setLoading(false); // Immediate 0-wait render
+          }
+        } else if (isFirstLoadRef.current) {
+          setLoading(true); // Show skeleton/spinner only on cold start with 0 cache
         }
 
+        // 2. Parallel Background Fetch with 5s Timeout (Fail silently)
         try {
-          // 1. Get User Profile
+          // Get User Profile
           const { profile } = await AuthService.getUserProfile();
           if (!isActive || !profile) return;
 
@@ -92,16 +103,14 @@ export function MissionScreen() {
           const batches = await SubscriptionService.getMaxBatches(profile.company_id);
           if (isActive) setMaxBatches(batches);
 
-          // 2. Fetch Batch Data Sequentially to prevent network hang
+          // Fetch Batch Data in Background with 5s timeout
           const batchNumbers = await BatchService.getAvailableBatchNumbers();
-          const statuses: BatchStatus[] = [];
 
           const fetchPromise = async () => {
             const accessResults = await Promise.all(batchNumbers.map(i => BatchService.canAccessBatch(profile.id, i)));
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(profile.id, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(profile.id, i)));
             const dailyStatuses = await Promise.all(batchNumbers.map(i => BatchService.getDailyLimitStatus(profile.id, i)));
-
             const totalQuestionsResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchTotalQuestions(i, profile.id)));
 
             const { data: qProgress } = await supabase
@@ -133,27 +142,23 @@ export function MissionScreen() {
             });
           };
 
-          // Race the fetch against a 10-second timeout
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timed out')), 10000)
-          );
+          const freshStatuses = await CacheService.fetchWithTimeout(fetchPromise, 5000);
 
-          const [resultStatuses] = await Promise.race([
-            Promise.all([fetchPromise()]),
-            timeoutPromise
-          ]) as [BatchStatus[]];
-
-          if (isActive) {
-            setBatchStatuses(resultStatuses);
-            lastLoadTime.current = Date.now();
-            isFirstLoadRef.current = false; // Mark first load as complete
+          if (isActive && freshStatuses) {
+            // Deep comparison — only re-render if data has actually changed
+            if (!cached || !isDataEqual(cached.data, freshStatuses)) {
+              setBatchStatuses(freshStatuses);
+              await CacheService.set('mission_batch_statuses', freshStatuses);
+              const now = Date.now();
+              setLastUpdatedTime(now);
+              setLastUpdatedText(formatTimeAgo(now));
+            }
+            isFirstLoadRef.current = false;
           }
 
         } catch (error) {
-          console.error('Error loading batch statuses:', error);
-          if (isActive && isFirstLoadRef.current) {
-            Alert.alert(t('common.error'), t('quiz.failedToLoadQuiz'));
-          }
+          // Fail silently — keep showing cached data without blocking or showing an error
+          console.warn('[MissionScreen] Background batch fetch failed, keeping cached data:', error);
         } finally {
           if (isActive) {
             setLoading(false);
@@ -166,7 +171,7 @@ export function MissionScreen() {
       return () => {
         isActive = false; // Cleanup flag
       };
-    }, [route.params?.refresh, navigation]) // Re-run if refresh param changes
+    }, [route.params?.refresh, navigation])
   );
 
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
@@ -251,6 +256,11 @@ export function MissionScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>{t('mission.trainingTitle')}</Text>
           <Text style={styles.subtitle}>{t('mission.trainingSubtitle')}</Text>
+          {lastUpdatedText ? (
+            <Text style={{ fontSize: 11, color: colors.text.tertiary, marginTop: 4, fontFamily: typography.fonts.regular }}>
+              {t('common.lastUpdated', 'Last updated')} {lastUpdatedText}
+            </Text>
+          ) : null}
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>

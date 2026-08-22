@@ -12,6 +12,7 @@ import { QuizService } from '../services/quizService';
 import { BatchService } from '../services/batchService';
 import { PracticeService } from '../services/practiceService';
 import { MilestoneService } from '../services/milestoneService';
+import { CacheService, formatTimeAgo, isDataEqual } from '../services/cacheService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
@@ -107,6 +108,10 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [showCompanySettings, setShowCompanySettings] = useState(false);
   const [hasNoPlan, setHasNoPlan] = useState(false);
 
+  // SWR Caching & Last Updated State
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<number | null>(null);
+  const [lastUpdatedText, setLastUpdatedText] = useState<string>('');
+
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage(message);
     setToastType(type);
@@ -118,6 +123,15 @@ export const ProfileScreen = ({ navigation }: any) => {
   const isManager = profile?.role === 'manager';
   const streakWeeks = profile?.streak || 0;
 
+  // Live timer update for "Last updated X ago"
+  useEffect(() => {
+    if (!lastUpdatedTime) return;
+    setLastUpdatedText(formatTimeAgo(lastUpdatedTime));
+    const interval = setInterval(() => {
+      setLastUpdatedText(formatTimeAgo(lastUpdatedTime));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [lastUpdatedTime]);
 
   useEffect(() => {
     // Load immediately on mount
@@ -132,166 +146,177 @@ export const ProfileScreen = ({ navigation }: any) => {
   }, [navigation]);
 
   const loadProfile = async () => {
-    setLoading(true);
-    
-    // Set a safety timeout as a secondary defense
-    const timeoutId = setTimeout(() => {
-      setLoading(false);
-    }, 10000);
+    // 1. Instant Cache-First Read (Stale-While-Revalidate)
+    const cached = await CacheService.get<any>('profile_full_data');
+    if (cached && cached.data) {
+      const c = cached.data;
+      if (c.profile) setProfile(c.profile);
+      if (c.fullName) setFullName(c.fullName);
+      if (c.email) { setEmail(c.email); setInitialEmail(c.email); }
+      if (c.designation) setDesignation(c.designation);
+      if (c.companyName) setCompanyName(c.companyName);
+      if (c.address) setAddress(c.address);
+      if (c.contactNumber) setContactNumber(c.contactNumber);
+      if (c.age) setAge(c.age);
+      if (c.vehicleType) setVehicleType(c.vehicleType);
+      if (c.quizHistory) setQuizHistory(c.quizHistory);
+      if (c.totalXP !== undefined) setTotalXP(c.totalXP);
+      if (c.totalQuestionsAnswered !== undefined) setTotalQuestionsAnswered(c.totalQuestionsAnswered);
+      if (c.csiData) setCsiData(c.csiData);
+      if (c.milestoneSummary) setMilestoneSummary(c.milestoneSummary);
+      if (c.totalMCQsCount) setTotalMCQsCount(c.totalMCQsCount);
+      if (c.hasNoPlan !== undefined) setHasNoPlan(c.hasNoPlan);
 
+      setLastUpdatedTime(cached.lastUpdated);
+      setLastUpdatedText(formatTimeAgo(cached.lastUpdated));
+      setLoading(false); // Immediate 0-wait render
+    } else {
+      setLoading(true); // Show skeleton/spinner only on cold start with 0 cache
+    }
+
+    // 2. Parallel Background Fetch with 5s Timeout (Fail silently)
     try {
-      const { profile: userProfile, error } = await AuthService.getUserProfile();
-      
-      if (error) {
-        console.error('Profile fetch error:', error);
-        Alert.alert('Error', t('common.errorLoading', 'Failed to load profile'));
-        return;
-      }
+      await CacheService.fetchWithTimeout(async () => {
+        const { profile: userProfile, error } = await AuthService.getUserProfile();
+        if (error || !userProfile) return;
 
-      if (!userProfile) {
-        Alert.alert(t('common.error'), t('profile.userNotFound'));
-        return;
-      }
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const userEmail = authUser?.email || '';
 
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      const userEmail = authUser?.email || '';
+        const baseProfile: ProfileData = {
+          ...userProfile,
+          streak: userProfile.streak || 0,
+          email: userEmail,
+          managerLevel: userProfile.manager_level,
+          operationalEffectiveness: userProfile.component_scores?.operation || 0,
+          operationalDiscipline: userProfile.component_scores?.discipline || 0,
+          professionalConduct: userProfile.component_scores?.professionalism || 0,
+          totalScore: userProfile.total_score || 0,
+          current_batch: userProfile.current_batch || 1,
+          total_batches_completed: userProfile.total_batches_completed || 0,
+          designation: userProfile.designation || '',
+          companyName: userProfile.company_name || '',
+          address: userProfile.address || '',
+          contactNumber: userProfile.phone_number || '',
+        };
 
-      setProfile({
-        ...userProfile,
-        streak: userProfile.streak || 0,
-        email: userEmail,
-        managerLevel: userProfile.manager_level,
-        operationalEffectiveness: userProfile.component_scores?.operation || 0,
-        operationalDiscipline: userProfile.component_scores?.discipline || 0,
-        professionalConduct: userProfile.component_scores?.professionalism || 0,
-        totalScore: userProfile.total_score || 0,
-        current_batch: userProfile.current_batch || 1,
-        total_batches_completed: userProfile.total_batches_completed || 0,
-        designation: userProfile.designation || '',
-        companyName: userProfile.company_name || '',
-        address: userProfile.address || '',
-        contactNumber: userProfile.phone_number || '', // Mapped from phone_number
-      });
+        let updatedProfile = baseProfile;
+        let freshQuizHistory: { value: number; label: string }[] = [];
+        let freshXP = 0;
+        let freshAnsweredQs = 0;
+        let freshCsiData: any = null;
+        let freshMilestones: any = null;
+        let freshTotalMCQs = 240;
+        let freshHasNoPlan = false;
 
-      // Load Form State
-      setFullName(userProfile.full_name || '');
-      setEmail(userEmail);
-      setInitialEmail(userEmail);
-      setDesignation(userProfile.designation || '');
-      setCompanyName(userProfile.company_name || '');
-      setAddress(userProfile.address || '');
-      setContactNumber(userProfile.phone_number || '');
-
-      // Always sync profile stats on load for non-manager drivers to ensure fresh dashboard metrics
-      if (userProfile.role !== 'manager' && userProfile.id) {
-
+        // Sync and fetch stats for driver
+        if (userProfile.role !== 'manager' && userProfile.id) {
           await BatchService.syncProfileStats(userProfile.id);
-          // Re-fetch the profile to pick up the newly synced metrics
           const { profile: refreshedProfile } = await AuthService.getUserProfile();
           if (refreshedProfile) {
-              setProfile(prev => prev ? {
-                  ...prev,
-                  ...refreshedProfile,
-                  operationalEffectiveness: refreshedProfile.component_scores?.operation || 0,
-                  operationalDiscipline: refreshedProfile.component_scores?.discipline || 0,
-                  professionalConduct: refreshedProfile.component_scores?.professionalism || 0,
-                  safety_index: refreshedProfile.safety_index || 0,
-                  streak: refreshedProfile.streak || 0,
-                  totalScore: refreshedProfile.total_score || 0,
-                  total_batches_completed: refreshedProfile.total_batches_completed || 0,
-              } : prev);
+            updatedProfile = {
+              ...updatedProfile,
+              ...refreshedProfile,
+              operationalEffectiveness: refreshedProfile.component_scores?.operation || 0,
+              operationalDiscipline: refreshedProfile.component_scores?.discipline || 0,
+              professionalConduct: refreshedProfile.component_scores?.professionalism || 0,
+              safety_index: refreshedProfile.safety_index || 0,
+              streak: refreshedProfile.streak || 0,
+              totalScore: refreshedProfile.total_score || 0,
+              total_batches_completed: refreshedProfile.total_batches_completed || 0,
+            };
           }
-      }
 
-      // Load Daily Trends for Chart & Dynamic MCQ total across all batches
-      if (userProfile.id && userProfile.role !== 'manager') {
           const batchNumbers = await BatchService.getAvailableBatchNumbers();
           const [trends, xp, answeredQs, batchTotals, csi, milestones] = await Promise.all([
-              QuizService.getDailyTrends(userProfile.id),
-              BatchService.getTotalXP(userProfile.id),
-              BatchService.getTotalAnsweredQuestions(userProfile.id),
-              Promise.all(batchNumbers.map(b => BatchService.getBatchTotalQuestions(b, userProfile.id))),
-              BatchService.getCumulativeSafetyIndex(userProfile.id),
-              MilestoneService.getUserMilestones(userProfile.id),
+            QuizService.getDailyTrends(userProfile.id),
+            BatchService.getTotalXP(userProfile.id),
+            BatchService.getTotalAnsweredQuestions(userProfile.id),
+            Promise.all(batchNumbers.map(b => BatchService.getBatchTotalQuestions(b, userProfile.id))),
+            BatchService.getCumulativeSafetyIndex(userProfile.id),
+            MilestoneService.getUserMilestones(userProfile.id),
           ]);
-          setQuizHistory(trends);
-          setTotalXP(xp);
-          setTotalQuestionsAnswered(answeredQs);
-          setCsiData(csi);
-          setMilestoneSummary(milestones);
+
+          freshQuizHistory = trends;
+          freshXP = xp;
+          freshAnsweredQs = answeredQs;
+          freshCsiData = csi;
+          freshMilestones = milestones;
           const totalAllBatches = batchTotals.reduce((sum, count) => sum + count, 0);
-          setTotalMCQsCount(totalAllBatches > 0 ? totalAllBatches : 240);
-      }
-
-      // Check if Master User needs a plan
-
-      if (userProfile.role === 'manager' && userProfile.company_id) {
-        const [stats, subDetails] = await Promise.all([
-            CompanySettingsService.getCompanyStats(userProfile.company_id),
-            SubscriptionService.getSubscriptionDetails(userProfile.company_id)
-        ]);
-
-
-
-        if (subDetails?.subscription_tier === 'trial') {
-          setHasNoPlan(true);
-        } else {
-          setHasNoPlan(false);
+          freshTotalMCQs = totalAllBatches > 0 ? totalAllBatches : 240;
         }
 
-        if (subDetails) {
-            setProfile(prev => prev ? ({
-                ...prev,
-                subscription_tier: subDetails.subscription_tier as any
-            }) : prev);
+        if (userProfile.role === 'manager' && userProfile.company_id) {
+          const subDetails = await SubscriptionService.getSubscriptionDetails(userProfile.company_id);
+          freshHasNoPlan = subDetails?.subscription_tier === 'trial';
+          if (subDetails) {
+            updatedProfile = {
+              ...updatedProfile,
+              subscription_tier: subDetails.subscription_tier as any,
+            };
+          }
         }
-      }
 
+        const freshData = {
+          profile: updatedProfile,
+          fullName: userProfile.full_name || '',
+          email: userEmail,
+          designation: userProfile.designation || '',
+          companyName: userProfile.company_name || '',
+          address: userProfile.address || '',
+          contactNumber: userProfile.phone_number || '',
+          age: userProfile.age ? String(userProfile.age) : '',
+          vehicleType: userProfile.vehicle_type || '',
+          quizHistory: freshQuizHistory,
+          totalXP: freshXP,
+          totalQuestionsAnswered: freshAnsweredQs,
+          csiData: freshCsiData,
+          milestoneSummary: freshMilestones,
+          totalMCQsCount: freshTotalMCQs,
+          hasNoPlan: freshHasNoPlan,
+        };
 
-      // Load local settings/data
-      if (userProfile.role === 'manager') {
-        const savedCount = await AsyncStorage.getItem('QUIZ_QUESTION_COUNT');
-        const savedTimer = await AsyncStorage.getItem('QUIZ_TIMER_DURATION');
-        const savedDiff = await AsyncStorage.getItem('QUIZ_DIFFICULTY_PARAMS');
-        
-        if (savedCount) setQuestionCount(parseInt(savedCount, 10));
-        if (savedTimer) setTimerDuration(parseInt(savedTimer, 10));
-        if (savedDiff) {
-            try { setDifficultyParams(JSON.parse(savedDiff)); } catch (e) {}
-        }
-      } else {
-        let initialAge = userProfile.age ? userProfile.age.toString() : '';
-        let initialVehicle = userProfile.vehicle_type || '';
+        // Only update UI state and cache if fresh data differs from cached data
+        if (!cached || !isDataEqual(cached.data, freshData)) {
+          setProfile(updatedProfile);
+          setFullName(freshData.fullName);
+          setEmail(freshData.email);
+          setInitialEmail(freshData.email);
+          setDesignation(freshData.designation);
+          setCompanyName(freshData.companyName);
+          setAddress(freshData.address);
+          setContactNumber(freshData.contactNumber);
+          setAge(freshData.age);
+          setVehicleType(freshData.vehicleType);
+          setQuizHistory(freshQuizHistory);
+          setTotalXP(freshXP);
+          setTotalQuestionsAnswered(freshAnsweredQs);
+          setCsiData(freshCsiData);
+          setMilestoneSummary(freshMilestones);
+          setTotalMCQsCount(freshTotalMCQs);
+          setHasNoPlan(freshHasNoPlan);
 
-        if (!initialAge && userProfile.id) {
-             const savedAge = await AsyncStorage.getItem(`USER_AGE_${userProfile.id}`);
-             if (savedAge) initialAge = savedAge;
+          await CacheService.set('profile_full_data', freshData);
+          const now = Date.now();
+          setLastUpdatedTime(now);
+          setLastUpdatedText(formatTimeAgo(now));
         }
-        
-        if (!initialVehicle && userProfile.id) {
-             const savedVehicle = await AsyncStorage.getItem(`USER_VEHICLE_${userProfile.id}`);
-             if (savedVehicle) initialVehicle = savedVehicle;
-        }
-        
-        setAge(initialAge);
-        setVehicleType(initialVehicle);
-      }
-
-      // Load dynamic vehicle types
-      try {
-        const types = await PracticeService.getVehicleTypes();
-        if (types && types.length > 0) {
-          setVehicleTypesList(types);
-        }
-      } catch (err) {
-        console.error('Error fetching vehicle types in ProfileScreen:', err);
-      }
-    } catch (error) {
-      console.error('Fatal loadProfile error:', error);
-      Alert.alert(t('common.systemError'), t('common.unexpectedErrorOccurred'));
+      }, 5000);
+    } catch (err) {
+      // Background fetch failed or timed out — fail silently and keep showing cached data
+      console.warn('[ProfileScreen] Background fetch failed, using cached data:', err);
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
+    }
+
+    // Load dynamic vehicle types
+    try {
+      const types = await PracticeService.getVehicleTypes();
+      if (types && types.length > 0) {
+        setVehicleTypesList(types);
+      }
+    } catch (err) {
+      console.error('Error fetching vehicle types in ProfileScreen:', err);
     }
   };
 
@@ -523,14 +548,14 @@ export const ProfileScreen = ({ navigation }: any) => {
                             />
                           </>
                         )}
+
+                        <GlassButton
+                           title={t('common.save')}
+                           onPress={handleSavePersonalDetails}
+                           style={{ marginTop: 14 }}
+                         />
                     </View>
                  )}
-
-                 <GlassButton
-                   title={t('common.save')}
-                   onPress={handleSavePersonalDetails}
-                   style={{ marginTop: 8 }}
-                 />
           </GlassCard>
   );
 
@@ -558,7 +583,14 @@ export const ProfileScreen = ({ navigation }: any) => {
           
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>{t('profile.title')}</Text>
+            <View>
+              <Text style={styles.title}>{t('profile.title')}</Text>
+              {lastUpdatedText ? (
+                <Text style={{ fontSize: 11, color: colors.text.tertiary, marginTop: 2, fontFamily: typography.fonts.regular }}>
+                  {t('common.lastUpdated', 'Last updated')} {lastUpdatedText}
+                </Text>
+              ) : null}
+            </View>
             <View style={styles.headerActions}>
                <TouchableOpacity 
                 style={styles.settingsButton}
@@ -631,16 +663,27 @@ export const ProfileScreen = ({ navigation }: any) => {
                     </View>
                   ) : null}
                   {!isManager && (
-                    <View style={[
-                      styles.csiProfileBadge,
-                      { 
-                        backgroundColor: (csiData?.bandColor || '#3B82F6') + '20',
-                        borderColor: csiData?.bandColor || '#3B82F6',
-                      }
-                    ]}>
-                      <Text style={[styles.csiProfileBadgeText, { color: csiData?.bandColor || '#3B82F6' }]}>
-                        ⭐ {t('profile.overallScore', 'Overall Score')}: {csiData?.score || 0}% • {csiData?.rank || csiData?.band || 'D Rank'}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                      <Text style={{ fontSize: 13, fontFamily: typography.fonts.bold, color: colors.text.primary }}>
+                        ⭐ {t('profile.overallScore', 'Overall Score')}: {csiData?.score !== null && csiData?.score !== undefined ? `${csiData.score}%` : '-'}
                       </Text>
+                      {csiData?.rank && csiData.rank !== '-' ? (
+                        <View style={[
+                          styles.csiProfileBadge,
+                          { 
+                            backgroundColor: (csiData?.bandColor || '#3B82F6') + '20',
+                            borderColor: csiData?.bandColor || '#3B82F6',
+                            borderWidth: 1,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                          }
+                        ]}>
+                          <Text style={[styles.csiProfileBadgeText, { color: csiData?.bandColor || '#3B82F6', fontSize: 11, fontWeight: '700' }]}>
+                            {csiData.rank}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                   )}
                   {isManager && profile?.subscription_tier && (
@@ -734,7 +777,7 @@ export const ProfileScreen = ({ navigation }: any) => {
             <View>
 
              {/* Minimalist Milestone Banner */}
-             <GlassCard style={{ marginTop: 14 }}>
+             <GlassCard style={{ marginBottom: 16 }}>
                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 }}>
                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
                    <View style={{
@@ -753,9 +796,9 @@ export const ProfileScreen = ({ navigation }: any) => {
                          {t('profile.personalMilestones', 'Personal Milestones')}
                        </Text>
                      </View>
-                      <Text style={{ fontSize: 12, fontFamily: typography.fonts.regular, color: colors.text.secondary, marginTop: 2 }} numberOfLines={1}>
-                        {milestoneSummary?.latestUnlocked ? `${t('common.latest', 'Latest')}: ${t(`milestones.${milestoneSummary.latestUnlocked.id}.title`, milestoneSummary.latestUnlocked.title)}` : t('profile.tapToViewBadges', 'Tap to view achievement badges')}
-                      </Text>
+                     <Text style={{ fontSize: 12, fontFamily: typography.fonts.regular, color: colors.text.secondary, marginTop: 2 }} numberOfLines={1}>
+                       {t('profile.tapToViewBadges', 'Tap to view achievement badges')}
+                     </Text>
                    </View>
                  </View>
 
@@ -878,7 +921,7 @@ export const ProfileScreen = ({ navigation }: any) => {
              </GlassCard>
 
              {/* Performance Chart */}
-             <GlassCard style={{marginTop: 16}}>
+             <GlassCard style={{ marginBottom: 16 }}>
                 <PerformanceChart 
                     data={
                         quizHistory.some(d => d.value > 0)
