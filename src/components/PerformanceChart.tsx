@@ -18,13 +18,15 @@ import { typography } from '../theme/typography';
 import { useTranslation } from 'react-i18next';
 
 export const PerformanceChart = ({ data, height = 200, width }: PerformanceChartProps) => {
-  const { t } = useTranslation(); // Hook
+  const { t } = useTranslation();
   const { colors } = useTheme();
-  const screenWidth = width || Dimensions.get('window').width - 40;
+  const [measuredWidth, setMeasuredWidth] = React.useState<number>(0);
+
+  const containerWidth = width || measuredWidth || (Dimensions.get('window').width - 80);
   
   if (!data || data.length === 0) {
       return (
-          <View style={[styles.container, { height, width: screenWidth, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={[styles.container, { height, justifyContent: 'center', alignItems: 'center' }]}>
               <Text style={{ color: colors.text.secondary }}>{t('common.noData') || 'No data available yet'}</Text>
           </View>
       );
@@ -36,15 +38,15 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
     : data;
 
   // Chart Config - Balanced horizontal padding for symmetrical edge spacing
-  const hPadding = 28; 
+  const hPadding = 24; 
   const vPadding = 30;
   const chartHeight = height - vPadding * 2;
-  const chartWidth = screenWidth - hPadding * 2;
+  const innerWidth = containerWidth - hPadding * 2;
   const maxValue = 100;
   
   // Helper to map coordinates
   const getX = (index: number) => {
-    return hPadding + (index * (chartWidth / (chartData.length - 1)));
+    return hPadding + (index * (innerWidth / Math.max(1, chartData.length - 1)));
   };
   const getY = (value: number) => height - vPadding - ((value / maxValue) * chartHeight);
 
@@ -60,9 +62,19 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
   const dArea = `${d} L ${getX(chartData.length - 1)} ${height - vPadding} L ${getX(0)} ${height - vPadding} Z`;
 
   return (
-    <View style={[styles.container, { width: screenWidth }]}>
-      <Text style={[styles.title, { color: colors.text.primary }]}>{t('profile.performanceTrend')}</Text>
-      <Svg height={height} width={screenWidth}>
+    <View 
+      style={styles.container}
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width;
+        if (w > 0 && Math.abs(w - measuredWidth) > 2) {
+          setMeasuredWidth(w);
+        }
+      }}
+    >
+      <Text style={[styles.title, { color: colors.text.primary, paddingHorizontal: hPadding }]}>
+        {t('profile.performanceTrend')}
+      </Text>
+      <Svg height={height} width={containerWidth}>
         <Defs>
           <LinearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={colors.primary.DEFAULT} stopOpacity="0.5" />
@@ -76,7 +88,7 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
                 key={val}
                 x1={hPadding}
                 y1={getY(val)}
-                x2={screenWidth - hPadding}
+                x2={containerWidth - hPadding}
                 y2={getY(val)}
                 stroke={colors.border}
                 strokeWidth="1"
@@ -143,7 +155,8 @@ export const PerformanceChart = ({ data, height = 200, width }: PerformanceChart
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 12,
+    width: '100%',
     alignItems: 'center',
   },
   title: {
@@ -152,6 +165,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 8,
     alignSelf: 'flex-start',
-    marginLeft: 15,
   }
 });

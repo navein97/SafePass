@@ -10,6 +10,7 @@ import {
   StatusBar,
   ScrollView,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -52,6 +53,7 @@ export function MissionScreen() {
   // SWR Caching & Last Updated State
   const [lastUpdatedTime, setLastUpdatedTime] = useState<number | null>(null);
   const [lastUpdatedText, setLastUpdatedText] = useState<string>('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // Live timer update for "Last updated X ago"
   React.useEffect(() => {
@@ -63,115 +65,157 @@ export function MissionScreen() {
     return () => clearInterval(interval);
   }, [lastUpdatedTime]);
 
+  const loadData = useCallback(async () => {
+    // 1. Instant Cache-First Read (Stale-While-Revalidate)
+    const cached = await CacheService.get<BatchStatus[]>('mission_batch_statuses');
+    if (cached && cached.data && cached.data.length > 0) {
+      setBatchStatuses(cached.data);
+      setLastUpdatedTime(cached.lastUpdated);
+      setLastUpdatedText(formatTimeAgo(cached.lastUpdated));
+      setLoading(false); // Immediate 0-wait render
+    } else if (isFirstLoadRef.current) {
+      setLoading(true); // Show skeleton/spinner only on cold start with 0 cache
+    }
+
+    // 2. Parallel Background Fetch with 8s Timeout (Fail silently)
+    try {
+      const { profile } = await AuthService.getUserProfile();
+      if (!profile) return;
+
+      // Redirect managers immediately
+      if (profile.role === 'manager') {
+        navigation.navigate('ManagerQuickView' as never);
+        return;
+      }
+
+      // Check subscription level for trial gating
+      const batches = await SubscriptionService.getMaxBatches(profile.company_id);
+      setMaxBatches(batches);
+
+      // Fetch Batch Data in Background with 8s timeout
+      const batchNumbers = await BatchService.getAvailableBatchNumbers();
+
+      const fetchPromise = async () => {
+        // Fetch user batch attempts, question progress, and questions metadata in parallel
+        const [
+          { data: allBatchAttempts },
+          { data: allQProgress },
+          { data: allQuestionsData },
+        ] = await Promise.all([
+          supabase
+            .from('user_batch_progress')
+            .select('*')
+            .eq('user_id', profile.id),
+          supabase
+            .from('user_question_progress')
+            .select('*')
+            .eq('user_id', profile.id),
+          supabase
+            .from('questions')
+            .select('id, batch_number, driver_categories'),
+        ]);
+
+        // Calculate start of today in UTC+8
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const serverTime = new Date(utc + (3600000 * 8));
+        serverTime.setHours(0, 0, 0, 0);
+        const startOfTodayUtc8 = new Date(serverTime.getTime() - (3600000 * 8));
+
+        const dailyCountToday = (allQProgress || []).filter(
+          q => new Date(q.completed_at) >= startOfTodayUtc8
+        ).length;
+
+        const vType = profile.vehicle_type;
+        const currentBatch = profile.current_batch || 1;
+        const isOverridden = profile.batch_lock_override || false;
+
+        return batchNumbers.map(batchNum => {
+          // Attempts for this batch
+          const batchAttempts = (allBatchAttempts || []).filter(a => a.batch_number === batchNum);
+          const batchQProgress = (allQProgress || []).filter(q => q.batch_number === batchNum);
+
+          // Matching questions count
+          const batchQuestions = (allQuestionsData || []).filter(q => {
+            if (q.batch_number !== batchNum) return false;
+            if (!vType || !q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) return true;
+            return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
+          });
+          const totalQ = Math.min(30, batchQuestions.length > 0 ? batchQuestions.length : 30);
+
+          // Score calculation
+          let score = 0;
+          if (batchAttempts.length > 0) {
+            score = batchAttempts[batchAttempts.length - 1]?.score || 0;
+          } else if (batchQProgress.length > 0) {
+            const totalEarned = batchQProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
+            score = Math.max(0, Math.round((totalEarned / Math.max(1, totalQ)) * 100));
+          }
+
+          const passed = score >= 60 || batchNum < currentBatch;
+
+          // Access check
+          let canAccess = false;
+          if (batchNum === 1 || isOverridden || batchNum <= currentBatch) {
+            canAccess = true;
+          } else {
+            const prevAttempts = (allBatchAttempts || []).filter(a => a.batch_number === batchNum - 1);
+            const prevBest = Math.max(0, ...prevAttempts.map(a => a.score || 0));
+            canAccess = prevBest >= 60;
+          }
+
+          return {
+            batchNumber: batchNum,
+            canAccess,
+            averageScore: score,
+            attemptCount: batchAttempts.length,
+            passed,
+            dailyCount: dailyCountToday,
+            completedCount: passed ? totalQ : batchQProgress.length,
+            totalQuestions: totalQ,
+          };
+        });
+      };
+
+      const freshStatuses = await CacheService.fetchWithTimeout(fetchPromise, 8000);
+
+      if (freshStatuses) {
+        if (!cached || !isDataEqual(cached.data, freshStatuses)) {
+          setBatchStatuses(freshStatuses);
+          await CacheService.set('mission_batch_statuses', freshStatuses);
+          const now = Date.now();
+          setLastUpdatedTime(now);
+          setLastUpdatedText(formatTimeAgo(now));
+        }
+        isFirstLoadRef.current = false;
+      }
+
+    } catch (error) {
+      console.warn('[MissionScreen] Background batch fetch failed, keeping cached data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigation]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadData();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // useFocusEffect is safer than useEffect for screen focus events
   useFocusEffect(
     useCallback(() => {
-      let isActive = true; // Prevents state updates if screen unmounts
-
-      const loadData = async () => {
-        // Clear the refresh param so we don't loop
-        if (route.params?.refresh === true) {
-          navigation.setParams({ refresh: undefined } as any);
-        }
-
-        // 1. Instant Cache-First Read (Stale-While-Revalidate)
-        const cached = await CacheService.get<BatchStatus[]>('mission_batch_statuses');
-        if (cached && cached.data && cached.data.length > 0) {
-          if (isActive) {
-            setBatchStatuses(cached.data);
-            setLastUpdatedTime(cached.lastUpdated);
-            setLastUpdatedText(formatTimeAgo(cached.lastUpdated));
-            setLoading(false); // Immediate 0-wait render
-          }
-        } else if (isFirstLoadRef.current) {
-          setLoading(true); // Show skeleton/spinner only on cold start with 0 cache
-        }
-
-        // 2. Parallel Background Fetch with 5s Timeout (Fail silently)
-        try {
-          // Get User Profile
-          const { profile } = await AuthService.getUserProfile();
-          if (!isActive || !profile) return;
-
-          // Redirect managers immediately
-          if (profile.role === 'manager') {
-            navigation.navigate('ManagerQuickView' as never);
-            return;
-          }
-
-          // Check subscription level for trial gating
-          const batches = await SubscriptionService.getMaxBatches(profile.company_id);
-          if (isActive) setMaxBatches(batches);
-
-          // Fetch Batch Data in Background with 5s timeout
-          const batchNumbers = await BatchService.getAvailableBatchNumbers();
-
-          const fetchPromise = async () => {
-            const accessResults = await Promise.all(batchNumbers.map(i => BatchService.canAccessBatch(profile.id, i)));
-            const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(profile.id, i)));
-            const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(profile.id, i)));
-            const dailyStatuses = await Promise.all(batchNumbers.map(i => BatchService.getDailyLimitStatus(profile.id, i)));
-            const totalQuestionsResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchTotalQuestions(i, profile.id)));
-
-            const { data: qProgress } = await supabase
-              .from('user_question_progress')
-              .select('batch_number')
-              .eq('user_id', profile.id);
-
-            const completedCounts: Record<number, number> = {};
-            if (qProgress) {
-              qProgress.forEach(p => {
-                completedCounts[p.batch_number] = (completedCounts[p.batch_number] || 0) + 1;
-              });
-            }
-
-            return batchNumbers.map((batchNum, index) => {
-              const score = scoreResults[index];
-              const totalQ = totalQuestionsResults[index] || 30;
-              const passed = score >= 60 || batchNum < profile.current_batch;
-              return {
-                batchNumber: batchNum,
-                canAccess: accessResults[index],
-                averageScore: score,
-                attemptCount: attemptResults[index].length,
-                passed,
-                dailyCount: dailyStatuses[index].completedToday,
-                completedCount: passed ? totalQ : (completedCounts[batchNum] || 0),
-                totalQuestions: totalQ
-              };
-            });
-          };
-
-          const freshStatuses = await CacheService.fetchWithTimeout(fetchPromise, 5000);
-
-          if (isActive && freshStatuses) {
-            // Deep comparison — only re-render if data has actually changed
-            if (!cached || !isDataEqual(cached.data, freshStatuses)) {
-              setBatchStatuses(freshStatuses);
-              await CacheService.set('mission_batch_statuses', freshStatuses);
-              const now = Date.now();
-              setLastUpdatedTime(now);
-              setLastUpdatedText(formatTimeAgo(now));
-            }
-            isFirstLoadRef.current = false;
-          }
-
-        } catch (error) {
-          // Fail silently — keep showing cached data without blocking or showing an error
-          console.warn('[MissionScreen] Background batch fetch failed, keeping cached data:', error);
-        } finally {
-          if (isActive) {
-            setLoading(false);
-          }
-        }
-      };
+      // Clear the refresh param so we don't loop
+      if (route.params?.refresh === true) {
+        navigation.setParams({ refresh: undefined } as any);
+      }
 
       loadData();
-
-      return () => {
-        isActive = false; // Cleanup flag
-      };
-    }, [route.params?.refresh, navigation])
+    }, [route.params?.refresh, loadData, navigation])
   );
 
   const handleBatchPress = (batchNumber: number, canAccess: boolean) => {
@@ -263,7 +307,17 @@ export function MissionScreen() {
           ) : null}
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView 
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary.DEFAULT}
+              colors={[colors.primary.DEFAULT]}
+            />
+          }
+        >
           {!selectedMode ? (
             <View style={styles.selectionContainer}>
               <TouchableOpacity

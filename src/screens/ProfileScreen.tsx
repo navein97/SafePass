@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, StatusBar, Dimensions, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, StatusBar, Dimensions, TextInput, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -111,6 +111,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   // SWR Caching & Last Updated State
   const [lastUpdatedTime, setLastUpdatedTime] = useState<number | null>(null);
   const [lastUpdatedText, setLastUpdatedText] = useState<string>('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage(message);
@@ -132,6 +133,15 @@ export const ProfileScreen = ({ navigation }: any) => {
     }, 30000);
     return () => clearInterval(interval);
   }, [lastUpdatedTime]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadProfile();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     // Load immediately on mount
@@ -579,7 +589,19 @@ export const ProfileScreen = ({ navigation }: any) => {
             onHide={() => setToastVisible(false)} 
         />
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-        <ScrollView contentContainerStyle={styles.content} bounces={true} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={styles.content} 
+          bounces={true} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary.DEFAULT}
+              colors={[colors.primary.DEFAULT]}
+            />
+          }
+        >
           
           {/* Header */}
           <View style={styles.header}>
@@ -1189,7 +1211,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text.primary,
   },
   profileCard: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   avatarContainer: {
     flexDirection: 'row',
@@ -1247,7 +1269,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   streakCard: {
     alignItems: 'center',
     paddingVertical: 20,
-    marginTop: 16,
     marginBottom: 16,
   },
   flameContainer: {
@@ -1264,10 +1285,10 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
 
   logoutButton: {
-    marginTop: 8,
+    marginBottom: 16,
   },
   inputCard: {
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 20,
   },
   inputLabel: {
@@ -1502,7 +1523,7 @@ const createStyles = (colors: any) => StyleSheet.create({
 
   // ── Performance Dashboard (Redesigned) ──
   dashboardCard: {
-    marginBottom: 20,
+    marginBottom: 16,
     padding: 24,
   },
   dashboardHeader: {
