@@ -288,7 +288,7 @@ export const HelpCenterScreen = ({ navigation }: any) => {
 
             <GlassButton
               title={t('help.chatWithSupport', 'Chat with Support')}
-              onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20need%20help%20with%20SafePass.')}
+              onPress={() => Linking.openURL('https://wa.me/601120616323?text=Hi,%20I%20need%20help%20with%20[Blank].')}
               icon={<MessageCircle size={20} color="#FFF" />}
               style={styles.supportButton}
             />

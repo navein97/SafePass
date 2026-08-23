@@ -807,15 +807,15 @@
     "milestones": {
         "vol_25": {
             "title": "Langkah Pertama",
-            "description": "Melengkapkan 25 MCQ dalam SafePass"
+            "description": "Melengkapkan 25 MCQ"
         },
         "vol_50": {
             "title": "Separuh Jalan",
-            "description": "Melengkapkan 50 MCQ dalam SafePass"
+            "description": "Melengkapkan 50 MCQ"
         },
         "vol_100": {
             "title": "Sarjana Keselamatan",
-            "description": "Melengkapkan 100 MCQ dalam SafePass"
+            "description": "Melengkapkan 100 MCQ"
         },
         "vol_200": {
             "title": "Graduan Program",

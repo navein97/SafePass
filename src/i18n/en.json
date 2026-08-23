@@ -807,15 +807,15 @@
     "milestones": {
         "vol_25": {
             "title": "First Steps",
-            "description": "Completed 25 MCQs in SafePass"
+            "description": "Completed 25 MCQs"
         },
         "vol_50": {
             "title": "Halfway There",
-            "description": "Completed 50 MCQs in SafePass"
+            "description": "Completed 50 MCQs"
         },
         "vol_100": {
             "title": "Safety Scholar",
-            "description": "Completed 100 MCQs in SafePass"
+            "description": "Completed 100 MCQs"
         },
         "vol_200": {
             "title": "Program Graduate",
