@@ -3,6 +3,7 @@ import { Question, Region, QuizAttempt } from '../types/models';
 import { getWeek, getYear, startOfWeek, addDays, format, isSameDay } from 'date-fns';
 import * as Crypto from 'expo-crypto';
 import { ScoringService } from './scoringService';
+import { BatchService } from './batchService';
 
 
 export const QuizService = {
@@ -622,7 +623,7 @@ export const QuizService = {
 
     /**
      * Get daily progress scores for trend chart (Fixed Weekly View: Mon-Sun)
-     * Active days show the current all-time batch average (matches MissionScreen).
+     * Active days show the driver's Batch Average Score for the batch worked on.
      * Inactive days show 0.
      */
     async getDailyTrends(userId: string): Promise<{ value: number, label: string }[]> {
@@ -633,28 +634,62 @@ export const QuizService = {
             // Fetch user_question_progress for activity this week
             const { data: qWeekData } = await supabase
                 .from('user_question_progress')
-                .select('completed_at, score')
+                .select('completed_at, score, batch_number')
                 .eq('user_id', userId)
                 .gte('completed_at', weekStart.toISOString());
 
-            // Build Mon–Sun chart: calculate the average score of questions answered on each specific day
+            // Fetch user_batch_progress for attempts completed this week
+            const { data: bWeekData } = await supabase
+                .from('user_batch_progress')
+                .select('completed_at, score, batch_number')
+                .eq('user_id', userId)
+                .gte('completed_at', weekStart.toISOString());
+
+            // Pre-fetch batch average scores for any batches active this week
+            const activeBatches = new Set<number>();
+            (qWeekData || []).forEach((q: any) => { if (q.batch_number) activeBatches.add(q.batch_number); });
+            (bWeekData || []).forEach((b: any) => { if (b.batch_number) activeBatches.add(b.batch_number); });
+
+            const batchScoreMap = new Map<number, number>();
+            await Promise.all(
+                Array.from(activeBatches).map(async (batchNum) => {
+                    const score = await BatchService.getBatchAverageScore(userId, batchNum);
+                    batchScoreMap.set(batchNum, score);
+                })
+            );
+
+            // Build Mon–Sun chart
             const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
             return dayLabels.map((label, i) => {
                 const dayDate = addDays(weekStart, i);
-                
-                // Get questions answered on this specific day
+
+                // Check questions answered on this day
                 const dayQuestions = (qWeekData || []).filter((q: any) =>
                     isSameDay(new Date(q.completed_at), dayDate)
                 );
 
-                let dailyAvg = 0;
-                if (dayQuestions.length > 0) {
-                    const totalRaw = dayQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
-                    // Average = (Total Marks Earned / Total Questions Answered That Day) * 100
-                    dailyAvg = Math.round((totalRaw / dayQuestions.length) * 100);
+                // Check batch attempts completed on this day
+                const dayBatches = (bWeekData || []).filter((b: any) =>
+                    isSameDay(new Date(b.completed_at), dayDate)
+                );
+
+                let dailyScore = 0;
+                if (dayBatches.length > 0) {
+                    // Take the latest completed batch attempt score on this day
+                    const latestBatchAttempt = dayBatches[dayBatches.length - 1];
+                    dailyScore = Math.round(latestBatchAttempt.score || 0);
+                } else if (dayQuestions.length > 0) {
+                    // Get the batch number worked on latest that day
+                    const latestBatchNum = dayQuestions[dayQuestions.length - 1]?.batch_number;
+                    if (latestBatchNum && batchScoreMap.has(latestBatchNum)) {
+                        dailyScore = Math.round(batchScoreMap.get(latestBatchNum) || 0);
+                    } else {
+                        const totalRaw = dayQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
+                        dailyScore = Math.round((totalRaw / dayQuestions.length) * 100);
+                    }
                 }
 
-                return { value: dailyAvg, label };
+                return { value: dailyScore, label };
             });
 
         } catch (error) {

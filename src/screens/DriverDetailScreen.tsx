@@ -4,12 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { ChevronLeft, ChevronRight, RotateCcw, AlertTriangle, UserX } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, RotateCcw, AlertTriangle, UserX, Download } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { BatchService } from '../services/batchService';
+import { QuizService } from '../services/quizService';
+import { ExcelExportService } from '../services/excelExportService';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
+import { PerformanceChart } from '../components/PerformanceChart';
 import { PracticeService } from '../services/practiceService';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export const DriverDetailScreen = ({ navigation, route }: any) => {
     const { userId } = route.params;
@@ -19,6 +23,10 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
     const [loading, setLoading] = useState(true);
     const [driverProfile, setDriverProfile] = useState<any>(null);
     const [csiData, setCsiData] = useState<any>(null);
+    const [dailyTrends, setDailyTrends] = useState<{ value: number; label: string }[]>([]);
+    const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState<number>(0);
+    const [totalMCQsCount, setTotalMCQsCount] = useState<number>(240);
+    const [exporting, setExporting] = useState<boolean>(false);
     const [batchProgress, setBatchProgress] = useState<any[]>([]);
     const [selectedBatch, setSelectedBatch] = useState<number>(1);
     const [batchQuestions, setBatchQuestions] = useState<any[]>([]);
@@ -54,14 +62,25 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             if (error) throw error;
             setDriverProfile(profile);
 
-            // Fetch dynamic batch numbers and CSI
+            // Fetch dynamic batch numbers, CSI, trends, and answered MCQs in parallel
             const batchNumbers = await BatchService.getAvailableBatchNumbers();
-            const csi = await BatchService.getCumulativeSafetyIndex(userId);
+            const [csi, trends, totalAnswered, batchTotals] = await Promise.all([
+                BatchService.getCumulativeSafetyIndex(userId),
+                QuizService.getDailyTrends(userId),
+                BatchService.getTotalAnsweredQuestions(userId),
+                Promise.all(batchNumbers.map(b => BatchService.getBatchTotalQuestions(b, userId))),
+            ]);
+
             setCsiData(csi);
+            setDailyTrends(trends);
+            setTotalQuestionsAnswered(totalAnswered);
+
+            const totalAllBatches = batchTotals.reduce((sum, count) => sum + count, 0);
+            setTotalMCQsCount(totalAllBatches > 0 ? totalAllBatches : 240);
 
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(userId, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(userId, i)));
-            const totalQuestionsResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchTotalQuestions(i, userId)));
+            const totalQuestionsResults = batchTotals;
 
             // Query DB question progress to count completed per batch
             const { data: qProgress } = await supabase
@@ -100,6 +119,36 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             navigation.goBack();
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExportDriverExcel = async () => {
+        try {
+            setExporting(true);
+            const { success, message } = await ExcelExportService.exportSingleDriver({
+                profile: driverProfile,
+                csiData,
+                batchProgress,
+                incorrectQuestions
+            });
+
+            if (!success && message) {
+                if (Platform.OS === 'web') {
+                    window.alert(message);
+                } else {
+                    Alert.alert(t('common.error'), message);
+                }
+            }
+        } catch (error: any) {
+            console.error('Error exporting driver data:', error);
+            const errMsg = error?.message || 'Failed to export report';
+            if (Platform.OS === 'web') {
+                window.alert(errMsg);
+            } else {
+                Alert.alert(t('common.error'), errMsg);
+            }
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -282,7 +331,18 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         <ChevronLeft color={colors.text.primary} size={24} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{driverProfile?.full_name}</Text>
-                    <View style={{ width: 24 }} />
+                    <TouchableOpacity
+                        onPress={handleExportDriverExcel}
+                        style={styles.exportIconButton}
+                        disabled={exporting}
+                        activeOpacity={0.7}
+                    >
+                        {exporting ? (
+                            <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                        ) : (
+                            <Download size={20} color={colors.text.primary} />
+                        )}
+                    </TouchableOpacity>
                 </View>
 
                 {actionLoading && (
@@ -322,8 +382,124 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         </View>
                     </GlassCard>
 
+                    {/* Performance & Competency Dashboard */}
+                    <GlassCard style={styles.dashboardCard}>
+                        <View style={styles.dashboardHeader}>
+                            <View style={styles.dashboardIconCircle}>
+                                <Text style={{ fontSize: 16 }}>📊</Text>
+                            </View>
+                            <Text style={styles.dashboardTitle}>{t('profile.performanceDashboard', 'Performance Dashboard')}</Text>
+                        </View>
+
+                        {/* Score Bars */}
+                        <View style={styles.scoreSection}>
+                            {/* Professional Conduct */}
+                            <View style={styles.scoreRow}>
+                                <View style={styles.scoreLabelRow}>
+                                    <View style={[styles.scoreDot, { backgroundColor: colors.primary.DEFAULT }]} />
+                                    <Text style={styles.scoreLabelText}>{t('profile.profConduct', 'Professional Conduct')}</Text>
+                                    <Text style={[styles.scoreValueText, { color: colors.primary.DEFAULT }]}>
+                                        {driverProfile?.component_scores?.professionalism || csiData?.componentScores?.professionalism || 0}%
+                                    </Text>
+                                </View>
+                                <View style={styles.scoreBarTrack}>
+                                    <LinearGradient
+                                        colors={colors.gradients.primary as any}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={[
+                                            styles.scoreBarFill,
+                                            { width: `${Math.min(driverProfile?.component_scores?.professionalism || csiData?.componentScores?.professionalism || 0, 100)}%` }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Operational Discipline */}
+                            <View style={styles.scoreRow}>
+                                <View style={styles.scoreLabelRow}>
+                                    <View style={[styles.scoreDot, { backgroundColor: colors.mode === 'light' ? '#E64A19' : '#FF7043' }]} />
+                                    <Text style={styles.scoreLabelText}>{t('profile.opDiscipline', 'Operational Discipline')}</Text>
+                                    <Text style={[styles.scoreValueText, { color: colors.mode === 'light' ? '#E64A19' : '#FF7043' }]}>
+                                        {driverProfile?.component_scores?.discipline || csiData?.componentScores?.discipline || 0}%
+                                    </Text>
+                                </View>
+                                <View style={styles.scoreBarTrack}>
+                                    <LinearGradient
+                                        colors={colors.mode === 'light' ? ['#FF8A65', '#E64A19'] : ['#FF8A65', '#FF7043'] as any}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={[
+                                            styles.scoreBarFill,
+                                            { width: `${Math.min(driverProfile?.component_scores?.discipline || csiData?.componentScores?.discipline || 0, 100)}%` }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Operational Effectiveness */}
+                            <View style={styles.scoreRow}>
+                                <View style={styles.scoreLabelRow}>
+                                    <View style={[styles.scoreDot, { backgroundColor: colors.mode === 'light' ? '#2E7D32' : '#81C784' }]} />
+                                    <Text style={styles.scoreLabelText}>{t('profile.opEffectiveness', 'Operational Effectiveness')}</Text>
+                                    <Text style={[styles.scoreValueText, { color: colors.mode === 'light' ? '#2E7D32' : '#81C784' }]}>
+                                        {driverProfile?.component_scores?.operation || csiData?.componentScores?.operation || 0}%
+                                    </Text>
+                                </View>
+                                <View style={styles.scoreBarTrack}>
+                                    <LinearGradient
+                                        colors={colors.mode === 'light' ? ['#66BB6A', '#2E7D32'] : ['#81C784', '#4CAF50'] as any}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={[
+                                            styles.scoreBarFill,
+                                            { width: `${Math.min(driverProfile?.component_scores?.operation || csiData?.componentScores?.operation || 0, 100)}%` }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* MCQ Progress Summary */}
+                        <View style={styles.mcqProgressSection}>
+                            <Text style={styles.mcqProgressLabel}>
+                                {t('profile.totalMcqsCompleted', 'TOTAL MCQs COMPLETED')}
+                            </Text>
+                            <View style={styles.mcqProgressRow}>
+                                <Text style={styles.mcqProgressValue}>
+                                    {totalQuestionsAnswered}
+                                </Text>
+                                <Text style={styles.mcqProgressTotal}>
+                                    / {totalMCQsCount}
+                                </Text>
+                            </View>
+                            <View style={styles.mcqMiniTrack}>
+                                <LinearGradient
+                                    colors={[colors.primary.DEFAULT, colors.gradients.gold[1] as string] as any}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={[
+                                        styles.mcqMiniFill,
+                                        { width: `${Math.min((totalQuestionsAnswered / (totalMCQsCount || 240)) * 100, 100)}%` }
+                                    ]}
+                                />
+                            </View>
+                        </View>
+                    </GlassCard>
+
+                    {/* Weekly Performance Trend Chart */}
+                    <GlassCard style={{ padding: 8 }}>
+                        <PerformanceChart
+                            data={
+                                dailyTrends.some(d => d.value > 0)
+                                    ? dailyTrends
+                                    : [{ value: 0, label: '-' }]
+                            }
+                        />
+                    </GlassCard>
+
                     {/* Batch Selection Slider */}
-                    <View style={{ marginVertical: 8 }}>
+                    <View style={{ marginVertical: 4 }}>
                         <Text style={styles.sectionLabel}>{t('user.batchManagement', 'Batch Management')}</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.batchScroller}>
                             {batchProgress.map(b => (
@@ -720,5 +896,115 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     bandBadgeText: {
         fontSize: 11,
         fontFamily: typography.fonts.bold,
+    },
+    exportIconButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    dashboardCard: {
+        padding: 20,
+    },
+    dashboardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 20,
+    },
+    dashboardIconCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: `${colors.primary.DEFAULT}20`,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dashboardTitle: {
+        fontSize: 16,
+        fontFamily: typography.fonts.bold,
+        color: colors.text.primary,
+    },
+    scoreSection: {
+        gap: 14,
+    },
+    scoreRow: {
+        gap: 6,
+    },
+    scoreLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    scoreDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    scoreLabelText: {
+        flex: 1,
+        fontSize: 13,
+        fontFamily: typography.fonts.medium,
+        color: colors.text.secondary,
+    },
+    scoreValueText: {
+        fontSize: 13,
+        fontFamily: typography.fonts.bold,
+    },
+    scoreBarTrack: {
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: colors.background.subtle,
+        overflow: 'hidden',
+    },
+    scoreBarFill: {
+        height: '100%',
+        borderRadius: 5,
+    },
+    mcqProgressSection: {
+        marginTop: 18,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        alignItems: 'center',
+    },
+    mcqProgressLabel: {
+        fontSize: 11,
+        fontFamily: typography.fonts.medium,
+        color: colors.text.secondary,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    mcqProgressRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 4,
+        marginBottom: 8,
+    },
+    mcqProgressValue: {
+        fontSize: 22,
+        fontFamily: typography.fonts.bold,
+        color: colors.text.primary,
+    },
+    mcqProgressTotal: {
+        fontSize: 14,
+        fontFamily: typography.fonts.medium,
+        color: colors.text.tertiary,
+    },
+    mcqMiniTrack: {
+        width: '100%',
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: colors.background.subtle,
+        overflow: 'hidden',
+    },
+    mcqMiniFill: {
+        height: '100%',
+        borderRadius: 3,
     },
 });

@@ -7,6 +7,128 @@ import { Platform } from 'react-native';
 
 export const ExcelExportService = {
     /**
+     * Export single driver data to Excel format
+     */
+    async exportSingleDriver(driverData: {
+        profile: any;
+        csiData: any;
+        batchProgress: any[];
+        incorrectQuestions?: any[];
+    }): Promise<{ success: boolean; message?: string }> {
+        try {
+            const { profile, csiData, batchProgress, incorrectQuestions = [] } = driverData;
+            const wb = XLSX.utils.book_new();
+
+            // 1. DRIVER SUMMARY & BATCHES SHEET
+            const rows: any[][] = [];
+
+            // Title
+            rows.push(['SAFE PASS / PROHAYAT 180 - DRIVER PERFORMANCE AUDIT REPORT']);
+            rows.push(['Generated on: ' + new Date().toLocaleString()]);
+            rows.push([]);
+
+            // Section: Driver Profile
+            rows.push(['DRIVER PROFILE OVERVIEW']);
+            rows.push(['Full Name:', profile?.full_name || 'N/A', 'Employee ID:', profile?.employee_id || 'N/A']);
+            rows.push(['Transport Category:', profile?.vehicle_type || 'General Cargo', 'Region:', profile?.region || 'MY']);
+            rows.push(['Current Batch:', `Batch ${profile?.current_batch || 1}`, 'Overall Score:', `${csiData?.score !== null && csiData?.score !== undefined ? csiData.score : 0}% (${csiData?.rank || 'D Rank'})`]);
+            rows.push([]);
+
+            // Section: Management Intelligence & DPI
+            const compScores = profile?.component_scores || csiData?.componentScores || { operation: 0, discipline: 0, professionalism: 0 };
+            const dpiAnalysis = ManagementActionService.analyzeDPI(compScores);
+
+            rows.push(['MANAGEMENT INTELLIGENCE & DPI ANALYSIS']);
+            rows.push(['Operational Effectiveness:', `${compScores.operation || 0}%`]);
+            rows.push(['Operational Discipline:', `${compScores.discipline || 0}%`]);
+            rows.push(['Professional Conduct:', `${compScores.professionalism || 0}%`]);
+            rows.push(['Priority #1 Focus Area:', dpiAnalysis.priority1.label]);
+            rows.push(['Current Risk Level:', dpiAnalysis.riskLevel]);
+            rows.push(['Recommended Action:', dpiAnalysis.managementAction]);
+            rows.push([]);
+
+            // Section: Batch Breakdown (Batch 1 to 8)
+            rows.push(['BATCH PERFORMANCE BREAKDOWN']);
+            rows.push(['Batch Number', 'Status', 'Questions Answered', 'Average Score (%)', 'Attempts', 'Auto-Resets']);
+
+            batchProgress.forEach(b => {
+                const status = b.passed ? 'Passed / Completed' : b.completedCount > 0 ? `In Progress (${b.completedCount}/${b.totalQuestions})` : 'Not Started';
+                rows.push([
+                    `Batch ${b.batchNumber}`,
+                    status,
+                    `${b.completedCount} / ${b.totalQuestions}`,
+                    `${b.averageScore.toFixed(1)}%`,
+                    b.attemptCount,
+                    b.resets
+                ]);
+            });
+            rows.push([]);
+
+            // Section: Incorrect Questions (if any)
+            if (incorrectQuestions.length > 0) {
+                rows.push(['INCORRECT QUESTIONS & WEAK AREAS AUDIT']);
+                rows.push(['#', 'Question Text', 'Attempts', 'Result']);
+                incorrectQuestions.forEach((q, idx) => {
+                    rows.push([
+                        idx + 1,
+                        q.text || 'Question',
+                        `${q.attempts || 0}/2`,
+                        'Incorrect'
+                    ]);
+                });
+            } else {
+                rows.push(['INCORRECT QUESTIONS AUDIT']);
+                rows.push(['No incorrect questions recorded for current batch.']);
+            }
+
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+
+            // Set column widths
+            ws['!cols'] = [
+                { wch: 25 },
+                { wch: 45 },
+                { wch: 20 },
+                { wch: 20 },
+                { wch: 15 },
+                { wch: 15 }
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Driver Performance');
+
+            // Generate filename
+            const cleanEmpId = (profile?.employee_id || 'Driver').replace(/[^a-zA-Z0-9_-]/g, '_');
+            const timestamp = new Date().toISOString().split('T')[0];
+            const filename = `DriverReport_${cleanEmpId}_${timestamp}.xlsx`;
+
+            if (Platform.OS === 'web') {
+                XLSX.writeFile(wb, filename);
+                return { success: true };
+            } else {
+                const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+                const fileUri = `${FileSystem.documentDirectory}${filename}`;
+                
+                await FileSystem.writeAsStringAsync(fileUri, base64, {
+                    encoding: FileSystem.EncodingType.Base64
+                });
+
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                    await Sharing.shareAsync(fileUri, {
+                        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        dialogTitle: `Export Driver Report: ${profile?.full_name || cleanEmpId}`,
+                        UTI: 'com.microsoft.excel.xls'
+                    });
+                    return { success: true };
+                } else {
+                    return { success: false, message: 'Sharing is not available on this device' };
+                }
+            }
+        } catch (error: any) {
+            console.error('Error exporting single driver to Excel:', error);
+            return { success: false, message: error?.message || 'Failed to export driver report' };
+        }
+    },
+    /**
      * Export leaderboard to Excel format matching client template
      */
     async exportLeaderboard(): Promise<{ success: boolean; message?: string }> {
