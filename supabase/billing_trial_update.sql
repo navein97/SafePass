@@ -1,12 +1,12 @@
 -- ==========================================================
--- 3-MONTHS FREE STANDARD PLAN UPDATE
+-- 1-MONTH FREE STANDARD PLAN UPDATE
 -- ==========================================================
 
 -- 1. Add trial_end_date and has_used_free_trial to companies table
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS trial_end_date TIMESTAMP WITH TIME ZONE;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS has_used_free_trial BOOLEAN DEFAULT false;
 
--- 2. Update register_workspace to grant 3-months free standard plan
+-- 2. Update register_workspace to grant 1-month free standard plan
 CREATE OR REPLACE FUNCTION public.register_workspace(
     p_company_name TEXT
 )
@@ -14,7 +14,7 @@ RETURNS UUID AS $$
 DECLARE
     v_company_id UUID;
 BEGIN
-    -- Create the company with 3 months free Standard plan
+    -- Create the company with 1 month free Standard plan
     -- Quota: 100 drivers, 4 managers (100 / 25)
     INSERT INTO public.companies (
         name, 
@@ -29,7 +29,7 @@ BEGIN
         100, 
         4, 
         'standard',
-        NOW() + INTERVAL '3 months',
+        NOW() + INTERVAL '1 month',
         true
     )
     RETURNING id INTO v_company_id;
@@ -123,7 +123,7 @@ BEGIN
         subscription_tier = 'standard',
         quota_drivers = 100,
         quota_managers = 4,
-        trial_end_date = NOW() + INTERVAL '3 months',
+        trial_end_date = NOW() + INTERVAL '1 month',
         has_used_free_trial = true,
         updated_at = NOW()
     WHERE 

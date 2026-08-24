@@ -349,7 +349,7 @@
             "masterUser": "⭐ Master User",
             "manager": "👔 Manager"
         },
-        "choosePlanTitle": "Choose a Plan to Get Started! Or try a free trial for 3 months",
+        "choosePlanTitle": "Choose a Plan to Get Started! Or try a free trial for 1 month",
         "choosePlanSubtitle": "Select a package to start adding drivers and managers to your team.",
         "profileDetails": "Profile Details",
         "details": "Driver Details",
@@ -704,7 +704,7 @@
             "q_free_trial": {
                 "q": "Is there a free trial?",
                 "a": [
-                    "Yes! All new workspaces start with a **3-Month Free Trial**.",
+                    "Yes! All new workspaces start with a **1-Month Free Trial**.",
                     "- Access is limited to Batch 1 (30 questions) and a maximum of 5 drivers.",
                     "- You can upgrade to a paid plan at any time to unlock all 8 batches and expand your team."
                 ]
@@ -773,8 +773,8 @@
         "howManyDrivers": "How many driver slots do you need?",
         "priceAdjusts": "Price adjusts automatically",
         "totalCost": "Total Cost",
-        "activateTrialTitle": "Activate 3 Months Free Trial",
-        "activateTrialPrompt": "Activate your 3 months free trial? You won't be charged today.",
+        "activateTrialTitle": "Activate 1 Month Free Trial",
+        "activateTrialPrompt": "Activate your 1 month free trial? You won't be charged today.",
         "activateTrialButton": "Activate",
         "maxDrivers": "Max {{max}} drivers",
         "minDrivers": "Requires {{min}}+ drivers",

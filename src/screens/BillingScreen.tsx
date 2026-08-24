@@ -287,7 +287,7 @@ export const BillingScreen = ({ navigation }: any) => {
           {isStandard && !isCurrent && (
             <View style={[styles.currentBadge, { backgroundColor: '#F59E0B20' }]}>
               <Zap size={14} color="#F59E0B" />
-              <Text style={[styles.currentBadgeText, { color: '#F59E0B' }]}>3 Months Free</Text>
+              <Text style={[styles.currentBadgeText, { color: '#F59E0B' }]}>1 Month Free</Text>
             </View>
           )}
           {!isStandard && packages.length > 0 && (
@@ -305,7 +305,7 @@ export const BillingScreen = ({ navigation }: any) => {
         
         {isStandard && (
           <Text style={{ fontSize: 13, color: colors.text.secondary, fontFamily: typography.fonts.regular, marginBottom: 16 }}>
-             Start free for 3 months, no payment required, then RM 120/driver/year
+             Start free for 1 month, no payment required, then RM 120/driver/year
           </Text>
         )}
 
@@ -341,7 +341,7 @@ export const BillingScreen = ({ navigation }: any) => {
           {isStandard && (
             <View style={{ marginTop: 12, backgroundColor: '#F59E0B15', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B50' }}>
               <Text style={{ fontSize: 13, fontFamily: typography.fonts.bold, color: '#F59E0B', textAlign: 'center' }}>
-                First 3 months free, no payment required!
+                First 1 month free, no payment required!
               </Text>
             </View>
           )}
@@ -391,7 +391,7 @@ export const BillingScreen = ({ navigation }: any) => {
               >
                 <AlertCircle size={24} color="#FFFFFF" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.trialBannerTitle}>3-Month Free Standard Plan</Text>
+                  <Text style={styles.trialBannerTitle}>1-Month Free Standard Plan</Text>
                   <Text style={styles.trialBannerText}>You have {trialDaysLeft} days left in your free trial. Subscribe now to avoid interruption.</Text>
                 </View>
               </LinearGradient>

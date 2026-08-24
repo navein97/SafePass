@@ -349,7 +349,7 @@
             "masterUser": "⭐ Pengguna Utama",
             "manager": "👔 Pengurus"
         },
-        "choosePlanTitle": "Pilih Pelan untuk Bermula! Atau cuba percubaan percuma selama 3 bulan",
+        "choosePlanTitle": "Pilih Pelan untuk Bermula! Atau cuba percubaan percuma selama 1 bulan",
         "choosePlanSubtitle": "Pilih pakej untuk mula menambah pemandu dan pengurus ke pasukan anda.",
         "profileDetails": "Butiran Profil",
         "details": "Butiran Pemandu",
@@ -704,7 +704,7 @@
             "q_free_trial": {
                 "q": "Adakah terdapat percubaan percuma?",
                 "a": [
-                    "Ya! Semua ruang kerja baharu bermula dengan **Percubaan Percuma 3 Bulan**.",
+                    "Ya! Semua ruang kerja baharu bermula dengan **Percubaan Percuma 1 Bulan**.",
                     "- Akses terhad kepada Kumpulan 1 (30 soalan) dan maksimum 5 pemandu.",
                     "- Anda boleh menaik taraf ke pelan berbayar pada bila-bila masa untuk membuka semua 8 kumpulan dan mengembangkan pasukan anda."
                 ]
@@ -773,8 +773,8 @@
         "howManyDrivers": "Berapa banyak slot pemandu yang anda perlukan?",
         "priceAdjusts": "Harga diselaraskan secara automatik",
         "totalCost": "Jumlah Kos",
-        "activateTrialTitle": "Aktifkan Percubaan Percuma 3 Bulan",
-        "activateTrialPrompt": "Aktifkan percubaan percuma 3 bulan anda? Anda tidak akan dicaj hari ini.",
+        "activateTrialTitle": "Aktifkan Percubaan Percuma 1 Bulan",
+        "activateTrialPrompt": "Aktifkan percubaan percuma 1 bulan anda? Anda tidak akan dicaj hari ini.",
         "activateTrialButton": "Aktifkan",
         "maxDrivers": "Maksimum {{max}} pemandu",
         "minDrivers": "Memerlukan {{min}}+ pemandu",
