@@ -3,6 +3,7 @@ import { Question } from '../types/models';
 import { getWeek, getYear } from 'date-fns';
 import * as Crypto from 'expo-crypto';
 import { PracticeService } from './practiceService';
+import { ScoringService } from './scoringService';
 
 
 export interface BatchProgress {
@@ -311,53 +312,56 @@ export const BatchService = {
             completedAt: attempt.completed_at,
         }));
 
-        // PROVISIONAL SCORE LOGIC: Fetch in-progress questions
-        const { data: qProgress } = await supabase
-            .from('user_question_progress')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('batch_number', batchNumber);
-
-        if (qProgress && qProgress.length > 0) {
-            const { data: questionsData } = await supabase
-                .from('questions')
-                .select('id, component_weights')
+        // PROVISIONAL SCORE LOGIC: Fetch in-progress questions only if no completed attempt exists for this batch
+        if (attempts.length === 0) {
+            const { data: qProgress } = await supabase
+                .from('user_question_progress')
+                .select('*')
+                .eq('user_id', userId)
                 .eq('batch_number', batchNumber);
 
-            const questions = (questionsData || []).map(q => ({
-                id: q.id,
-                componentWeights: q.component_weights || (q as any).componentWeights
-            })) as Question[];
+            if (qProgress && qProgress.length > 0) {
+                const { data: questionsData } = await supabase
+                    .from('questions')
+                    .select('id, category, component_weights')
+                    .eq('batch_number', batchNumber);
 
-            const mappedAnswers = qProgress.map(a => ({
-                questionId: a.question_id,
-                attempts: a.attempts,
-                isCorrect: a.is_correct
-            }));
+                const questions = (questionsData || []).map(q => ({
+                    id: q.id,
+                    category: q.category,
+                    componentWeights: q.component_weights || (q as any).componentWeights
+                })) as Question[];
 
-            const componentScores = this.calculateComponentScores(questions, mappedAnswers);
-            let totalScore = 0;
-            qProgress.forEach(a => {
-                totalScore += parseFloat(String(a.score || 0));
-            });
-            const totalQuestionsInBatch = await this.getBatchTotalQuestions(batchNumber, userId);
-            const score = Math.max(0, Math.round((totalScore / Math.max(1, totalQuestionsInBatch)) * 100));
-            const accuracy = Math.round((qProgress.filter(a => a.is_correct).length / Math.max(1, qProgress.length)) * 100);
-            const completion = Math.min(100, Math.round((qProgress.length / Math.max(1, totalQuestionsInBatch)) * 100));
+                const mappedAnswers = qProgress.map(a => ({
+                    questionId: a.question_id,
+                    attempts: a.attempts,
+                    isCorrect: a.is_correct
+                }));
 
-            attempts.push({
-                id: `provisional_${batchNumber}`,
-                userId,
-                batchNumber,
-                attemptNumber: attempts.length + 1,
-                score,
-                accuracyPercentage: accuracy,
-                completionPercentage: completion,
-                componentScores,
-                answers: mappedAnswers,
-                timeSpentSeconds: 0,
-                completedAt: new Date().toISOString() // Represents "now" since it's active
-            });
+                const componentScores = this.calculateComponentScores(questions, mappedAnswers);
+                let totalScore = 0;
+                qProgress.forEach(a => {
+                    totalScore += parseFloat(String(a.score || 0));
+                });
+                const totalQuestionsInBatch = await this.getBatchTotalQuestions(batchNumber, userId);
+                const score = Math.max(0, Math.round((totalScore / Math.max(1, totalQuestionsInBatch)) * 100));
+                const accuracy = Math.round((qProgress.filter(a => a.is_correct).length / Math.max(1, qProgress.length)) * 100);
+                const completion = Math.min(100, Math.round((qProgress.length / Math.max(1, totalQuestionsInBatch)) * 100));
+
+                attempts.push({
+                    id: `provisional_${batchNumber}`,
+                    userId,
+                    batchNumber,
+                    attemptNumber: 1,
+                    score,
+                    accuracyPercentage: accuracy,
+                    completionPercentage: completion,
+                    componentScores,
+                    answers: mappedAnswers,
+                    timeSpentSeconds: 0,
+                    completedAt: new Date().toISOString() // Represents "now" since it's active
+                });
+            }
         }
 
         return attempts;
@@ -463,11 +467,12 @@ export const BatchService = {
             // Fetch all questions for this batch to ensure previous answers find their weights correctly
             const { data: batchQuestions } = await supabase
                 .from('questions')
-                .select('id, component_weights')
+                .select('id, category, component_weights')
                 .eq('batch_number', batchNumber);
             
             const allBatchQuestions = (batchQuestions || []).map(q => ({
                 id: q.id,
+                category: q.category,
                 componentWeights: q.component_weights || (q as any).componentWeights
             })) as Question[];
 
@@ -624,9 +629,9 @@ export const BatchService = {
 
         bestAnswers.forEach((isCorrect, questionId) => {
             const question = questions.find(q => q.id === questionId);
-            if (!question || !question.componentWeights) return;
+            const weights = question?.componentWeights || (question ? ScoringService.getDefaultWeights(question.category) : ScoringService.getDefaultWeights());
+            if (!weights) return;
 
-            const weights = question.componentWeights;
             const score = isCorrect ? 1.0 : 0;
 
             // Accumulate weighted scores
@@ -639,6 +644,17 @@ export const BatchService = {
             disciplineMax += weights.discipline || 0;
             professionalismMax += weights.professionalism || 0;
         });
+
+        // Failsafe: if no question weights were matched, fallback to overall accuracy percentage
+        if (operationMax === 0 && disciplineMax === 0 && professionalismMax === 0 && answers.length > 0) {
+            const correctCount = answers.filter(a => a.isCorrect).length;
+            const fallbackPct = Math.round((correctCount / answers.length) * 100);
+            return {
+                operation: fallbackPct,
+                discipline: fallbackPct,
+                professionalism: fallbackPct,
+            };
+        }
 
         return {
             operation: operationMax > 0 ? Math.round((operationTotal / operationMax) * 100) : 0,
@@ -866,10 +882,11 @@ export const BatchService = {
             if (allQProgress && allQProgress.length > 0) {
                 const { data: questionsData } = await supabase
                     .from('questions')
-                    .select('id, batch_number, component_weights, driver_categories');
+                    .select('id, category, batch_number, component_weights, driver_categories');
                 
                 const questions = (questionsData || []).map(q => ({
                     id: q.id,
+                    category: q.category,
                     batchNumber: q.batch_number,
                     componentWeights: q.component_weights || (q as any).componentWeights,
                     driverCategories: q.driver_categories || (q as any).driverCategories,
@@ -899,7 +916,7 @@ export const BatchService = {
                         if (!vType || !q.driverCategories || q.driverCategories.length === 0) return true;
                         return q.driverCategories.includes(vType) || q.driverCategories.includes('All');
                     });
-                    const componentScores = this.calculateComponentScores(batchQuestions as any, mappedAnswers);
+                    const componentScores = this.calculateComponentScores(questions as any, mappedAnswers);
                     
                     let totalScore = 0;
                     qRows.forEach(a => {
@@ -911,25 +928,25 @@ export const BatchService = {
                     const accuracy = Math.round((qRows.filter(a => a.is_correct).length / Math.max(1, qRows.length)) * 100);
                     const completion = Math.min(100, Math.round((qRows.length / totalQuestionsInBatch) * 100));
 
-                    if (!progressMap.has(key)) {
-                        progressMap.set(key, []);
-                    }
-                    
                     const existingAttempts = progressMap.get(key) || [];
                     
-                    existingAttempts.push({
-                        id: `provisional_${batchNum}`,
-                        userId,
-                        batchNumber: batchNum,
-                        attemptNumber: existingAttempts.length + 1,
-                        score,
-                        accuracyPercentage: accuracy,
-                        completionPercentage: completion,
-                        componentScores,
-                        answers: mappedAnswers,
-                        timeSpentSeconds: 0,
-                        completedAt: new Date().toISOString()
-                    });
+                    // Only add provisional attempt if no completed attempt exists for this batch
+                    if (existingAttempts.length === 0) {
+                        existingAttempts.push({
+                            id: `provisional_${batchNum}`,
+                            userId,
+                            batchNumber: batchNum,
+                            attemptNumber: 1,
+                            score,
+                            accuracyPercentage: accuracy,
+                            completionPercentage: completion,
+                            componentScores,
+                            answers: mappedAnswers,
+                            timeSpentSeconds: 0,
+                            completedAt: new Date().toISOString()
+                        });
+                        progressMap.set(key, existingAttempts);
+                    }
                 });
             }
 
@@ -1148,7 +1165,7 @@ export const BatchService = {
 
     /**
      * Get total cumulative XP for a user.
-     * XP = sum of all batch attempt scores ever submitted.
+     * XP = sum of all batch attempt scores ever submitted + provisional score from any in-progress uncompleted batch.
      * Each daily attempt adds to the total — the more you do and
      * the more correct answers you get, the higher your XP.
      */
@@ -1157,21 +1174,25 @@ export const BatchService = {
             // Completed batches XP
             const { data, error } = await supabase
                 .from('user_batch_progress')
-                .select('score')
+                .select('score, batch_number')
                 .eq('user_id', userId);
 
             const completedXP = (error || !data) ? 0 : data.reduce((sum: number, a: any) => sum + (a.score || 0), 0);
+            const completedBatchNumbers = new Set((data || []).map((a: any) => a.batch_number));
 
-            // In-progress questions XP (provisional: score each answered question out of 30 total)
+            // In-progress questions XP (provisional: score each answered question out of 30 total for uncompleted batches)
             const { data: qProgress } = await supabase
                 .from('user_question_progress')
-                .select('score')
+                .select('score, batch_number')
                 .eq('user_id', userId);
 
             let provisionalScore = 0;
             if (qProgress && qProgress.length > 0) {
-                const totalRaw = qProgress.reduce((sum: number, a: any) => sum + parseFloat(String(a.score || 0)), 0);
-                provisionalScore = Math.round((totalRaw / 30) * 100);
+                const inProgressQuestions = qProgress.filter(q => !completedBatchNumbers.has(q.batch_number));
+                if (inProgressQuestions.length > 0) {
+                    const totalRaw = inProgressQuestions.reduce((sum: number, a: any) => sum + parseFloat(String(a.score || 0)), 0);
+                    provisionalScore = Math.round((totalRaw / 30) * 100);
+                }
             }
 
             return Math.round(completedXP + provisionalScore);
@@ -1182,34 +1203,46 @@ export const BatchService = {
     },
 
     /**
-     * Get the actual number of questions answered by a user across all batches
+     * Get the actual number of unique questions answered by a user across all batches
      */
     async getTotalAnsweredQuestions(userId: string): Promise<number> {
         try {
-            // Count from completed batches
-            const { data, error } = await supabase
-                .from('user_batch_progress')
-                .select('answers')
+            const answeredIds = new Set<string>();
+
+            // 1. Fetch from user_question_progress (contains live individual question attempts)
+            const { data: qProgress, error: qError } = await supabase
+                .from('user_question_progress')
+                .select('question_id')
                 .eq('user_id', userId);
 
-            let completedTotal = 0;
-            if (!error && data) {
-                data.forEach((row: any) => {
-                    if (row.answers && Array.isArray(row.answers)) {
-                        completedTotal += row.answers.length;
+            if (!qError && qProgress) {
+                qProgress.forEach(row => {
+                    if (row.question_id) {
+                        answeredIds.add(String(row.question_id));
                     }
                 });
             }
 
-            // Also count from in-progress questions (not yet submitted as a full batch)
-            const { data: qProgress } = await supabase
-                .from('user_question_progress')
-                .select('id')
+            // 2. Also check completed batches in user_batch_progress in case any historic answers exist
+            const { data: batchData, error: batchError } = await supabase
+                .from('user_batch_progress')
+                .select('answers')
                 .eq('user_id', userId);
 
-            const inProgressTotal = qProgress?.length || 0;
+            if (!batchError && batchData) {
+                batchData.forEach((row: any) => {
+                    if (row.answers && Array.isArray(row.answers)) {
+                        row.answers.forEach((ans: any) => {
+                            const qId = ans?.questionId || ans?.question_id || ans?.id;
+                            if (qId) {
+                                answeredIds.add(String(qId));
+                            }
+                        });
+                    }
+                });
+            }
 
-            return completedTotal + inProgressTotal;
+            return answeredIds.size;
         } catch (error) {
             console.error('[BatchService] Error getting total answered questions:', error);
             return 0;
@@ -1386,11 +1419,12 @@ export const BatchService = {
 
             const { data: questionsData } = await supabase
                 .from('questions')
-                .select('id, component_weights')
+                .select('id, category, component_weights')
                 .eq('batch_number', batchNumber);
 
             const questions = (questionsData || []).map(q => ({
                 id: q.id,
+                category: q.category,
                 componentWeights: q.component_weights || (q as any).componentWeights
             })) as Question[];
 
