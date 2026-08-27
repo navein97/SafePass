@@ -101,10 +101,13 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 const isPassed = score >= 60 || batchNum < profile.current_batch;
                 const resets = (profile.consecutive_resets && profile.consecutive_resets[String(batchNum)]) || 0;
 
+                const attempts = attemptResults[index] || [];
+                const completedAttemptsCount = attempts.filter((a: any) => !String(a.id || '').startsWith('provisional_')).length;
+
                 return {
                     batchNumber: batchNum,
                     averageScore: score,
-                    attemptCount: attemptResults[index].length,
+                    attemptCount: completedAttemptsCount,
                     passed: isPassed,
                     completedCount: isPassed ? totalQ : (completedCounts[batchNum] || 0),
                     totalQuestions: totalQ,
@@ -556,9 +559,9 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                                     <Text style={styles.statBoxVal}>{selectedSummary.attemptCount}</Text>
                                 </View>
                                 <View style={styles.statBox}>
-                                    <Text style={styles.statBoxLabel}>{t('user.autoResets', 'Auto-Resets')}</Text>
-                                    <Text style={[styles.statBoxVal, selectedSummary.resets >= 3 && { color: '#FF3D00' }]}>
-                                        {selectedSummary.resets}
+                                    <Text style={styles.statBoxLabel}>{t('user.status', 'Status')}</Text>
+                                    <Text style={[styles.statBoxVal, { fontSize: 15, color: selectedSummary.passed ? '#00C853' : colors.primary.DEFAULT }]}>
+                                        {selectedSummary.passed ? `✓ ${t('user.passed', 'Passed')}` : t('user.inProgress', 'In Progress')}
                                     </Text>
                                 </View>
                             </View>
