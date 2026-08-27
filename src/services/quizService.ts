@@ -681,30 +681,21 @@ export const QuizService = {
                 startDate = new Date(2020, 0, 1);
             }
 
-            // Fetch user_question_progress (primary data source)
-            let qQuery = supabase
+            // Fetch ALL user_question_progress (no time filter — computeActiveBatchScore
+            // needs the full batch history to produce accurate cumulative scores)
+            const { data: qData } = await supabase
                 .from('user_question_progress')
                 .select('completed_at, score, batch_number')
                 .eq('user_id', userId);
 
-            if (range !== 'ALL') {
-                qQuery = qQuery.gte('completed_at', startDate.toISOString());
-            }
-
-            const { data: qData } = await qQuery;
             const allQuestions = qData || [];
 
-            // Fetch user_batch_progress for completed batch attempts in this range
-            let bQuery = supabase
+            // Fetch ALL user_batch_progress (completed batch attempts)
+            const { data: bData } = await supabase
                 .from('user_batch_progress')
                 .select('completed_at, score, batch_number')
                 .eq('user_id', userId);
 
-            if (range !== 'ALL') {
-                bQuery = bQuery.gte('completed_at', startDate.toISOString());
-            }
-
-            const { data: bData } = await bQuery;
             const allBatches = bData || [];
 
             // Pre-fetch batch average scores (uses provisional logic matching the Batch card)
@@ -795,18 +786,22 @@ export const QuizService = {
 
             if (range === '1W') {
                 const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+                const today = startOfDay(now);
                 points = dayLabels.map((label, i) => {
                     const dayDate = addDays(startDate, i);
                     const dayCutoff = endOfDay(dayDate);
 
-                    // Only show a score if there was actual activity on or before this day
-                    const hadActivity = allQuestions.some((q: any) =>
-                        isBefore(new Date(q.completed_at), dayCutoff) || isEqual(new Date(q.completed_at), dayCutoff)
-                    ) || allBatches.some((b: any) =>
-                        isBefore(new Date(b.completed_at), dayCutoff) || isEqual(new Date(b.completed_at), dayCutoff)
-                    );
+                    // Don't show scores for future days
+                    if (isBefore(today, startOfDay(dayDate))) {
+                        return {
+                            value: 0,
+                            label,
+                            fullDate: format(dayDate, 'd MMM yyyy'),
+                            attemptsCount: 0,
+                        };
+                    }
 
-                    const dailyScore = hadActivity ? computeActiveBatchScore(dayCutoff) : 0;
+                    const dailyScore = computeActiveBatchScore(dayCutoff);
 
                     const dayQuestions = allQuestions.filter((q: any) => isSameDay(new Date(q.completed_at), dayDate));
                     const dayBatches = allBatches.filter((b: any) => isSameDay(new Date(b.completed_at), dayDate));
@@ -819,18 +814,24 @@ export const QuizService = {
                     };
                 });
             } else if (range === '1M') {
+                const today = startOfDay(now);
                 points = [0, 1, 2, 3].map((i) => {
                     const wStart = addDays(startDate, i * 7);
                     const wEnd = addDays(wStart, 6);
-                    const weekCutoff = endOfDay(wEnd);
 
-                    const hadActivity = allQuestions.some((q: any) =>
-                        isBefore(new Date(q.completed_at), weekCutoff) || isEqual(new Date(q.completed_at), weekCutoff)
-                    ) || allBatches.some((b: any) =>
-                        isBefore(new Date(b.completed_at), weekCutoff) || isEqual(new Date(b.completed_at), weekCutoff)
-                    );
+                    // Don't show scores for future weeks
+                    if (isBefore(today, startOfDay(wStart))) {
+                        return {
+                            value: 0,
+                            label: `W${i + 1}`,
+                            fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
+                            attemptsCount: 0,
+                        };
+                    }
 
-                    const weekScore = hadActivity ? computeActiveBatchScore(weekCutoff) : 0;
+                    // Use the earlier of wEnd or today as cutoff
+                    const effectiveCutoff = isBefore(endOfDay(wEnd), endOfDay(now)) ? endOfDay(wEnd) : endOfDay(now);
+                    const weekScore = computeActiveBatchScore(effectiveCutoff);
 
                     const wQuestions = allQuestions.filter((q: any) =>
                         isWithinInterval(new Date(q.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
