@@ -659,6 +659,8 @@ export const QuizService = {
 
     /**
      * Get performance trends for different time ranges (1W, 1M, 3M, ALL)
+     * Uses question-level data (user_question_progress) as primary scoring source
+     * to stay consistent with getBatchAverageScore / Batch Card calculations.
      */
     async getPerformanceTrends(
         userId: string,
@@ -679,7 +681,7 @@ export const QuizService = {
                 startDate = new Date(2020, 0, 1);
             }
 
-            // Fetch user_question_progress
+            // Fetch user_question_progress (primary data source)
             let qQuery = supabase
                 .from('user_question_progress')
                 .select('completed_at, score, batch_number')
@@ -690,23 +692,20 @@ export const QuizService = {
             }
 
             const { data: qData } = await qQuery;
+            const allQuestions = qData || [];
 
-            // Fetch user_batch_progress
-            let bQuery = supabase
-                .from('user_batch_progress')
-                .select('completed_at, score, batch_number')
-                .eq('user_id', userId);
-
-            if (range !== 'ALL') {
-                bQuery = bQuery.gte('completed_at', startDate.toISOString());
+            // For 1W, also fetch batch progress for daily view (backward compat with original getDailyTrends logic)
+            let allBatches: any[] = [];
+            if (range === '1W') {
+                const { data: bData } = await supabase
+                    .from('user_batch_progress')
+                    .select('completed_at, score, batch_number')
+                    .eq('user_id', userId)
+                    .gte('completed_at', startDate.toISOString());
+                allBatches = bData || [];
             }
 
-            const { data: bData } = await bQuery;
-
-            const allQuestions = qData || [];
-            const allBatches = bData || [];
-
-            // Pre-fetch batch average scores for any batches active in this period
+            // Pre-fetch batch average scores (uses provisional logic matching the Batch card)
             const activeBatches = new Set<number>();
             allQuestions.forEach((q: any) => { if (q.batch_number) activeBatches.add(q.batch_number); });
             allBatches.forEach((b: any) => { if (b.batch_number) activeBatches.add(b.batch_number); });
@@ -719,9 +718,48 @@ export const QuizService = {
                 })
             );
 
+            // Fetch total questions per batch for accurate percentage calculation
+            const batchTotalMap = new Map<number, number>();
+            await Promise.all(
+                Array.from(activeBatches).map(async (batchNum) => {
+                    const total = await BatchService.getBatchTotalQuestions(batchNum, userId);
+                    batchTotalMap.set(batchNum, total);
+                })
+            );
+
+            // Helper: compute score from question-level data for a set of questions
+            // Uses same formula as getBatchAverageScore provisional logic:
+            // (sum of question scores) / totalQuestionsInBatch * 100
+            const computeScoreFromQuestions = (questions: any[]): number => {
+                if (questions.length === 0) return 0;
+
+                // Group questions by batch to calculate per-batch scores, then average across batches
+                const byBatch = new Map<number, any[]>();
+                questions.forEach((q: any) => {
+                    const bn = q.batch_number || 0;
+                    if (!byBatch.has(bn)) byBatch.set(bn, []);
+                    byBatch.get(bn)!.push(q);
+                });
+
+                let totalWeightedScore = 0;
+                let batchCount = 0;
+                byBatch.forEach((batchQuestions, batchNum) => {
+                    const totalScore = batchQuestions.reduce(
+                        (sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0
+                    );
+                    const totalInBatch = batchTotalMap.get(batchNum) || batchQuestions.length;
+                    const batchPct = Math.round((totalScore / Math.max(1, totalInBatch)) * 100);
+                    totalWeightedScore += batchPct;
+                    batchCount++;
+                });
+
+                return batchCount > 0 ? Math.round(totalWeightedScore / batchCount) : 0;
+            };
+
             let points: PerformanceTrendPoint[] = [];
 
             if (range === '1W') {
+                // 1W: Keep existing daily logic (backward compatible with original getDailyTrends)
                 const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
                 points = dayLabels.map((label, i) => {
                     const dayDate = addDays(startDate, i);
@@ -750,11 +788,11 @@ export const QuizService = {
                         value: dailyScore,
                         label,
                         fullDate: format(dayDate, 'd MMM yyyy'),
-                        attemptsCount: dayBatches.length + (dayQuestions.length > 0 ? 1 : 0),
+                        attemptsCount: dayQuestions.length > 0 ? 1 : 0,
                     };
                 });
             } else if (range === '1M') {
-                // 4 weeks leading to current week
+                // 4 weeks: score from question-level data
                 points = [0, 1, 2, 3].map((i) => {
                     const wStart = addDays(startDate, i * 7);
                     const wEnd = addDays(wStart, 6);
@@ -762,29 +800,18 @@ export const QuizService = {
                         const d = new Date(q.completed_at);
                         return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
                     });
-                    const wBatches = allBatches.filter((b: any) => {
-                        const d = new Date(b.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
-                    });
 
-                    let weekScore = 0;
-                    if (wBatches.length > 0) {
-                        const totalBatchScore = wBatches.reduce((sum: number, b: any) => sum + (b.score || 0), 0);
-                        weekScore = Math.round(totalBatchScore / wBatches.length);
-                    } else if (wQuestions.length > 0) {
-                        const totalRaw = wQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
-                        weekScore = Math.round((totalRaw / wQuestions.length) * 100);
-                    }
+                    const weekScore = computeScoreFromQuestions(wQuestions);
 
                     return {
                         value: weekScore,
                         label: `W${i + 1}`,
                         fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
-                        attemptsCount: wBatches.length,
+                        attemptsCount: wQuestions.length > 0 ? 1 : 0,
                     };
                 });
             } else if (range === '3M') {
-                // 12 weeks leading to current week
+                // 12 weeks: score from question-level data
                 points = Array.from({ length: 12 }, (_, i) => {
                     const wStart = addDays(startDate, i * 7);
                     const wEnd = addDays(wStart, 6);
@@ -792,40 +819,26 @@ export const QuizService = {
                         const d = new Date(q.completed_at);
                         return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
                     });
-                    const wBatches = allBatches.filter((b: any) => {
-                        const d = new Date(b.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
-                    });
 
-                    let weekScore = 0;
-                    if (wBatches.length > 0) {
-                        const totalBatchScore = wBatches.reduce((sum: number, b: any) => sum + (b.score || 0), 0);
-                        weekScore = Math.round(totalBatchScore / wBatches.length);
-                    } else if (wQuestions.length > 0) {
-                        const totalRaw = wQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
-                        weekScore = Math.round((totalRaw / wQuestions.length) * 100);
-                    }
+                    const weekScore = computeScoreFromQuestions(wQuestions);
 
                     return {
                         value: weekScore,
                         label: `W${i + 1}`,
                         fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
-                        attemptsCount: wBatches.length,
+                        attemptsCount: wQuestions.length > 0 ? 1 : 0,
                     };
                 });
             } else {
-                // ALL: Group by calendar month
-                // Collect all timestamps to determine date range
-                const allTimestamps = [
-                    ...allQuestions.map((q: any) => new Date(q.completed_at).getTime()),
-                    ...allBatches.map((b: any) => new Date(b.completed_at).getTime()),
-                ].filter(t => !isNaN(t));
+                // ALL: Group by calendar month using question-level data
+                const allTimestamps = allQuestions
+                    .map((q: any) => new Date(q.completed_at).getTime())
+                    .filter(t => !isNaN(t));
 
                 const earliest = allTimestamps.length > 0 ? new Date(Math.min(...allTimestamps)) : subMonths(now, 5);
                 const startMonth = startOfMonth(earliest);
                 const currentMonth = startOfMonth(now);
 
-                // Build array of month start dates from startMonth to currentMonth (at least 4 months for nice chart)
                 let cursor = new Date(startMonth);
                 const monthsList: Date[] = [];
                 while (cursor <= currentMonth) {
@@ -833,7 +846,6 @@ export const QuizService = {
                     cursor = addMonths(cursor, 1);
                 }
 
-                // If fewer than 4 months, pad with previous months so chart is aesthetically balanced
                 while (monthsList.length < 4) {
                     const firstMonth = monthsList[0];
                     monthsList.unshift(subMonths(firstMonth, 1));
@@ -845,37 +857,27 @@ export const QuizService = {
                         const d = new Date(q.completed_at);
                         return isWithinInterval(d, { start: startOfDay(mStart), end: endOfDay(mEnd) });
                     });
-                    const mBatches = allBatches.filter((b: any) => {
-                        const d = new Date(b.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(mStart), end: endOfDay(mEnd) });
-                    });
 
-                    let monthScore = 0;
-                    if (mBatches.length > 0) {
-                        const totalBatchScore = mBatches.reduce((sum: number, b: any) => sum + (b.score || 0), 0);
-                        monthScore = Math.round(totalBatchScore / mBatches.length);
-                    } else if (mQuestions.length > 0) {
-                        const totalRaw = mQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
-                        monthScore = Math.round((totalRaw / mQuestions.length) * 100);
-                    }
+                    const monthScore = computeScoreFromQuestions(mQuestions);
 
                     return {
                         value: monthScore,
                         label: format(mStart, 'MMM'),
                         fullDate: format(mStart, 'MMMM yyyy'),
-                        attemptsCount: mBatches.length,
+                        attemptsCount: mQuestions.length > 0 ? 1 : 0,
                     };
                 });
             }
 
-            // Calculate overall stats for the period
+            // Calculate overall stats from question-level data across entire period
             const nonZeroScores = points.map(p => p.value).filter(v => v > 0);
-            const averageScore = nonZeroScores.length > 0
-                ? Math.round(nonZeroScores.reduce((sum, v) => sum + v, 0) / nonZeroScores.length)
+            const averageScore = allQuestions.length > 0
+                ? computeScoreFromQuestions(allQuestions)
                 : 0;
             const highestScore = nonZeroScores.length > 0 ? Math.max(...nonZeroScores) : 0;
             const lowestScore = nonZeroScores.length > 0 ? Math.min(...nonZeroScores) : 0;
-            const totalAttempts = allBatches.length > 0 ? allBatches.length : (allQuestions.length > 0 ? Math.ceil(allQuestions.length / 10) : 0);
+            // Count active periods (days/weeks/months with questions answered)
+            const totalAttempts = points.filter(p => p.value > 0).length;
 
             return {
                 points,
