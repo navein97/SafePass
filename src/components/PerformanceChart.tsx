@@ -35,7 +35,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   userId,
   height = 210,
   width,
-  allowedRanges = ['1W', '1M', '3M', 'ALL'],
+  allowedRanges = ['1W', '1M', 'ALL'],
   initialRange = '1W',
   showMetrics = false,
   title,
@@ -174,8 +174,6 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         return t('profile.chartRange1W', '1W');
       case '1M':
         return t('profile.chartRange1M', '1M');
-      case '3M':
-        return t('profile.chartRange3M', '3M');
       case 'ALL':
         return t('profile.chartRangeAll', 'All');
       default:
@@ -450,7 +448,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   floatingTooltip: {
     position: 'absolute',

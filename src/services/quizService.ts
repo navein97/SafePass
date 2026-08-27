@@ -23,7 +23,7 @@ import { ScoringService } from './scoringService';
 import { BatchService } from './batchService';
 
 
-export type PerformanceTimeRange = '1W' | '1M' | '3M' | 'ALL';
+export type PerformanceTimeRange = '1W' | '1M' | 'ALL';
 
 export interface PerformanceTrendPoint {
     value: number;
@@ -676,8 +676,6 @@ export const QuizService = {
                 startDate = startOfWeek(now, { weekStartsOn: 1 });
             } else if (range === '1M') {
                 startDate = subWeeks(startOfWeek(now, { weekStartsOn: 1 }), 3);
-            } else if (range === '3M') {
-                startDate = subWeeks(startOfWeek(now, { weekStartsOn: 1 }), 11);
             } else {
                 // ALL: Fetch earliest available activity
                 startDate = new Date(2020, 0, 1);
@@ -822,34 +820,6 @@ export const QuizService = {
                 });
             } else if (range === '1M') {
                 points = [0, 1, 2, 3].map((i) => {
-                    const wStart = addDays(startDate, i * 7);
-                    const wEnd = addDays(wStart, 6);
-                    const weekCutoff = endOfDay(wEnd);
-
-                    const hadActivity = allQuestions.some((q: any) =>
-                        isBefore(new Date(q.completed_at), weekCutoff) || isEqual(new Date(q.completed_at), weekCutoff)
-                    ) || allBatches.some((b: any) =>
-                        isBefore(new Date(b.completed_at), weekCutoff) || isEqual(new Date(b.completed_at), weekCutoff)
-                    );
-
-                    const weekScore = hadActivity ? computeActiveBatchScore(weekCutoff) : 0;
-
-                    const wQuestions = allQuestions.filter((q: any) =>
-                        isWithinInterval(new Date(q.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
-                    );
-                    const wBatches = allBatches.filter((b: any) =>
-                        isWithinInterval(new Date(b.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
-                    );
-
-                    return {
-                        value: weekScore,
-                        label: `W${i + 1}`,
-                        fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
-                        attemptsCount: wBatches.length + (wQuestions.length > 0 ? 1 : 0),
-                    };
-                });
-            } else if (range === '3M') {
-                points = Array.from({ length: 12 }, (_, i) => {
                     const wStart = addDays(startDate, i * 7);
                     const wEnd = addDays(wStart, 6);
                     const weekCutoff = endOfDay(wEnd);

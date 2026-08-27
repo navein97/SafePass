@@ -501,7 +501,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                                     ? dailyTrends
                                     : [{ value: 0, label: '-' }]
                             }
-                            allowedRanges={['1W', '1M', '3M', 'ALL']}
+                            allowedRanges={['1W', '1M', 'ALL']}
                         />
                     </GlassCard>
 
