@@ -371,7 +371,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                             <Text style={styles.profileLabel}>Overall Score:</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                 <Text style={[styles.profileVal, { color: csiData?.rankColor || csiData?.bandColor || colors.primary.DEFAULT }]}>
-                                    {csiData?.score || 0}%
+                                    {csiData?.score !== undefined && csiData?.score !== null ? `${csiData.score}%` : '-'}
                                 </Text>
                                 <View style={[styles.bandBadge, { backgroundColor: (csiData?.rankColor || csiData?.bandColor || '#3B82F6') + '20', borderColor: csiData?.rankColor || csiData?.bandColor || '#3B82F6' }]}>
                                     <Text style={[styles.bandBadgeText, { color: csiData?.rankColor || csiData?.bandColor || '#3B82F6' }]}>
