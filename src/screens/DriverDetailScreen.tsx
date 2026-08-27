@@ -487,14 +487,17 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         </View>
                     </GlassCard>
 
-                    {/* Weekly Performance Trend Chart */}
+                    {/* Performance Trend Chart */}
                     <GlassCard style={{ padding: 8 }}>
                         <PerformanceChart
+                            userId={userId}
                             data={
                                 dailyTrends.some(d => d.value > 0)
                                     ? dailyTrends
                                     : [{ value: 0, label: '-' }]
                             }
+                            allowedRanges={['1W', '1M', '3M', 'ALL']}
+                            showMetrics={true}
                         />
                     </GlassCard>
 

@@ -1,10 +1,46 @@
 import { supabase } from '../lib/supabase';
 import { Question, Region, QuizAttempt } from '../types/models';
-import { getWeek, getYear, startOfWeek, addDays, format, isSameDay } from 'date-fns';
+import {
+    getWeek,
+    getYear,
+    startOfWeek,
+    addDays,
+    subWeeks,
+    subMonths,
+    addMonths,
+    startOfMonth,
+    endOfMonth,
+    startOfDay,
+    endOfDay,
+    format,
+    isSameDay,
+    isWithinInterval
+} from 'date-fns';
 import * as Crypto from 'expo-crypto';
 import { ScoringService } from './scoringService';
 import { BatchService } from './batchService';
 
+
+export type PerformanceTimeRange = '1W' | '1M' | '3M' | 'ALL';
+
+export interface PerformanceTrendPoint {
+    value: number;
+    label: string;
+    fullDate?: string;
+    attemptsCount?: number;
+}
+
+export interface PerformanceStats {
+    averageScore: number;
+    highestScore: number;
+    lowestScore: number;
+    totalAttempts: number;
+}
+
+export interface PerformanceTrendResult {
+    points: PerformanceTrendPoint[];
+    stats: PerformanceStats;
+}
 
 export const QuizService = {
     /**
@@ -622,33 +658,58 @@ export const QuizService = {
     },
 
     /**
-     * Get daily progress scores for trend chart (Fixed Weekly View: Mon-Sun)
-     * Active days show the driver's Batch Average Score for the batch worked on.
-     * Inactive days show 0.
+     * Get performance trends for different time ranges (1W, 1M, 3M, ALL)
      */
-    async getDailyTrends(userId: string): Promise<{ value: number, label: string }[]> {
+    async getPerformanceTrends(
+        userId: string,
+        range: PerformanceTimeRange = '1W'
+    ): Promise<PerformanceTrendResult> {
         try {
             const now = new Date();
-            const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+            let startDate: Date;
 
-            // Fetch user_question_progress for activity this week
-            const { data: qWeekData } = await supabase
+            if (range === '1W') {
+                startDate = startOfWeek(now, { weekStartsOn: 1 });
+            } else if (range === '1M') {
+                startDate = subWeeks(startOfWeek(now, { weekStartsOn: 1 }), 3);
+            } else if (range === '3M') {
+                startDate = subWeeks(startOfWeek(now, { weekStartsOn: 1 }), 11);
+            } else {
+                // ALL: Fetch earliest available activity
+                startDate = new Date(2020, 0, 1);
+            }
+
+            // Fetch user_question_progress
+            let qQuery = supabase
                 .from('user_question_progress')
                 .select('completed_at, score, batch_number')
-                .eq('user_id', userId)
-                .gte('completed_at', weekStart.toISOString());
+                .eq('user_id', userId);
 
-            // Fetch user_batch_progress for attempts completed this week
-            const { data: bWeekData } = await supabase
+            if (range !== 'ALL') {
+                qQuery = qQuery.gte('completed_at', startDate.toISOString());
+            }
+
+            const { data: qData } = await qQuery;
+
+            // Fetch user_batch_progress
+            let bQuery = supabase
                 .from('user_batch_progress')
                 .select('completed_at, score, batch_number')
-                .eq('user_id', userId)
-                .gte('completed_at', weekStart.toISOString());
+                .eq('user_id', userId);
 
-            // Pre-fetch batch average scores for any batches active this week
+            if (range !== 'ALL') {
+                bQuery = bQuery.gte('completed_at', startDate.toISOString());
+            }
+
+            const { data: bData } = await bQuery;
+
+            const allQuestions = qData || [];
+            const allBatches = bData || [];
+
+            // Pre-fetch batch average scores for any batches active in this period
             const activeBatches = new Set<number>();
-            (qWeekData || []).forEach((q: any) => { if (q.batch_number) activeBatches.add(q.batch_number); });
-            (bWeekData || []).forEach((b: any) => { if (b.batch_number) activeBatches.add(b.batch_number); });
+            allQuestions.forEach((q: any) => { if (q.batch_number) activeBatches.add(q.batch_number); });
+            allBatches.forEach((b: any) => { if (b.batch_number) activeBatches.add(b.batch_number); });
 
             const batchScoreMap = new Map<number, number>();
             await Promise.all(
@@ -658,44 +719,194 @@ export const QuizService = {
                 })
             );
 
-            // Build Mon–Sun chart
-            const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-            return dayLabels.map((label, i) => {
-                const dayDate = addDays(weekStart, i);
+            let points: PerformanceTrendPoint[] = [];
 
-                // Check questions answered on this day
-                const dayQuestions = (qWeekData || []).filter((q: any) =>
-                    isSameDay(new Date(q.completed_at), dayDate)
-                );
+            if (range === '1W') {
+                const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+                points = dayLabels.map((label, i) => {
+                    const dayDate = addDays(startDate, i);
+                    const dayQuestions = allQuestions.filter((q: any) =>
+                        isSameDay(new Date(q.completed_at), dayDate)
+                    );
+                    const dayBatches = allBatches.filter((b: any) =>
+                        isSameDay(new Date(b.completed_at), dayDate)
+                    );
 
-                // Check batch attempts completed on this day
-                const dayBatches = (bWeekData || []).filter((b: any) =>
-                    isSameDay(new Date(b.completed_at), dayDate)
-                );
-
-                let dailyScore = 0;
-                if (dayBatches.length > 0) {
-                    // Take the latest completed batch attempt score on this day
-                    const latestBatchAttempt = dayBatches[dayBatches.length - 1];
-                    dailyScore = Math.round(latestBatchAttempt.score || 0);
-                } else if (dayQuestions.length > 0) {
-                    // Get the batch number worked on latest that day
-                    const latestBatchNum = dayQuestions[dayQuestions.length - 1]?.batch_number;
-                    if (latestBatchNum && batchScoreMap.has(latestBatchNum)) {
-                        dailyScore = Math.round(batchScoreMap.get(latestBatchNum) || 0);
-                    } else {
-                        const totalRaw = dayQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
-                        dailyScore = Math.round((totalRaw / dayQuestions.length) * 100);
+                    let dailyScore = 0;
+                    if (dayBatches.length > 0) {
+                        const latestBatchAttempt = dayBatches[dayBatches.length - 1];
+                        dailyScore = Math.round(latestBatchAttempt.score || 0);
+                    } else if (dayQuestions.length > 0) {
+                        const latestBatchNum = dayQuestions[dayQuestions.length - 1]?.batch_number;
+                        if (latestBatchNum && batchScoreMap.has(latestBatchNum)) {
+                            dailyScore = Math.round(batchScoreMap.get(latestBatchNum) || 0);
+                        } else {
+                            const totalRaw = dayQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
+                            dailyScore = Math.round((totalRaw / dayQuestions.length) * 100);
+                        }
                     }
+
+                    return {
+                        value: dailyScore,
+                        label,
+                        fullDate: format(dayDate, 'd MMM yyyy'),
+                        attemptsCount: dayBatches.length + (dayQuestions.length > 0 ? 1 : 0),
+                    };
+                });
+            } else if (range === '1M') {
+                // 4 weeks leading to current week
+                points = [0, 1, 2, 3].map((i) => {
+                    const wStart = addDays(startDate, i * 7);
+                    const wEnd = addDays(wStart, 6);
+                    const wQuestions = allQuestions.filter((q: any) => {
+                        const d = new Date(q.completed_at);
+                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
+                    });
+                    const wBatches = allBatches.filter((b: any) => {
+                        const d = new Date(b.completed_at);
+                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
+                    });
+
+                    let weekScore = 0;
+                    if (wBatches.length > 0) {
+                        const totalBatchScore = wBatches.reduce((sum: number, b: any) => sum + (b.score || 0), 0);
+                        weekScore = Math.round(totalBatchScore / wBatches.length);
+                    } else if (wQuestions.length > 0) {
+                        const totalRaw = wQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
+                        weekScore = Math.round((totalRaw / wQuestions.length) * 100);
+                    }
+
+                    return {
+                        value: weekScore,
+                        label: `W${i + 1}`,
+                        fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
+                        attemptsCount: wBatches.length,
+                    };
+                });
+            } else if (range === '3M') {
+                // 12 weeks leading to current week
+                points = Array.from({ length: 12 }, (_, i) => {
+                    const wStart = addDays(startDate, i * 7);
+                    const wEnd = addDays(wStart, 6);
+                    const wQuestions = allQuestions.filter((q: any) => {
+                        const d = new Date(q.completed_at);
+                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
+                    });
+                    const wBatches = allBatches.filter((b: any) => {
+                        const d = new Date(b.completed_at);
+                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
+                    });
+
+                    let weekScore = 0;
+                    if (wBatches.length > 0) {
+                        const totalBatchScore = wBatches.reduce((sum: number, b: any) => sum + (b.score || 0), 0);
+                        weekScore = Math.round(totalBatchScore / wBatches.length);
+                    } else if (wQuestions.length > 0) {
+                        const totalRaw = wQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
+                        weekScore = Math.round((totalRaw / wQuestions.length) * 100);
+                    }
+
+                    return {
+                        value: weekScore,
+                        label: `W${i + 1}`,
+                        fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
+                        attemptsCount: wBatches.length,
+                    };
+                });
+            } else {
+                // ALL: Group by calendar month
+                // Collect all timestamps to determine date range
+                const allTimestamps = [
+                    ...allQuestions.map((q: any) => new Date(q.completed_at).getTime()),
+                    ...allBatches.map((b: any) => new Date(b.completed_at).getTime()),
+                ].filter(t => !isNaN(t));
+
+                const earliest = allTimestamps.length > 0 ? new Date(Math.min(...allTimestamps)) : subMonths(now, 5);
+                const startMonth = startOfMonth(earliest);
+                const currentMonth = startOfMonth(now);
+
+                // Build array of month start dates from startMonth to currentMonth (at least 4 months for nice chart)
+                let cursor = new Date(startMonth);
+                const monthsList: Date[] = [];
+                while (cursor <= currentMonth) {
+                    monthsList.push(new Date(cursor));
+                    cursor = addMonths(cursor, 1);
                 }
 
-                return { value: dailyScore, label };
-            });
+                // If fewer than 4 months, pad with previous months so chart is aesthetically balanced
+                while (monthsList.length < 4) {
+                    const firstMonth = monthsList[0];
+                    monthsList.unshift(subMonths(firstMonth, 1));
+                }
 
+                points = monthsList.map((mStart) => {
+                    const mEnd = endOfMonth(mStart);
+                    const mQuestions = allQuestions.filter((q: any) => {
+                        const d = new Date(q.completed_at);
+                        return isWithinInterval(d, { start: startOfDay(mStart), end: endOfDay(mEnd) });
+                    });
+                    const mBatches = allBatches.filter((b: any) => {
+                        const d = new Date(b.completed_at);
+                        return isWithinInterval(d, { start: startOfDay(mStart), end: endOfDay(mEnd) });
+                    });
+
+                    let monthScore = 0;
+                    if (mBatches.length > 0) {
+                        const totalBatchScore = mBatches.reduce((sum: number, b: any) => sum + (b.score || 0), 0);
+                        monthScore = Math.round(totalBatchScore / mBatches.length);
+                    } else if (mQuestions.length > 0) {
+                        const totalRaw = mQuestions.reduce((sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0);
+                        monthScore = Math.round((totalRaw / mQuestions.length) * 100);
+                    }
+
+                    return {
+                        value: monthScore,
+                        label: format(mStart, 'MMM'),
+                        fullDate: format(mStart, 'MMMM yyyy'),
+                        attemptsCount: mBatches.length,
+                    };
+                });
+            }
+
+            // Calculate overall stats for the period
+            const nonZeroScores = points.map(p => p.value).filter(v => v > 0);
+            const averageScore = nonZeroScores.length > 0
+                ? Math.round(nonZeroScores.reduce((sum, v) => sum + v, 0) / nonZeroScores.length)
+                : 0;
+            const highestScore = nonZeroScores.length > 0 ? Math.max(...nonZeroScores) : 0;
+            const lowestScore = nonZeroScores.length > 0 ? Math.min(...nonZeroScores) : 0;
+            const totalAttempts = allBatches.length > 0 ? allBatches.length : (allQuestions.length > 0 ? Math.ceil(allQuestions.length / 10) : 0);
+
+            return {
+                points,
+                stats: {
+                    averageScore,
+                    highestScore,
+                    lowestScore,
+                    totalAttempts,
+                },
+            };
         } catch (error) {
-            console.error('Error getting daily trends:', error);
-            return [];
+            console.error('Error getting performance trends:', error);
+            return {
+                points: [],
+                stats: {
+                    averageScore: 0,
+                    highestScore: 0,
+                    lowestScore: 0,
+                    totalAttempts: 0,
+                },
+            };
         }
+    },
+
+    /**
+     * Get daily progress scores for trend chart (Fixed Weekly View: Mon-Sun)
+     * Backward compatibility method for existing callers.
+     */
+    async getDailyTrends(userId: string): Promise<{ value: number, label: string }[]> {
+        const result = await this.getPerformanceTrends(userId, '1W');
+        return result.points.map(p => ({ value: p.value, label: p.label }));
     },
 
     /**
