@@ -694,16 +694,18 @@ export const QuizService = {
             const { data: qData } = await qQuery;
             const allQuestions = qData || [];
 
-            // For 1W, also fetch batch progress for daily view (backward compat with original getDailyTrends logic)
-            let allBatches: any[] = [];
-            if (range === '1W') {
-                const { data: bData } = await supabase
-                    .from('user_batch_progress')
-                    .select('completed_at, score, batch_number')
-                    .eq('user_id', userId)
-                    .gte('completed_at', startDate.toISOString());
-                allBatches = bData || [];
+            // Fetch user_batch_progress for completed batch attempts in this range
+            let bQuery = supabase
+                .from('user_batch_progress')
+                .select('completed_at, score, batch_number')
+                .eq('user_id', userId);
+
+            if (range !== 'ALL') {
+                bQuery = bQuery.gte('completed_at', startDate.toISOString());
             }
+
+            const { data: bData } = await bQuery;
+            const allBatches = bData || [];
 
             // Pre-fetch batch average scores (uses provisional logic matching the Batch card)
             const activeBatches = new Set<number>();
@@ -876,8 +878,8 @@ export const QuizService = {
                 : 0;
             const highestScore = nonZeroScores.length > 0 ? Math.max(...nonZeroScores) : 0;
             const lowestScore = nonZeroScores.length > 0 ? Math.min(...nonZeroScores) : 0;
-            // Count active periods (days/weeks/months with questions answered)
-            const totalAttempts = points.filter(p => p.value > 0).length;
+            // Count completed batch attempts in this period
+            const totalAttempts = allBatches.length;
 
             return {
                 points,

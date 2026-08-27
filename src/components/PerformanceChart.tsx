@@ -79,7 +79,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       averageScore: avg,
       highestScore: high,
       lowestScore: low,
-      totalAttempts: attempts > 0 ? attempts : (nonZero.length > 0 ? nonZero.length : 0),
+      totalAttempts: attempts,
     });
   };
 
@@ -408,31 +408,13 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             },
           ]}
         >
-          {/* Avg Score */}
+          {/* Total Attempts */}
           <View style={styles.metricItem}>
             <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.chartAvgScore', 'Avg Score')}
-            </Text>
-            <Text
-              style={[
-                styles.metricValue,
-                { color: stats.averageScore >= 60 ? colors.status.success : colors.text.primary },
-              ]}
-            >
-              {stats.averageScore}%
-            </Text>
-          </View>
-
-          {/* Divider */}
-          <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
-
-          {/* High */}
-          <View style={styles.metricItem}>
-            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.chartHigh', 'High')}
+              {t('profile.chartAttempts', 'Attempts')}
             </Text>
             <Text style={[styles.metricValue, { color: colors.text.primary }]}>
-              {stats.highestScore}%
+              {stats.totalAttempts}
             </Text>
           </View>
 
@@ -445,20 +427,44 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
               {t('profile.chartLow', 'Low')}
             </Text>
             <Text style={[styles.metricValue, { color: colors.text.primary }]}>
-              {stats.lowestScore}%
+              {stats.lowestScore > 0 ? `${stats.lowestScore}%` : '-'}
             </Text>
           </View>
 
           {/* Divider */}
           <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
 
-          {/* Total Attempts */}
+          {/* High */}
           <View style={styles.metricItem}>
             <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.chartAttempts', 'Attempts')}
+              {t('profile.chartHigh', 'High')}
             </Text>
             <Text style={[styles.metricValue, { color: colors.text.primary }]}>
-              {stats.totalAttempts}
+              {stats.highestScore > 0 ? `${stats.highestScore}%` : '-'}
+            </Text>
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
+
+          {/* Overall Score */}
+          <View style={styles.metricItem}>
+            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
+              {t('profile.chartOverallScore', 'Overall Score')}
+            </Text>
+            <Text
+              style={[
+                styles.metricValue,
+                {
+                  color: stats.averageScore >= 60
+                    ? colors.status.success
+                    : stats.averageScore > 0
+                    ? colors.text.primary
+                    : colors.text.secondary,
+                },
+              ]}
+            >
+              {stats.averageScore > 0 ? `${stats.averageScore}%` : '-'}
             </Text>
           </View>
         </View>
