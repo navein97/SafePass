@@ -395,80 +395,6 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           </View>
         )}
       </View>
-
-      {/* Stock-Style Summary Metrics Footer (for Managers/Master on DriverDetailScreen) */}
-      {showMetrics && (
-        <View
-          style={[
-            styles.metricsContainer,
-            {
-              backgroundColor:
-                colors.mode === 'light' ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.04)',
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          {/* Total Attempts */}
-          <View style={styles.metricItem}>
-            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.chartAttempts', 'Attempts')}
-            </Text>
-            <Text style={[styles.metricValue, { color: colors.text.primary }]}>
-              {stats.totalAttempts}
-            </Text>
-          </View>
-
-          {/* Divider */}
-          <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
-
-          {/* Low */}
-          <View style={styles.metricItem}>
-            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.chartLow', 'Low')}
-            </Text>
-            <Text style={[styles.metricValue, { color: colors.text.primary }]}>
-              {stats.lowestScore > 0 ? `${stats.lowestScore}%` : '-'}
-            </Text>
-          </View>
-
-          {/* Divider */}
-          <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
-
-          {/* High */}
-          <View style={styles.metricItem}>
-            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.chartHigh', 'High')}
-            </Text>
-            <Text style={[styles.metricValue, { color: colors.text.primary }]}>
-              {stats.highestScore > 0 ? `${stats.highestScore}%` : '-'}
-            </Text>
-          </View>
-
-          {/* Divider */}
-          <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
-
-          {/* Overall Score */}
-          <View style={styles.metricItem}>
-            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.chartOverallScore', 'Overall Score')}
-            </Text>
-            <Text
-              style={[
-                styles.metricValue,
-                {
-                  color: stats.averageScore >= 60
-                    ? colors.status.success
-                    : stats.averageScore > 0
-                    ? colors.text.primary
-                    : colors.text.secondary,
-                },
-              ]}
-            >
-              {stats.averageScore > 0 ? `${stats.averageScore}%` : '-'}
-            </Text>
-          </View>
-        </View>
-      )}
     </View>
   );
 };
@@ -551,38 +477,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#9CA3AF',
     fontFamily: typography.fonts.medium,
-  },
-  metricsContainer: {
-    marginTop: 14,
-    marginHorizontal: 12,
-    width: '94%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  metricItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontFamily: typography.fonts.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  metricValue: {
-    fontSize: 13,
-    fontFamily: typography.fonts.bold,
-    fontWeight: 'bold',
-  },
-  metricDivider: {
-    width: 1,
-    height: 22,
   },
 });

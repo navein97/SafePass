@@ -373,12 +373,14 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         <View style={styles.profileRow}>
                             <Text style={styles.profileLabel}>Overall Score:</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <Text style={[styles.profileVal, { color: csiData?.rankColor || csiData?.bandColor || colors.primary.DEFAULT }]}>
-                                    {csiData?.score !== undefined && csiData?.score !== null ? `${csiData.score}%` : '-'}
-                                </Text>
+                                {csiData?.score !== undefined && csiData?.score !== null && (
+                                    <Text style={[styles.profileVal, { color: csiData?.rankColor || csiData?.bandColor || colors.primary.DEFAULT }]}>
+                                        {`${csiData.score}%`}
+                                    </Text>
+                                )}
                                 <View style={[styles.bandBadge, { backgroundColor: (csiData?.rankColor || csiData?.bandColor || '#3B82F6') + '20', borderColor: csiData?.rankColor || csiData?.bandColor || '#3B82F6' }]}>
                                     <Text style={[styles.bandBadgeText, { color: csiData?.rankColor || csiData?.bandColor || '#3B82F6' }]}>
-                                        {csiData?.rank || csiData?.band || 'D Rank'}
+                                        {csiData?.rank || csiData?.band || '-'}
                                     </Text>
                                 </View>
                             </View>
@@ -500,7 +502,6 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                                     : [{ value: 0, label: '-' }]
                             }
                             allowedRanges={['1W', '1M', '3M', 'ALL']}
-                            showMetrics={true}
                         />
                     </GlassCard>
 

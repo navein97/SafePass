@@ -951,8 +951,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                         ? quizHistory
                         : [{ value: 0, label: '-' }]
                     } 
-                    allowedRanges={['1W', '1M']}
-                    showMetrics={false}
+                    allowedRanges={['1W']}
                 />
              </GlassCard>
 
