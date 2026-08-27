@@ -731,29 +731,87 @@ export const QuizService = {
                 })
             );
 
+            /**
+             * computeActiveBatchScore(cutoffDate)
+             *
+             * Returns the Batch Average Score as of a specific moment in time.
+             * Uses the EXACT same formula as the Batch Summary card:
+             *   (sum of question scores for active batch) / (total questions in batch) × 100
+             *
+             * - Figures out which batch was "active" as of the cutoff date (most recently touched batch).
+             * - If that batch had a completed attempt by then, returns the official attempt score.
+             * - If the batch was still in progress, returns the provisional score.
+             * - Returns 0 if there was no activity at all up to that cutoff.
+             */
+            const computeActiveBatchScore = (cutoffDate: Date): number => {
+                const questionsUpTo = allQuestions.filter((q: any) =>
+                    isBefore(new Date(q.completed_at), cutoffDate) || isEqual(new Date(q.completed_at), cutoffDate)
+                );
+                const batchesUpTo = allBatches.filter((b: any) =>
+                    isBefore(new Date(b.completed_at), cutoffDate) || isEqual(new Date(b.completed_at), cutoffDate)
+                );
+
+                if (questionsUpTo.length === 0 && batchesUpTo.length === 0) return 0;
+
+                // Find the most recently touched batch as of the cutoff
+                const sortedQ = [...questionsUpTo].sort(
+                    (a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
+                );
+                const sortedB = [...batchesUpTo].sort(
+                    (a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
+                );
+
+                const latestQ = sortedQ.length > 0 ? sortedQ[sortedQ.length - 1] : null;
+                const latestB = sortedB.length > 0 ? sortedB[sortedB.length - 1] : null;
+
+                let activeBatchNumber: number = 1;
+                if (latestQ && latestB) {
+                    activeBatchNumber = new Date(latestQ.completed_at).getTime() >= new Date(latestB.completed_at).getTime()
+                        ? (latestQ.batch_number || 1)
+                        : (latestB.batch_number || 1);
+                } else if (latestQ) {
+                    activeBatchNumber = latestQ.batch_number || 1;
+                } else if (latestB) {
+                    activeBatchNumber = latestB.batch_number || 1;
+                }
+
+                // If a completed attempt exists for this batch by the cutoff, use that score
+                const completedForBatch = batchesUpTo.filter((b: any) => b.batch_number === activeBatchNumber);
+                if (completedForBatch.length > 0) {
+                    const latest = completedForBatch[completedForBatch.length - 1];
+                    return Math.round(latest.score || 0);
+                }
+
+                // Otherwise compute provisional: same formula as Batch Summary card
+                const activeQuestions = questionsUpTo.filter((q: any) => q.batch_number === activeBatchNumber);
+                if (activeQuestions.length === 0) return 0;
+
+                const totalScore = activeQuestions.reduce(
+                    (sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0
+                );
+                const totalInBatch = batchTotalMap.get(activeBatchNumber) || activeQuestions.length;
+                return Math.round((totalScore / Math.max(1, totalInBatch)) * 100);
+            };
+
             let points: PerformanceTrendPoint[] = [];
 
             if (range === '1W') {
                 const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
                 points = dayLabels.map((label, i) => {
                     const dayDate = addDays(startDate, i);
-                    const dayQuestions = allQuestions.filter((q: any) =>
-                        isSameDay(new Date(q.completed_at), dayDate)
-                    );
-                    const dayBatches = allBatches.filter((b: any) =>
-                        isSameDay(new Date(b.completed_at), dayDate)
+                    const dayCutoff = endOfDay(dayDate);
+
+                    // Only show a score if there was actual activity on or before this day
+                    const hadActivity = allQuestions.some((q: any) =>
+                        isBefore(new Date(q.completed_at), dayCutoff) || isEqual(new Date(q.completed_at), dayCutoff)
+                    ) || allBatches.some((b: any) =>
+                        isBefore(new Date(b.completed_at), dayCutoff) || isEqual(new Date(b.completed_at), dayCutoff)
                     );
 
-                    let dailyScore = 0;
-                    if (dayBatches.length > 0) {
-                        const latestBatchAttempt = dayBatches[dayBatches.length - 1];
-                        dailyScore = Math.round(latestBatchAttempt.score || 0);
-                    } else if (dayQuestions.length > 0) {
-                        const totalScore = dayQuestions.reduce(
-                            (sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0
-                        );
-                        dailyScore = Math.round((totalScore / dayQuestions.length) * 100);
-                    }
+                    const dailyScore = hadActivity ? computeActiveBatchScore(dayCutoff) : 0;
+
+                    const dayQuestions = allQuestions.filter((q: any) => isSameDay(new Date(q.completed_at), dayDate));
+                    const dayBatches = allBatches.filter((b: any) => isSameDay(new Date(b.completed_at), dayDate));
 
                     return {
                         value: dailyScore,
@@ -763,30 +821,25 @@ export const QuizService = {
                     };
                 });
             } else if (range === '1M') {
-                // 4 weeks: accuracy of questions answered in each week
                 points = [0, 1, 2, 3].map((i) => {
                     const wStart = addDays(startDate, i * 7);
                     const wEnd = addDays(wStart, 6);
+                    const weekCutoff = endOfDay(wEnd);
 
-                    const wQuestions = allQuestions.filter((q: any) => {
-                        const d = new Date(q.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
-                    });
-                    const wBatches = allBatches.filter((b: any) => {
-                        const d = new Date(b.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
-                    });
+                    const hadActivity = allQuestions.some((q: any) =>
+                        isBefore(new Date(q.completed_at), weekCutoff) || isEqual(new Date(q.completed_at), weekCutoff)
+                    ) || allBatches.some((b: any) =>
+                        isBefore(new Date(b.completed_at), weekCutoff) || isEqual(new Date(b.completed_at), weekCutoff)
+                    );
 
-                    let weekScore = 0;
-                    if (wBatches.length > 0) {
-                        const latest = wBatches[wBatches.length - 1];
-                        weekScore = Math.round(latest.score || 0);
-                    } else if (wQuestions.length > 0) {
-                        const totalScore = wQuestions.reduce(
-                            (sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0
-                        );
-                        weekScore = Math.round((totalScore / wQuestions.length) * 100);
-                    }
+                    const weekScore = hadActivity ? computeActiveBatchScore(weekCutoff) : 0;
+
+                    const wQuestions = allQuestions.filter((q: any) =>
+                        isWithinInterval(new Date(q.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
+                    );
+                    const wBatches = allBatches.filter((b: any) =>
+                        isWithinInterval(new Date(b.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
+                    );
 
                     return {
                         value: weekScore,
@@ -796,30 +849,25 @@ export const QuizService = {
                     };
                 });
             } else if (range === '3M') {
-                // 12 weeks: accuracy of questions answered in each week
                 points = Array.from({ length: 12 }, (_, i) => {
                     const wStart = addDays(startDate, i * 7);
                     const wEnd = addDays(wStart, 6);
+                    const weekCutoff = endOfDay(wEnd);
 
-                    const wQuestions = allQuestions.filter((q: any) => {
-                        const d = new Date(q.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
-                    });
-                    const wBatches = allBatches.filter((b: any) => {
-                        const d = new Date(b.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
-                    });
+                    const hadActivity = allQuestions.some((q: any) =>
+                        isBefore(new Date(q.completed_at), weekCutoff) || isEqual(new Date(q.completed_at), weekCutoff)
+                    ) || allBatches.some((b: any) =>
+                        isBefore(new Date(b.completed_at), weekCutoff) || isEqual(new Date(b.completed_at), weekCutoff)
+                    );
 
-                    let weekScore = 0;
-                    if (wBatches.length > 0) {
-                        const latest = wBatches[wBatches.length - 1];
-                        weekScore = Math.round(latest.score || 0);
-                    } else if (wQuestions.length > 0) {
-                        const totalScore = wQuestions.reduce(
-                            (sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0
-                        );
-                        weekScore = Math.round((totalScore / wQuestions.length) * 100);
-                    }
+                    const weekScore = hadActivity ? computeActiveBatchScore(weekCutoff) : 0;
+
+                    const wQuestions = allQuestions.filter((q: any) =>
+                        isWithinInterval(new Date(q.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
+                    );
+                    const wBatches = allBatches.filter((b: any) =>
+                        isWithinInterval(new Date(b.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
+                    );
 
                     return {
                         value: weekScore,
@@ -829,7 +877,7 @@ export const QuizService = {
                     };
                 });
             } else {
-                // ALL: Group by calendar month using accuracy of questions in that month
+                // ALL: Monthly buckets from earliest activity to today
                 const allTimestamps = [
                     ...allQuestions.map((q: any) => new Date(q.completed_at).getTime()),
                     ...allBatches.map((b: any) => new Date(b.completed_at).getTime()),
@@ -845,33 +893,28 @@ export const QuizService = {
                     monthsList.push(new Date(cursor));
                     cursor = addMonths(cursor, 1);
                 }
-
                 while (monthsList.length < 4) {
-                    const firstMonth = monthsList[0];
-                    monthsList.unshift(subMonths(firstMonth, 1));
+                    monthsList.unshift(subMonths(monthsList[0], 1));
                 }
 
                 points = monthsList.map((mStart) => {
                     const mEnd = endOfMonth(mStart);
-                    const mQuestions = allQuestions.filter((q: any) => {
-                        const d = new Date(q.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(mStart), end: endOfDay(mEnd) });
-                    });
-                    const mBatches = allBatches.filter((b: any) => {
-                        const d = new Date(b.completed_at);
-                        return isWithinInterval(d, { start: startOfDay(mStart), end: endOfDay(mEnd) });
-                    });
+                    const monthCutoff = endOfDay(mEnd);
 
-                    let monthScore = 0;
-                    if (mBatches.length > 0) {
-                        const latest = mBatches[mBatches.length - 1];
-                        monthScore = Math.round(latest.score || 0);
-                    } else if (mQuestions.length > 0) {
-                        const totalScore = mQuestions.reduce(
-                            (sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0
-                        );
-                        monthScore = Math.round((totalScore / mQuestions.length) * 100);
-                    }
+                    const hadActivity = allQuestions.some((q: any) =>
+                        isBefore(new Date(q.completed_at), monthCutoff) || isEqual(new Date(q.completed_at), monthCutoff)
+                    ) || allBatches.some((b: any) =>
+                        isBefore(new Date(b.completed_at), monthCutoff) || isEqual(new Date(b.completed_at), monthCutoff)
+                    );
+
+                    const monthScore = hadActivity ? computeActiveBatchScore(monthCutoff) : 0;
+
+                    const mQuestions = allQuestions.filter((q: any) =>
+                        isWithinInterval(new Date(q.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
+                    );
+                    const mBatches = allBatches.filter((b: any) =>
+                        isWithinInterval(new Date(b.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
+                    );
 
                     return {
                         value: monthScore,
@@ -882,36 +925,16 @@ export const QuizService = {
                 });
             }
 
-            // Calculate overall stats for the period
+            // Summary stats — use the current batch score as the reference
             const nonZeroScores = points.map(p => p.value).filter(v => v > 0);
-            
-            // Overall Score: Average of completed batches if any exist; otherwise average accuracy of answered questions
-            let averageScore = 0;
-            if (allBatches.length > 0) {
-                const totalBatchScore = allBatches.reduce(
-                    (sum: number, b: any) => sum + parseFloat(String(b.score || 0)), 0
-                );
-                averageScore = Math.round(totalBatchScore / allBatches.length);
-            } else if (allQuestions.length > 0) {
-                const totalScore = allQuestions.reduce(
-                    (sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0
-                );
-                averageScore = Math.round((totalScore / allQuestions.length) * 100);
-            }
-
+            const averageScore = computeActiveBatchScore(endOfDay(now));
             const highestScore = nonZeroScores.length > 0 ? Math.max(...nonZeroScores) : 0;
             const lowestScore = nonZeroScores.length > 0 ? Math.min(...nonZeroScores) : 0;
-            // Count completed batch attempts in this period
             const totalAttempts = allBatches.length;
 
             return {
                 points,
-                stats: {
-                    averageScore,
-                    highestScore,
-                    lowestScore,
-                    totalAttempts,
-                },
+                stats: { averageScore, highestScore, lowestScore, totalAttempts },
             };
         } catch (error) {
             console.error('Error getting performance trends:', error);
