@@ -3,7 +3,7 @@ import { Question } from '../types/models';
 import { getWeek, getYear } from 'date-fns';
 import * as Crypto from 'expo-crypto';
 import { PracticeService } from './practiceService';
-import { ScoringService } from './scoringService';
+import { ScoringService, DimensionScores } from './scoringService';
 
 
 export interface BatchProgress {
@@ -611,58 +611,92 @@ export const BatchService = {
      */
     calculateComponentScores(
         questions: Question[],
-        answers: Array<{ questionId: string; attempts: number; isCorrect: boolean }>
+        answers: Array<{ questionId: string; attempts: number; isCorrect: boolean; score?: number }>
     ): { operation: number; discipline: number; professionalism: number } {
-        let operationTotal = 0;
-        let disciplineTotal = 0;
-        let professionalismTotal = 0;
-        let operationMax = 0;
-        let disciplineMax = 0;
-        let professionalismMax = 0;
-
-        // Group answers by questionId, taking the BEST result (true overrides false)
-        const bestAnswers = new Map<string, boolean>();
-        answers.forEach(a => {
-            if (a.isCorrect) bestAnswers.set(a.questionId, true);
-            else if (!bestAnswers.has(a.questionId)) bestAnswers.set(a.questionId, false);
-        });
-
-        bestAnswers.forEach((isCorrect, questionId) => {
-            const question = questions.find(q => q.id === questionId);
-            const weights = question?.componentWeights || (question ? ScoringService.getDefaultWeights(question.category) : ScoringService.getDefaultWeights());
-            if (!weights) return;
-
-            const score = isCorrect ? 1.0 : 0;
-
-            // Accumulate weighted scores
-            operationTotal += (weights.operation || 0) * score;
-            disciplineTotal += (weights.discipline || 0) * score;
-            professionalismTotal += (weights.professionalism || 0) * score;
-
-            // Accumulate max possible
-            operationMax += weights.operation || 0;
-            disciplineMax += weights.discipline || 0;
-            professionalismMax += weights.professionalism || 0;
-        });
-
-        // Failsafe: if no question weights were matched, fallback to overall accuracy percentage
-        if (operationMax === 0 && disciplineMax === 0 && professionalismMax === 0 && answers.length > 0) {
-            const correctCount = answers.filter(a => a.isCorrect).length;
-            const fallbackPct = Math.round((correctCount / answers.length) * 100);
-            return {
-                operation: fallbackPct,
-                discipline: fallbackPct,
-                professionalism: fallbackPct,
-            };
-        }
-
-        return {
-            operation: operationMax > 0 ? Math.round((operationTotal / operationMax) * 100) : 0,
-            discipline: disciplineMax > 0 ? Math.round((disciplineTotal / disciplineMax) * 100) : 0,
-            professionalism:
-                professionalismMax > 0 ? Math.round((professionalismTotal / professionalismMax) * 100) : 0,
-        };
+        return ScoringService.calculateComponentScores(questions, answers);
     },
+
+    /**
+     * Calculate Dimension percentage scores (PC, OD, OE) across ALL completed MCQs for a driver.
+     * Dimension score (%) = Total weighted marks earned for the dimension ÷ Total available mapped weights for the dimension × 100
+     * Only completed MCQs mapped to that dimension enter numerator and denominator.
+     * Returns null for dimensions with no mapped MCQs.
+     */
+    async getDriverDimensionScores(userId: string): Promise<DimensionScores> {
+        try {
+            // 1. Fetch question-level progress
+            const { data: qProgress, error: qError } = await supabase
+                .from('user_question_progress')
+                .select('question_id, score, is_correct, attempts')
+                .eq('user_id', userId);
+
+            if (qError) console.error('[BatchService] Error fetching question progress for dimensions:', qError);
+
+            const answersMap = new Map<string, { questionId: string; score: number; isCorrect: boolean; attempts: number }>();
+            (qProgress || []).forEach(q => {
+                if (q.question_id) {
+                    answersMap.set(String(q.question_id), {
+                        questionId: String(q.question_id),
+                        score: parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
+                        isCorrect: !!q.is_correct,
+                        attempts: q.attempts || 1
+                    });
+                }
+            });
+
+            // 2. Also incorporate historical answers from completed batch attempts
+            const { data: batchData } = await supabase
+                .from('user_batch_progress')
+                .select('answers')
+                .eq('user_id', userId);
+
+            (batchData || []).forEach(b => {
+                if (Array.isArray(b.answers)) {
+                    b.answers.forEach((ans: any) => {
+                        const qId = String(ans?.questionId || ans?.question_id || ans?.id || '');
+                        if (qId && !answersMap.has(qId)) {
+                            const isCorr = !!ans.isCorrect;
+                            const att = ans.attempts || 1;
+                            const scr = ans.score !== undefined ? parseFloat(String(ans.score)) : (isCorr ? (att === 2 ? 0.5 : 1.0) : 0);
+                            answersMap.set(qId, {
+                                questionId: qId,
+                                score: scr,
+                                isCorrect: isCorr,
+                                attempts: att
+                            });
+                        }
+                    });
+                }
+            });
+
+            const allAnswers = Array.from(answersMap.values());
+            if (allAnswers.length === 0) {
+                return { operation: null, discipline: null, professionalism: null };
+            }
+
+            const questionIds = allAnswers.map(a => a.questionId);
+            const { data: questionsData, error: qDataError } = await supabase
+                .from('questions')
+                .select('id, category, component_weights')
+                .in('id', questionIds);
+
+            if (qDataError || !questionsData || questionsData.length === 0) {
+                return { operation: null, discipline: null, professionalism: null };
+            }
+
+            const questions = questionsData.map(q => ({
+                id: q.id,
+                category: q.category,
+                componentWeights: q.component_weights || (q as any).componentWeights
+            })) as Question[];
+
+            return ScoringService.calculateDimensionScores(questions, allAnswers);
+        } catch (err) {
+            console.error('[BatchService] Error getting driver dimension scores:', err);
+            return { operation: null, discipline: null, professionalism: null };
+        }
+    },
+
 
     /**
      * Get score for a single answer based on attempts
@@ -745,10 +779,12 @@ export const BatchService = {
                 }
             }
 
-            const componentScores = profile?.component_scores || {
-                operation: csiScore || 0,
-                discipline: csiScore || 0,
-                professionalism: csiScore || 0,
+            // Get accurately calculated dimension scores across all completed MCQs
+            const dimensionScores = await this.getDriverDimensionScores(userId);
+            const componentScores = {
+                operation: dimensionScores.operation ?? (csiScore || 0),
+                discipline: dimensionScores.discipline ?? (csiScore || 0),
+                professionalism: dimensionScores.professionalism ?? (csiScore || 0),
             };
 
             return {
@@ -1024,12 +1060,10 @@ export const BatchService = {
 
     /**
      * Force synchronization of profile metrics (safety_index, component_scores)
-     * by aggregating all past batch attempts.
+     * by aggregating all completed MCQs and past batch attempts.
      */
     async syncProfileStats(userId: string): Promise<void> {
         try {
-
-
             // 1. Get ALL batch attempts for this user
             const { data: attempts, error } = await supabase
                 .from('user_batch_progress')
@@ -1039,53 +1073,15 @@ export const BatchService = {
 
             if (error) throw error;
 
+            // 2. Calculate accurate cumulative dimension scores across all completed MCQs
+            const dimensionScores = await this.getDriverDimensionScores(userId);
+
             if (!attempts || attempts.length === 0) {
-
-                
-                // Fetch all answered questions from user_question_progress
-                const { data: qProgress, error: qError } = await supabase
-                    .from('user_question_progress')
-                    .select('question_id, is_correct')
-                    .eq('user_id', userId);
-
-                let componentScores = { operation: 0, discipline: 0, professionalism: 0 };
-                
-                if (!qError && qProgress && qProgress.length > 0) {
-                    const questionIds = qProgress.map(q => q.question_id);
-                    const { data: questionsData } = await supabase
-                        .from('questions')
-                        .select('id, category, component_weights')
-                        .in('id', questionIds);
-
-                    if (questionsData && questionsData.length > 0) {
-                        const questionList = questionsData.map(q => ({
-                            id: q.id,
-                            category: q.category,
-                            componentWeights: q.component_weights || (q as any).componentWeights
-                        })) as Question[];
-
-                        const mappedAnswers = qProgress.map(q => ({
-                            questionId: q.question_id,
-                            attempts: 1,
-                            isCorrect: q.is_correct
-                        }));
-
-                        const computedScores = this.calculateComponentScores(questionList, mappedAnswers);
-                        componentScores = {
-                            operation: computedScores.operation,
-                            discipline: computedScores.discipline,
-                            professionalism: computedScores.professionalism
-                        };
-                    }
-                }
-
-                // Update profile with provisional scores
-
                 await supabase
                     .from('profiles')
                     .update({
                         safety_index: 0,
-                        component_scores: componentScores,
+                        component_scores: dimensionScores,
                         total_score: 0,
                         total_batches_completed: 0
                     })
@@ -1094,16 +1090,10 @@ export const BatchService = {
                 return;
             }
 
-            // 2. Latest Attempt Evaluation (Driver's most recent active batch performance)
+            // 3. Latest Attempt Evaluation & Unique passed batches (score >= 60)
             const latestAttempt = attempts[0];
             const latestScore = latestAttempt.score ?? 0;
-            const componentScores = latestAttempt.component_scores || {
-                operation: latestScore,
-                discipline: latestScore,
-                professionalism: latestScore,
-            };
 
-            // 3. Count unique passed batches (score >= 60 in any attempt)
             const passedBatches = new Set<number>();
             attempts.forEach(a => {
                 if (a.score >= 60) {
@@ -1128,18 +1118,18 @@ export const BatchService = {
                 cgpaScore = Math.round(sum / batchBestScores.size);
             }
 
-            // 4. Update Profile with CGPA Score & Latest DOP
+            // 4. Update Profile with CGPA Score & Cumulative Dimension Scores
             await supabase
                 .from('profiles')
                 .update({
-                    safety_index: cgpaScore, // CGPA across completed batches
-                    component_scores: componentScores, // Represents driver's latest attempt DOP
+                    safety_index: cgpaScore,
+                    component_scores: dimensionScores,
                     total_score: cgpaScore,
                     total_batches_completed: passedBatchesCount
                 })
                 .eq('id', userId);
 
-            // 5. Update compliance logs for trending chart with latest attempt score
+            // 5. Update compliance logs with latest attempt score and cumulative dimension scores
             const now = new Date();
             const year = now.getFullYear();
             const firstDayOfYear = new Date(year, 0, 1);
@@ -1153,7 +1143,7 @@ export const BatchService = {
                     week_number: weekNumber,
                     year: year,
                     score: latestScore,
-                    component_scores: componentScores,
+                    component_scores: dimensionScores,
                     updated_at: now.toISOString()
                 }, {
                     onConflict: 'user_id,week_number,year'
@@ -1163,6 +1153,7 @@ export const BatchService = {
             console.error('[BatchService] Error syncing profile stats:', error);
         }
     },
+
 
     /**
      * Get total cumulative XP for a user.

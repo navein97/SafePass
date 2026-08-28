@@ -37,7 +37,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   width,
   allowedRanges = ['1W', '1M', 'ALL'],
   initialRange = '1W',
-  showMetrics = false,
+  showMetrics = true,
   title,
   onRangeChange,
 }) => {
@@ -53,6 +53,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     highestScore: 0,
     lowestScore: 0,
     totalAttempts: 0,
+    activePeriodsCount: 0,
+    activePeriodsLabel: 'Active Days',
+    mcqsCompleted: 0,
+    periodPerformance: null,
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -75,12 +79,13 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     const low = nonZero.length > 0 ? Math.min(...nonZero) : 0;
     const attempts = points.reduce((s, p) => s + (p.attemptsCount || 0), 0);
 
-    setStats({
+    setStats(prev => ({
+      ...prev,
       averageScore: avg,
       highestScore: high,
       lowestScore: low,
       totalAttempts: attempts,
-    });
+    }));
   };
 
   const fetchRangeData = useCallback(
@@ -146,8 +151,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     return chartPoints;
   }, [chartPoints]);
 
-  const hPadding = 24;
-  const vPadding = 28;
+  const hPadding = 16;
+  const vPadding = 24;
   const chartHeight = height - vPadding * 2;
   const innerWidth = Math.max(10, containerWidth - hPadding * 2);
   const maxValue = 100;
@@ -253,6 +258,73 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           </View>
         )}
       </View>
+
+      {/* Summary Figures (Dashboard B) */}
+      {showMetrics && (
+        <View style={[styles.metricsRow, { paddingHorizontal: hPadding }]}>
+          <View
+            style={[
+              styles.metricCard,
+              {
+                backgroundColor: colors.mode === 'light' ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.05)',
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
+              {selectedRange === 'ALL' ? t('profile.activeMonths', 'Active Months') : t('profile.activeDays', 'Active Days')}
+            </Text>
+            <Text style={[styles.metricValue, { color: colors.text.primary }]}>
+              {stats.activePeriodsCount ?? 0}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.metricCard,
+              {
+                backgroundColor: colors.mode === 'light' ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.05)',
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
+              {t('profile.mcqsCompleted', 'MCQs Completed')}
+            </Text>
+            <Text style={[styles.metricValue, { color: colors.text.primary }]}>
+              {stats.mcqsCompleted ?? 0}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.metricCard,
+              {
+                backgroundColor: colors.mode === 'light' ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.05)',
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
+              {t('profile.periodPerformance', 'Period Performance')}
+            </Text>
+            <Text
+              style={[
+                styles.metricValue,
+                {
+                  color: stats.periodPerformance !== null && stats.periodPerformance !== undefined
+                    ? colors.primary.DEFAULT
+                    : colors.text.secondary,
+                },
+              ]}
+            >
+              {stats.periodPerformance !== null && stats.periodPerformance !== undefined ? `${stats.periodPerformance}%` : t('ratings.na', 'N/A')}
+            </Text>
+          </View>
+        </View>
+      )}
+
+
 
       {/* Chart Section */}
       <View style={{ width: containerWidth, height, position: 'relative' }}>
@@ -475,4 +547,36 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontFamily: typography.fonts.medium,
   },
+  metricsRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginVertical: 10,
+  },
+  metricCard: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontFamily: typography.fonts.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  metricValue: {
+    fontSize: 15,
+    fontFamily: typography.fonts.bold,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 });
+

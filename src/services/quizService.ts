@@ -37,6 +37,10 @@ export interface PerformanceStats {
     highestScore: number;
     lowestScore: number;
     totalAttempts: number;
+    activePeriodsCount?: number;
+    activePeriodsLabel?: string;
+    mcqsCompleted?: number;
+    periodPerformance?: number | null;
 }
 
 export interface PerformanceTrendResult {
@@ -903,10 +907,43 @@ export const QuizService = {
             const lowestScore = nonZeroScores.length > 0 ? Math.min(...nonZeroScores) : 0;
             const totalAttempts = allBatches.length;
 
+            // Calculate Period Activity & Performance (Dashboard B)
+            const periodQuestions = allQuestions.filter((q: any) =>
+                isWithinInterval(new Date(q.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
+            );
+            const mcqsCompleted = periodQuestions.length;
+            const totalMarksEarned = periodQuestions.reduce(
+                (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
+                0
+            );
+            const periodPerformance = mcqsCompleted > 0 ? Math.round((totalMarksEarned / mcqsCompleted) * 100) : null;
+
+            let activePeriodsCount = 0;
+            let activePeriodsLabel = 'Active Days';
+            if (range === 'ALL') {
+                const activeMonthsSet = new Set(periodQuestions.map((q: any) => format(new Date(q.completed_at), 'yyyy-MM')));
+                activePeriodsCount = activeMonthsSet.size;
+                activePeriodsLabel = 'Active Months';
+            } else {
+                const activeDaysSet = new Set(periodQuestions.map((q: any) => format(new Date(q.completed_at), 'yyyy-MM-dd')));
+                activePeriodsCount = activeDaysSet.size;
+                activePeriodsLabel = 'Active Days';
+            }
+
             return {
                 points,
-                stats: { averageScore, highestScore, lowestScore, totalAttempts },
+                stats: {
+                    averageScore,
+                    highestScore,
+                    lowestScore,
+                    totalAttempts,
+                    activePeriodsCount,
+                    activePeriodsLabel,
+                    mcqsCompleted,
+                    periodPerformance,
+                },
             };
+
         } catch (error) {
             console.error('Error getting performance trends:', error);
             return {

@@ -10,6 +10,7 @@ import { LogOut, User, Flame, Globe, Moon, Sun, Settings, Car, ChevronDown, Chev
 import { AuthService } from '../services/authService';
 import { QuizService } from '../services/quizService';
 import { BatchService } from '../services/batchService';
+import { ScoringService } from '../services/scoringService';
 import { PracticeService } from '../services/practiceService';
 import { MilestoneService } from '../services/milestoneService';
 import { CacheService, formatTimeAgo, isDataEqual } from '../services/cacheService';
@@ -52,9 +53,9 @@ interface ProfileData {
   address?: string;
   contactNumber?: string;
   managerLevel?: 1 | 2;
-  operationalEffectiveness?: number;
-  operationalDiscipline?: number;
-  professionalConduct?: number;
+  operationalEffectiveness?: number | null;
+  operationalDiscipline?: number | null;
+  professionalConduct?: number | null;
   department?: string;
   division?: string;
   area?: string;
@@ -63,6 +64,7 @@ interface ProfileData {
   total_batches_completed?: number;
   subscription_tier?: 'trial' | 'standard' | 'enterprise';
 }
+
 
 export const ProfileScreen = ({ navigation }: any) => {
   const { t, i18n } = useTranslation();
@@ -198,9 +200,9 @@ export const ProfileScreen = ({ navigation }: any) => {
           streak: userProfile.streak || 0,
           email: userEmail,
           managerLevel: userProfile.manager_level,
-          operationalEffectiveness: userProfile.component_scores?.operation || 0,
-          operationalDiscipline: userProfile.component_scores?.discipline || 0,
-          professionalConduct: userProfile.component_scores?.professionalism || 0,
+          operationalEffectiveness: userProfile.component_scores?.operation ?? null,
+          operationalDiscipline: userProfile.component_scores?.discipline ?? null,
+          professionalConduct: userProfile.component_scores?.professionalism ?? null,
           totalScore: userProfile.total_score || 0,
           current_batch: userProfile.current_batch || 1,
           total_batches_completed: userProfile.total_batches_completed || 0,
@@ -227,15 +229,16 @@ export const ProfileScreen = ({ navigation }: any) => {
             updatedProfile = {
               ...updatedProfile,
               ...refreshedProfile,
-              operationalEffectiveness: refreshedProfile.component_scores?.operation || 0,
-              operationalDiscipline: refreshedProfile.component_scores?.discipline || 0,
-              professionalConduct: refreshedProfile.component_scores?.professionalism || 0,
+              operationalEffectiveness: refreshedProfile.component_scores?.operation ?? null,
+              operationalDiscipline: refreshedProfile.component_scores?.discipline ?? null,
+              professionalConduct: refreshedProfile.component_scores?.professionalism ?? null,
               safety_index: refreshedProfile.safety_index || 0,
               streak: refreshedProfile.streak || 0,
               totalScore: refreshedProfile.total_score || 0,
               total_batches_completed: refreshedProfile.total_batches_completed || 0,
             };
           }
+
 
           const batchNumbers = await BatchService.getAvailableBatchNumbers();
           const [trends, xp, answeredQs, batchTotals, csi, milestones] = await Promise.all([
@@ -841,106 +844,143 @@ export const ProfileScreen = ({ navigation }: any) => {
              </GlassCard>
 
              {/* Driver Performance Dashboard */}
-             <GlassCard style={styles.dashboardCard}>
-                  {/* Dashboard Header */}
-                  <View style={styles.dashboardHeader}>
-                    <View style={styles.dashboardIconCircle}>
-                      <Text style={{ fontSize: 18 }}>📊</Text>
-                    </View>
-                    <Text style={styles.dashboardTitle}>{t('profile.performanceDashboard')}</Text>
-                  </View>
+              {(() => {
+                const pcScore = profile?.professionalConduct;
+                const odScore = profile?.operationalDiscipline;
+                const oeScore = profile?.operationalEffectiveness;
 
-                  {/* Score Bars */}
-                  <View style={styles.scoreSection}>
-                    {/* Professionalism */}
-                    <View style={styles.scoreRow}>
-                      <View style={styles.scoreLabelRow}>
-                        <View style={[styles.scoreDot, { backgroundColor: colors.primary.DEFAULT }]} />
-                        <Text style={styles.scoreLabelText}>{t('profile.profConduct')}</Text>
-                        <Text style={[styles.scoreValueText, { color: colors.primary.DEFAULT }]}>{profile?.professionalConduct || 0}%</Text>
+                const pcRating = ScoringService.getPerformanceRating(pcScore);
+                const odRating = ScoringService.getPerformanceRating(odScore);
+                const oeRating = ScoringService.getPerformanceRating(oeScore);
+
+                const pcRatingText = t(pcRating.ratingKey, { defaultValue: pcRating.rating });
+                const odRatingText = t(odRating.ratingKey, { defaultValue: odRating.rating });
+                const oeRatingText = t(oeRating.ratingKey, { defaultValue: oeRating.rating });
+
+                return (
+                  <GlassCard style={styles.dashboardCard}>
+                    {/* Dashboard Header */}
+                    <View style={styles.dashboardHeader}>
+                      <View style={styles.dashboardIconCircle}>
+                        <Text style={{ fontSize: 18 }}>📊</Text>
                       </View>
-                      <View style={styles.scoreBarTrack}>
-                        <LinearGradient
-                          colors={colors.gradients.primary as any}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[
-                            styles.scoreBarFill,
-                            { width: `${profile?.professionalConduct || 0}%` }
-                          ]}
-                        />
-                      </View>
+                      <Text style={styles.dashboardTitle}>{t('profile.driverPerformanceIndex', 'Driver Performance Index')}</Text>
                     </View>
 
-                    {/* Discipline */}
-                    <View style={styles.scoreRow}>
-                      <View style={styles.scoreLabelRow}>
-                        <View style={[styles.scoreDot, { backgroundColor: colors.mode === 'light' ? '#E64A19' : '#FF7043' }]} />
-                        <Text style={styles.scoreLabelText}>{t('profile.opDiscipline')}</Text>
-                        <Text style={[styles.scoreValueText, { color: colors.mode === 'light' ? '#E64A19' : '#FF7043' }]}>{profile?.operationalDiscipline || 0}%</Text>
+                    {/* Score Bars */}
+                    <View style={styles.scoreSection}>
+                      {/* Professional Conduct (PC) */}
+                      <View style={styles.scoreRow}>
+                        <View style={styles.scoreLabelRow}>
+                          <View style={[styles.scoreDot, { backgroundColor: colors.primary.DEFAULT }]} />
+                          <Text style={styles.scoreLabelText}>{t('profile.profConductWithCode', 'Professional Conduct (PC)')}</Text>
+                          <View style={[styles.dimensionRatingBadge, { backgroundColor: `${pcRating.color}18`, borderColor: pcRating.color }]}>
+                            <Text style={[styles.dimensionRatingText, { color: pcRating.color }]}>
+                              {pcRatingText}
+                            </Text>
+                          </View>
+                          <Text style={[styles.scoreValueText, { color: colors.primary.DEFAULT }]}>
+                            {pcScore !== null && pcScore !== undefined ? `${Math.round(pcScore)}%` : t('ratings.na', 'N/A')}
+                          </Text>
+                        </View>
+                        <View style={styles.scoreBarTrack}>
+                          <LinearGradient
+                            colors={colors.gradients.primary as any}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[
+                              styles.scoreBarFill,
+                              { width: pcScore !== null && pcScore !== undefined ? `${Math.min(Math.round(pcScore), 100)}%` : '0%' }
+                            ]}
+                          />
+                        </View>
                       </View>
-                      <View style={styles.scoreBarTrack}>
-                        <LinearGradient
-                          colors={colors.mode === 'light' ? ['#FF8A65', '#E64A19'] : ['#FF8A65', '#FF7043'] as any}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[
-                            styles.scoreBarFill,
-                            { width: `${profile?.operationalDiscipline || 0}%` }
-                          ]}
-                        />
+
+                      {/* Operational Discipline (OD) */}
+                      <View style={styles.scoreRow}>
+                        <View style={styles.scoreLabelRow}>
+                          <View style={[styles.scoreDot, { backgroundColor: colors.mode === 'light' ? '#E64A19' : '#FF7043' }]} />
+                          <Text style={styles.scoreLabelText}>{t('profile.opDisciplineWithCode', 'Operational Discipline (OD)')}</Text>
+                          <View style={[styles.dimensionRatingBadge, { backgroundColor: `${odRating.color}18`, borderColor: odRating.color }]}>
+                            <Text style={[styles.dimensionRatingText, { color: odRating.color }]}>
+                              {odRatingText}
+                            </Text>
+                          </View>
+                          <Text style={[styles.scoreValueText, { color: colors.mode === 'light' ? '#E64A19' : '#FF7043' }]}>
+                            {odScore !== null && odScore !== undefined ? `${Math.round(odScore)}%` : t('ratings.na', 'N/A')}
+                          </Text>
+                        </View>
+                        <View style={styles.scoreBarTrack}>
+                          <LinearGradient
+                            colors={colors.mode === 'light' ? ['#FF8A65', '#E64A19'] : ['#FF8A65', '#FF7043'] as any}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[
+                              styles.scoreBarFill,
+                              { width: odScore !== null && odScore !== undefined ? `${Math.min(Math.round(odScore), 100)}%` : '0%' }
+                            ]}
+                          />
+                        </View>
+                      </View>
+
+                      {/* Operational Effectiveness (OE) */}
+                      <View style={styles.scoreRow}>
+                        <View style={styles.scoreLabelRow}>
+                          <View style={[styles.scoreDot, { backgroundColor: colors.mode === 'light' ? '#2E7D32' : '#81C784' }]} />
+                          <Text style={styles.scoreLabelText}>{t('profile.opEffectivenessWithCode', 'Operational Effectiveness (OE)')}</Text>
+                          <View style={[styles.dimensionRatingBadge, { backgroundColor: `${oeRating.color}18`, borderColor: oeRating.color }]}>
+                            <Text style={[styles.dimensionRatingText, { color: oeRating.color }]}>
+                              {oeRatingText}
+                            </Text>
+                          </View>
+                          <Text style={[styles.scoreValueText, { color: colors.mode === 'light' ? '#2E7D32' : '#81C784' }]}>
+                            {oeScore !== null && oeScore !== undefined ? `${Math.round(oeScore)}%` : t('ratings.na', 'N/A')}
+                          </Text>
+                        </View>
+                        <View style={styles.scoreBarTrack}>
+                          <LinearGradient
+                            colors={colors.mode === 'light' ? ['#66BB6A', '#2E7D32'] : ['#81C784', '#4CAF50'] as any}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[
+                              styles.scoreBarFill,
+                              { width: oeScore !== null && oeScore !== undefined ? `${Math.min(Math.round(oeScore), 100)}%` : '0%' }
+                            ]}
+                          />
+                        </View>
                       </View>
                     </View>
 
-                    {/* Operation */}
-                    <View style={styles.scoreRow}>
-                      <View style={styles.scoreLabelRow}>
-                        <View style={[styles.scoreDot, { backgroundColor: colors.mode === 'light' ? '#2E7D32' : '#81C784' }]} />
-                        <Text style={styles.scoreLabelText}>{t('profile.opEffectiveness')}</Text>
-                        <Text style={[styles.scoreValueText, { color: colors.mode === 'light' ? '#2E7D32' : '#81C784' }]}>{profile?.operationalEffectiveness || 0}%</Text>
-                      </View>
-                      <View style={styles.scoreBarTrack}>
-                        <LinearGradient
-                          colors={colors.mode === 'light' ? ['#66BB6A', '#2E7D32'] : ['#81C784', '#4CAF50'] as any}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[
-                            styles.scoreBarFill,
-                            { width: `${profile?.operationalEffectiveness || 0}%` }
-                          ]}
-                        />
-                      </View>
-                    </View>
-                  </View>
 
-                  {/* MCQ Progress Summary */}
-                  <View style={styles.mcqProgressSection}>
-                    <Text style={styles.mcqProgressLabel}>
-                      {t('profile.totalMcqsCompleted', 'TOTAL MCQs COMPLETED')}
-                    </Text>
-                    <View style={styles.mcqProgressRow}>
-                      <Text style={styles.mcqProgressValue}>
-                        {totalQuestionsAnswered}
+                    {/* MCQ Progress Summary */}
+                    <View style={styles.mcqProgressSection}>
+                      <Text style={styles.mcqProgressLabel}>
+                        {t('profile.totalMcqsCompleted', 'TOTAL MCQs COMPLETED')}
                       </Text>
-                      <Text style={styles.mcqProgressTotal}>
-                        / {totalMCQsCount}
-                      </Text>
+                      <View style={styles.mcqProgressRow}>
+                        <Text style={styles.mcqProgressValue}>
+                          {totalQuestionsAnswered}
+                        </Text>
+                        <Text style={styles.mcqProgressTotal}>
+                          / {totalMCQsCount}
+                        </Text>
+                      </View>
+                      {/* Mini progress bar */}
+                      <View style={styles.mcqMiniTrack}>
+                        <LinearGradient
+                          colors={[colors.primary.DEFAULT, colors.gradients.gold[1] as string] as any}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={[
+                            styles.mcqMiniFill,
+                            { width: `${Math.min((totalQuestionsAnswered / (totalMCQsCount || 240)) * 100, 100)}%` }
+                          ]}
+                        />
+                      </View>
                     </View>
-                    {/* Mini progress bar */}
-                    <View style={styles.mcqMiniTrack}>
-                      <LinearGradient
-                        colors={[colors.primary.DEFAULT, colors.gradients.gold[1] as string] as any}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[
-                          styles.mcqMiniFill,
-                          { width: `${Math.min((totalQuestionsAnswered / (totalMCQsCount || 240)) * 100, 100)}%` }
-                        ]}
-                      />
-                    </View>
-                  </View>
-
-             </GlassCard>
+                  </GlassCard>
+                );
+              })()}
 
              {/* Performance Chart */}
              <GlassCard style={{ marginBottom: 16 }}>
@@ -1628,4 +1668,15 @@ const createStyles = (colors: any) => StyleSheet.create({
     height: '100%',
     borderRadius: 3,
   },
+  dimensionRatingBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 5,
+    borderWidth: 1,
+  },
+  dimensionRatingText: {
+    fontSize: 10,
+    fontFamily: typography.fonts.bold,
+  },
 });
+
