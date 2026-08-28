@@ -987,9 +987,9 @@ export const ProfileScreen = ({ navigation }: any) => {
                 <PerformanceChart 
                     userId={profile?.id}
                     data={
-                        quizHistory.some(d => d.value > 0)
+                        quizHistory && quizHistory.length > 0
                         ? quizHistory
-                        : [{ value: 0, label: '-' }]
+                        : undefined
                     } 
                     allowedRanges={['1W']}
                 />

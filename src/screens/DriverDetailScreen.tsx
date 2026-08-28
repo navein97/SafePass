@@ -592,9 +592,9 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                         <PerformanceChart
                             userId={userId}
                             data={
-                                dailyTrends.some(d => d.value > 0)
+                                dailyTrends && dailyTrends.length > 0
                                     ? dailyTrends
-                                    : [{ value: 0, label: '-' }]
+                                    : undefined
                             }
                             allowedRanges={['1W', '1M', 'ALL']}
                         />

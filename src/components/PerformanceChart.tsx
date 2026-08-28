@@ -64,29 +64,67 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   // In-memory cache for fast tab switching
   const cacheRef = React.useRef<Record<string, { points: PerformanceTrendPoint[]; stats: PerformanceStats }>>({});
 
+  // 0 = Monday, 1 = Tuesday, ..., 6 = Sunday in ISO week
+  const currentIsoDayIndex = useMemo(() => {
+    const day = new Date().getDay(); // 0 is Sunday, 1 is Monday, ...
+    return (day + 6) % 7;
+  }, []);
+
+  // Determine if a point is in the future
+  const isPointInFuture = useCallback(
+    (point: PerformanceTrendPoint, index: number): boolean => {
+      if (point.isFuture !== undefined) {
+        return point.isFuture;
+      }
+      if (selectedRange === '1W' && (chartPoints.length === 7 || (!chartPoints.length))) {
+        return index > currentIsoDayIndex;
+      }
+      return false;
+    },
+    [selectedRange, chartPoints.length, currentIsoDayIndex]
+  );
+
+  // Determine if a point is "Today"
+  const isPointToday = useCallback(
+    (point: PerformanceTrendPoint, index: number): boolean => {
+      if (point.isToday !== undefined) {
+        return point.isToday;
+      }
+      if (selectedRange === '1W' && (chartPoints.length === 7 || (!chartPoints.length))) {
+        return index === currentIsoDayIndex;
+      }
+      return false;
+    },
+    [selectedRange, chartPoints.length, currentIsoDayIndex]
+  );
+
+  const calculateStatsFromPoints = useCallback(
+    (points: PerformanceTrendPoint[]) => {
+      const validPoints = points.filter((p, i) => !isPointInFuture(p, i));
+      const nonZero = validPoints.map(p => p.value).filter(v => v > 0);
+      const avg = nonZero.length > 0 ? Math.round(nonZero.reduce((s, v) => s + v, 0) / nonZero.length) : 0;
+      const high = nonZero.length > 0 ? Math.max(...nonZero) : 0;
+      const low = nonZero.length > 0 ? Math.min(...nonZero) : 0;
+      const attempts = validPoints.reduce((s, p) => s + (p.attemptsCount || 0), 0);
+
+      setStats(prev => ({
+        ...prev,
+        averageScore: avg,
+        highestScore: high,
+        lowestScore: low,
+        totalAttempts: attempts,
+      }));
+    },
+    [isPointInFuture]
+  );
+
   // Sync initialData if provided and on 1W
   useEffect(() => {
     if (initialData && initialData.length > 0 && selectedRange === '1W') {
       setChartPoints(initialData);
       calculateStatsFromPoints(initialData);
     }
-  }, [initialData]);
-
-  const calculateStatsFromPoints = (points: PerformanceTrendPoint[]) => {
-    const nonZero = points.map(p => p.value).filter(v => v > 0);
-    const avg = nonZero.length > 0 ? Math.round(nonZero.reduce((s, v) => s + v, 0) / nonZero.length) : 0;
-    const high = nonZero.length > 0 ? Math.max(...nonZero) : 0;
-    const low = nonZero.length > 0 ? Math.min(...nonZero) : 0;
-    const attempts = points.reduce((s, p) => s + (p.attemptsCount || 0), 0);
-
-    setStats(prev => ({
-      ...prev,
-      averageScore: avg,
-      highestScore: high,
-      lowestScore: low,
-      totalAttempts: attempts,
-    }));
-  };
+  }, [initialData, selectedRange, calculateStatsFromPoints]);
 
   const fetchRangeData = useCallback(
     async (range: PerformanceTimeRange) => {
@@ -118,7 +156,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         setLoading(false);
       }
     },
-    [userId, initialData]
+    [userId, initialData, calculateStatsFromPoints]
   );
 
   const handleRangeSelect = (range: PerformanceTimeRange) => {
@@ -141,15 +179,24 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   const containerWidth = width || measuredWidth || (Dimensions.get('window').width - 80);
 
   // Normalize points for rendering
-  const displayData = useMemo(() => {
+  const displayData = useMemo<PerformanceTrendPoint[]>(() => {
     if (!chartPoints || chartPoints.length === 0) {
+      if (selectedRange === '1W') {
+        const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        return dayLabels.map((label, i) => ({
+          value: 0,
+          label,
+          isFuture: i > currentIsoDayIndex,
+          isToday: i === currentIsoDayIndex,
+        }));
+      }
       return [{ value: 0, label: '-' }];
     }
-    if (chartPoints.length === 1) {
+    if (chartPoints.length === 1 && selectedRange !== '1W') {
       return [{ value: 0, label: '0%' }, ...chartPoints];
     }
     return chartPoints;
-  }, [chartPoints]);
+  }, [chartPoints, selectedRange, currentIsoDayIndex]);
 
   const hPadding = 16;
   const vPadding = 24;
@@ -157,21 +204,62 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   const innerWidth = Math.max(10, containerWidth - hPadding * 2);
   const maxValue = 100;
 
-  const getX = (index: number) => {
-    return hPadding + index * (innerWidth / Math.max(1, displayData.length - 1));
-  };
-  const getY = (value: number) => height - vPadding - ((value / maxValue) * chartHeight);
+  const getX = useCallback(
+    (index: number) => {
+      return hPadding + index * (innerWidth / Math.max(1, displayData.length - 1));
+    },
+    [hPadding, innerWidth, displayData.length]
+  );
 
-  // Generate Path
-  let d = `M ${getX(0)} ${getY(displayData[0].value)}`;
-  if (displayData.length > 1) {
-    displayData.slice(1).forEach((point, i) => {
-      d += ` L ${getX(i + 1)} ${getY(point.value)}`;
+  const getY = useCallback(
+    (value: number) => {
+      return height - vPadding - ((value / maxValue) * chartHeight);
+    },
+    [height, vPadding, maxValue, chartHeight]
+  );
+
+  // Active indices (strictly past and today - no future points)
+  const activeIndices = useMemo(() => {
+    const indices: number[] = [];
+    displayData.forEach((point, index) => {
+      if (!isPointInFuture(point, index)) {
+        indices.push(index);
+      }
     });
-  }
+    return indices;
+  }, [displayData, isPointInFuture]);
 
-  // Generate Area Path for gradient fill
-  const dArea = `${d} L ${getX(displayData.length - 1)} ${height - vPadding} L ${getX(0)} ${height - vPadding} Z`;
+  const todayIndex = useMemo(() => {
+    return displayData.findIndex((p, i) => isPointToday(p, i));
+  }, [displayData, isPointToday]);
+
+  // Generate Path and Area Fill strictly for active (non-future) points
+  const { d, dArea } = useMemo(() => {
+    if (activeIndices.length === 0) {
+      return { d: '', dArea: '' };
+    }
+
+    const firstIdx = activeIndices[0];
+    const lastIdx = activeIndices[activeIndices.length - 1];
+
+    if (activeIndices.length === 1) {
+      return {
+        d: `M ${getX(firstIdx)} ${getY(displayData[firstIdx].value)}`,
+        dArea: '',
+      };
+    }
+
+    let linePath = `M ${getX(firstIdx)} ${getY(displayData[firstIdx].value)}`;
+    for (let i = 1; i < activeIndices.length; i++) {
+      const idx = activeIndices[i];
+      linePath += ` L ${getX(idx)} ${getY(displayData[idx].value)}`;
+    }
+
+    const bottomY = height - vPadding;
+    const areaPath = `${linePath} L ${getX(lastIdx)} ${bottomY} L ${getX(firstIdx)} ${bottomY} Z`;
+
+    return { d: linePath, dArea: areaPath };
+  }, [activeIndices, displayData, height, vPadding, getX, getY]);
 
   const getRangeLabel = (range: PerformanceTimeRange) => {
     switch (range) {
@@ -186,7 +274,12 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     }
   };
 
-  const activePoint = selectedIndex !== null && displayData[selectedIndex] ? displayData[selectedIndex] : null;
+  const activePoint =
+    selectedIndex !== null &&
+    displayData[selectedIndex] &&
+    !isPointInFuture(displayData[selectedIndex], selectedIndex)
+      ? displayData[selectedIndex]
+      : null;
 
   return (
     <View
@@ -324,8 +417,6 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         </View>
       )}
 
-
-
       {/* Chart Section */}
       <View style={{ width: containerWidth, height, position: 'relative' }}>
         {loading && (
@@ -356,63 +447,101 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             />
           ))}
 
-          {/* Area Fill */}
-          <Path d={dArea} fill="url(#performanceGradient)" />
+          {/* Area Fill - strictly under active points */}
+          {dArea ? <Path d={dArea} fill="url(#performanceGradient)" /> : null}
 
-          {/* Trend Line */}
-          <Path
-            d={d}
-            stroke={colors.primary.DEFAULT}
-            strokeWidth="3"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          {/* Trend Line - stops flat at today */}
+          {d ? (
+            <Path
+              d={d}
+              stroke={colors.primary.DEFAULT}
+              strokeWidth="3"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ) : null}
 
-          {/* Selected Point Vertical Guideline */}
-          {selectedIndex !== null && (
+          {/* Today Vertical Guideline Marker */}
+          {todayIndex !== -1 && (
             <Line
-              x1={getX(selectedIndex)}
+              x1={getX(todayIndex)}
               y1={vPadding - 6}
-              x2={getX(selectedIndex)}
+              x2={getX(todayIndex)}
               y2={height - vPadding}
               stroke={colors.primary.DEFAULT}
-              strokeWidth="1.5"
-              strokeDasharray="3 3"
+              strokeWidth="1.2"
+              strokeDasharray="2 3"
+              opacity={selectedIndex === todayIndex ? 0.8 : 0.35}
             />
           )}
 
+          {/* Selected Point Vertical Guideline */}
+          {selectedIndex !== null &&
+            selectedIndex !== todayIndex &&
+            !isPointInFuture(displayData[selectedIndex], selectedIndex) && (
+              <Line
+                x1={getX(selectedIndex)}
+                y1={vPadding - 6}
+                x2={getX(selectedIndex)}
+                y2={height - vPadding}
+                stroke={colors.primary.DEFAULT}
+                strokeWidth="1.5"
+                strokeDasharray="3 3"
+              />
+            )}
+
           {/* Data Points and X-Axis Labels */}
           {displayData.map((point, index) => {
+            const isFuture = isPointInFuture(point, index);
+            const isToday = isPointToday(point, index);
             const isPointSelected = selectedIndex === index;
             const xPos = getX(index);
             const yPos = getY(point.value);
 
             return (
               <React.Fragment key={index}>
-                {/* Touch hotspot rect for SVG tapping */}
-                <Rect
-                  x={xPos - 16}
-                  y={0}
-                  width={32}
-                  height={height}
-                  fill="transparent"
-                  onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
-                />
+                {/* Touch hotspot rect for active (non-future) points */}
+                {!isFuture && (
+                  <Rect
+                    x={xPos - 16}
+                    y={0}
+                    width={32}
+                    height={height}
+                    fill="transparent"
+                    onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
+                  />
+                )}
 
-                {/* Point Circle */}
-                <Circle
-                  cx={xPos}
-                  cy={yPos}
-                  r={isPointSelected ? '6' : '3.5'}
-                  fill={isPointSelected ? colors.primary.DEFAULT : '#FFFFFF'}
-                  stroke={colors.primary.DEFAULT}
-                  strokeWidth={isPointSelected ? '3' : '2'}
-                  onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
-                />
+                {/* Point Circle (Rendered strictly for past and today's points) */}
+                {!isFuture && (
+                  <>
+                    {/* Today marker outer ring when not selected */}
+                    {isToday && !isPointSelected && (
+                      <Circle
+                        cx={xPos}
+                        cy={yPos}
+                        r="6"
+                        fill="transparent"
+                        stroke={colors.primary.DEFAULT}
+                        strokeWidth="1"
+                        opacity={0.5}
+                      />
+                    )}
+                    <Circle
+                      cx={xPos}
+                      cy={yPos}
+                      r={isPointSelected ? '6' : (isToday ? '4.5' : '3.5')}
+                      fill={isPointSelected ? colors.primary.DEFAULT : '#FFFFFF'}
+                      stroke={colors.primary.DEFAULT}
+                      strokeWidth={isPointSelected ? '3' : '2'}
+                      onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
+                    />
+                  </>
+                )}
 
-                {/* Score label above point (always show when selected, or for non-zero points when small data length) */}
-                {(point.value > 0 && (displayData.length <= 7 || isPointSelected)) && (
+                {/* Score label above point (non-future only) */}
+                {!isFuture && (point.value > 0 && (displayData.length <= 7 || isPointSelected)) && (
                   <SvgText
                     x={xPos}
                     y={yPos - 9}
@@ -426,15 +555,24 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                   </SvgText>
                 )}
 
-                {/* X-Axis Labels */}
+                {/* X-Axis Labels (all days visible, future days dimmed/greyed out) */}
                 <SvgText
                   x={xPos}
                   y={height - 4}
                   fontSize="10"
-                  fontFamily={typography.fonts.medium}
-                  fill={isPointSelected ? colors.primary.DEFAULT : colors.text.secondary}
+                  fontFamily={
+                    isToday || isPointSelected
+                      ? typography.fonts.bold
+                      : (isFuture ? typography.fonts.regular : typography.fonts.medium)
+                  }
+                  fill={
+                    isFuture
+                      ? (colors.mode === 'light' ? '#9CA3AF' : '#6B7280')
+                      : (isPointSelected || isToday ? colors.primary.DEFAULT : colors.text.secondary)
+                  }
+                  opacity={isFuture ? 0.35 : 1}
                   textAnchor="middle"
-                  fontWeight={isPointSelected ? 'bold' : 'normal'}
+                  fontWeight={isPointSelected || isToday ? 'bold' : (isFuture ? 'normal' : '500')}
                 >
                   {point.label}
                 </SvgText>

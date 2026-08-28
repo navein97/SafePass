@@ -30,6 +30,8 @@ export interface PerformanceTrendPoint {
     label: string;
     fullDate?: string;
     attemptsCount?: number;
+    isFuture?: boolean;
+    isToday?: boolean;
 }
 
 export interface PerformanceStats {
@@ -794,14 +796,18 @@ export const QuizService = {
                 points = dayLabels.map((label, i) => {
                     const dayDate = addDays(startDate, i);
                     const dayCutoff = endOfDay(dayDate);
+                    const isFuture = isBefore(today, startOfDay(dayDate));
+                    const isToday = isSameDay(today, startOfDay(dayDate));
 
                     // Don't show scores for future days
-                    if (isBefore(today, startOfDay(dayDate))) {
+                    if (isFuture) {
                         return {
                             value: 0,
                             label,
                             fullDate: format(dayDate, 'd MMM yyyy'),
                             attemptsCount: 0,
+                            isFuture: true,
+                            isToday: false,
                         };
                     }
 
@@ -815,6 +821,8 @@ export const QuizService = {
                         label,
                         fullDate: format(dayDate, 'd MMM yyyy'),
                         attemptsCount: dayBatches.length + (dayQuestions.length > 0 ? 1 : 0),
+                        isFuture: false,
+                        isToday,
                     };
                 });
             } else if (range === '1M') {
@@ -822,14 +830,18 @@ export const QuizService = {
                 points = [0, 1, 2, 3].map((i) => {
                     const wStart = addDays(startDate, i * 7);
                     const wEnd = addDays(wStart, 6);
+                    const isFuture = isBefore(today, startOfDay(wStart));
+                    const isToday = isWithinInterval(today, { start: startOfDay(wStart), end: endOfDay(wEnd) });
 
                     // Don't show scores for future weeks
-                    if (isBefore(today, startOfDay(wStart))) {
+                    if (isFuture) {
                         return {
                             value: 0,
                             label: `W${i + 1}`,
                             fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
                             attemptsCount: 0,
+                            isFuture: true,
+                            isToday: false,
                         };
                     }
 
@@ -849,6 +861,8 @@ export const QuizService = {
                         label: `W${i + 1}`,
                         fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
                         attemptsCount: wBatches.length + (wQuestions.length > 0 ? 1 : 0),
+                        isFuture: false,
+                        isToday,
                     };
                 });
             } else {
@@ -896,12 +910,14 @@ export const QuizService = {
                         label: format(mStart, 'MMM'),
                         fullDate: format(mStart, 'MMMM yyyy'),
                         attemptsCount: mBatches.length + (mQuestions.length > 0 ? 1 : 0),
+                        isFuture: false,
+                        isToday: isWithinInterval(now, { start: startOfDay(mStart), end: endOfDay(mEnd) }),
                     };
                 });
             }
 
             // Summary stats — use the current batch score as the reference
-            const nonZeroScores = points.map(p => p.value).filter(v => v > 0);
+            const nonZeroScores = points.filter(p => !p.isFuture).map(p => p.value).filter(v => v > 0);
             const averageScore = computeActiveBatchScore(endOfDay(now));
             const highestScore = nonZeroScores.length > 0 ? Math.max(...nonZeroScores) : 0;
             const lowestScore = nonZeroScores.length > 0 ? Math.min(...nonZeroScores) : 0;
@@ -962,9 +978,9 @@ export const QuizService = {
      * Get daily progress scores for trend chart (Fixed Weekly View: Mon-Sun)
      * Backward compatibility method for existing callers.
      */
-    async getDailyTrends(userId: string): Promise<{ value: number, label: string }[]> {
+    async getDailyTrends(userId: string): Promise<PerformanceTrendPoint[]> {
         const result = await this.getPerformanceTrends(userId, '1W');
-        return result.points.map(p => ({ value: p.value, label: p.label }));
+        return result.points;
     },
 
     /**
