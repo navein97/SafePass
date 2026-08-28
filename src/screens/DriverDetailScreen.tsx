@@ -98,18 +98,23 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             const summaries = batchNumbers.map((batchNum, index) => {
                 const score = scoreResults[index];
                 const totalQ = totalQuestionsResults[index] || 30;
-                const isPassed = score >= 60 || batchNum < profile.current_batch;
                 const resets = (profile.consecutive_resets && profile.consecutive_resets[String(batchNum)]) || 0;
 
                 const attempts = attemptResults[index] || [];
                 const completedAttemptsCount = attempts.filter((a: any) => !String(a.id || '').startsWith('provisional_')).length;
+                const isPassed = batchNum < profile.current_batch || (completedAttemptsCount > 0 && score >= 60);
+
+                const actualAnswered = completedCounts[batchNum] || 0;
+                const completedCount = isPassed
+                    ? (actualAnswered > 0 ? actualAnswered : totalQ)
+                    : actualAnswered;
 
                 return {
                     batchNumber: batchNum,
                     averageScore: score,
                     attemptCount: completedAttemptsCount,
                     passed: isPassed,
-                    completedCount: isPassed ? totalQ : (completedCounts[batchNum] || 0),
+                    completedCount,
                     totalQuestions: totalQ,
                     resets
                 };

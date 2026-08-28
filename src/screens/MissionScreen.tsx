@@ -152,7 +152,7 @@ export function MissionScreen() {
             score = Math.max(0, Math.round((totalEarned / Math.max(1, totalQ)) * 100));
           }
 
-          const passed = score >= 60 || batchNum < currentBatch;
+          const passed = batchNum < currentBatch || (batchAttempts.length > 0 && score >= 60);
 
           // Access check
           let canAccess = false;
@@ -164,6 +164,10 @@ export function MissionScreen() {
             canAccess = prevBest >= 60;
           }
 
+          const batchCompletedCount = passed
+            ? (batchQProgress.length > 0 ? batchQProgress.length : totalQ)
+            : batchQProgress.length;
+
           return {
             batchNumber: batchNum,
             canAccess,
@@ -171,7 +175,7 @@ export function MissionScreen() {
             attemptCount: batchAttempts.length,
             passed,
             dailyCount: dailyCountToday,
-            completedCount: passed ? totalQ : batchQProgress.length,
+            completedCount: batchCompletedCount,
             totalQuestions: totalQ,
           };
         });
