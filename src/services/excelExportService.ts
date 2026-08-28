@@ -260,10 +260,10 @@ export const ExcelExportService = {
             // 1. Add Batch Data (2 cols per batch: Score, Status)
             batchNumbers.forEach((num: number) => {
                 const batch = user.batches?.find((b: any) => b.batchNumber === num);
-                if (batch && batch.attemptCount > 0) {
+                if (batch && (batch.attemptCount > 0 || batch.completion > 0)) {
                     const isCompleted = batch.completion >= 100 || batch.isCompleted;
                     const statusText = isCompleted ? 'Completed' : `In Progress (${Math.round(batch.completion)}%)`;
-                    row.push(`${batch.accuracy}%`, statusText);
+                    row.push(`${batch.averageScore ?? batch.accuracy ?? 0}%`, statusText);
                 } else {
                     row.push('-', 'Not Started');
                 }
@@ -274,7 +274,7 @@ export const ExcelExportService = {
             let latestBatch = completedBatches.length > 0 ? completedBatches[completedBatches.length - 1] : null;
 
             if (!latestBatch) {
-                const attempted = user.batches?.filter((b: any) => b.attemptCount > 0 && b.componentScores) || [];
+                const attempted = user.batches?.filter((b: any) => (b.attemptCount > 0 || b.completion > 0) && b.componentScores) || [];
                 if (attempted.length > 0) {
                     latestBatch = attempted[attempted.length - 1];
                 }

@@ -128,7 +128,7 @@ export function BatchLeaderboardScreen({ navigation }: any) {
             },
           };
         })
-        .filter(entry => entry.attemptCount > 0) // Only show users who have attempted
+        .filter(entry => entry.attemptCount > 0 || entry.completion > 0) // Show users who have started or attempted
         .sort((a, b) => {
           const aCompleted = a.completion >= 100;
           const bCompleted = b.completion >= 100;

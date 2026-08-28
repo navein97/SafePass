@@ -968,6 +968,7 @@ export const BatchService = {
 
                     attempts.sort((a, b) => a.attemptNumber - b.attemptNumber);
 
+                    const completedAttempts = attempts.filter(a => !String(a.id || '').startsWith('provisional_'));
                     const latestAttempt = attempts[attempts.length - 1];
                     const totalTime = attempts.reduce((sum, a) => sum + (a.timeSpentSeconds || 0), 0);
 
@@ -976,7 +977,7 @@ export const BatchService = {
                         averageScore: latestAttempt.score,
                         accuracy: latestAttempt.accuracyPercentage,
                         completion: latestAttempt.completionPercentage,
-                        attemptCount: attempts.length,
+                        attemptCount: completedAttempts.length,
                         totalTimeSeconds: totalTime,
                         componentScores: latestAttempt.componentScores,
                     };
@@ -984,8 +985,8 @@ export const BatchService = {
 
                 const totalTime = batches.reduce((sum, b) => sum + (b.totalTimeSeconds || 0), 0);
 
-                // Compute Overall Score percentage across batches with attempts
-                const attemptedBatches = batches.filter(b => b.attemptCount > 0);
+                // Compute Overall Score percentage across batches with attempts or active progress
+                const attemptedBatches = batches.filter(b => b.attemptCount > 0 || b.completion > 0);
                 const overallScore = attemptedBatches.length > 0
                     ? Math.round(attemptedBatches.reduce((s, b) => s + b.averageScore, 0) / attemptedBatches.length)
                     : 0;
