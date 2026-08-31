@@ -69,7 +69,19 @@ export function MissionScreen() {
     // 1. Instant Cache-First Read (Stale-While-Revalidate)
     const cached = await CacheService.get<BatchStatus[]>('mission_batch_statuses');
     if (cached && cached.data && cached.data.length > 0) {
-      setBatchStatuses(cached.data);
+      // If cache is from a previous day (midnight UTC+8), dailyCount is 0 for today
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const serverTime = new Date(utc + (3600000 * 8));
+      serverTime.setHours(0, 0, 0, 0);
+      const startOfTodayUtc8Ms = serverTime.getTime() - (3600000 * 8);
+
+      const isCacheFromPreviousDay = cached.lastUpdated < startOfTodayUtc8Ms;
+      const initialStatuses = isCacheFromPreviousDay
+        ? cached.data.map(b => ({ ...b, dailyCount: 0 }))
+        : cached.data;
+
+      setBatchStatuses(initialStatuses);
       setLastUpdatedTime(cached.lastUpdated);
       setLastUpdatedText(formatTimeAgo(cached.lastUpdated));
       setLoading(false); // Immediate 0-wait render
@@ -229,17 +241,6 @@ export function MissionScreen() {
       if (batch.passed) {
         const title = t('quiz.batchCompleted') || 'Goal Done';
         const message = t('quiz.goalDoneMessage') || `Batch Goal Completed! Try Practice Mode for more study.`;
-        if (Platform.OS === 'web') {
-          window.alert(`${title}\n\n${message}`);
-        } else {
-          Alert.alert(title, message);
-        }
-        return;
-      }
-
-      if (batch.dailyCount >= 5) {
-        const title = t('quiz.dailyLimitTitle') || 'Daily Limit Reached';
-        const message = t('quiz.dailyLimitMessage') || `You have reached your daily limit for this batch today. Come back tomorrow or try Practice Mode!`;
         if (Platform.OS === 'web') {
           window.alert(`${title}\n\n${message}`);
         } else {
