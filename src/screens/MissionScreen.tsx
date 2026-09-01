@@ -146,6 +146,9 @@ export function MissionScreen() {
           // Attempts for this batch
           const batchAttempts = (allBatchAttempts || []).filter(a => a.batch_number === batchNum);
           const batchQProgress = (allQProgress || []).filter(q => q.batch_number === batchNum);
+          const batchDailyCount = batchQProgress.filter(
+            q => new Date(q.completed_at) >= startOfTodayUtc8
+          ).length;
 
           // Matching questions count
           const batchQuestions = (allQuestionsData || []).filter(q => {
@@ -186,7 +189,7 @@ export function MissionScreen() {
             averageScore: score,
             attemptCount: batchAttempts.length,
             passed,
-            dailyCount: dailyCountToday,
+            dailyCount: batchDailyCount,
             completedCount: batchCompletedCount,
             totalQuestions: totalQ,
           };

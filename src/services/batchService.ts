@@ -1342,6 +1342,7 @@ export const BatchService = {
             .from('user_question_progress')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', userId)
+            .eq('batch_number', batchNumber)
             .gte('completed_at', startOfTodayUtc8.toISOString());
 
         if (countError) {
