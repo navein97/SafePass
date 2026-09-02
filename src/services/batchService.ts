@@ -245,6 +245,48 @@ export const BatchService = {
     },
 
     /**
+     * Get total number of questions configured in the entire question repository
+     * for a user's vehicle category (e.g. 263 for Curtain Side / Urban Delivery, 258 for Container Haulage, 256 for General Cargo).
+     */
+    async getTotalCategoryQuestions(userId: string): Promise<number> {
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('vehicle_type')
+                .eq('id', userId)
+                .single();
+
+            const vType = profile?.vehicle_type;
+
+            const { data: dbData, error } = await supabase
+                .from('questions')
+                .select('id, driver_categories');
+
+            if (error || !dbData || dbData.length === 0) {
+                if (vType === 'Container Haulage') return 258;
+                if (vType === 'General Cargo') return 256;
+                return 263;
+            }
+
+            if (vType) {
+                const matching = dbData.filter(q => {
+                    if (!q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) {
+                        return true;
+                    }
+                    return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
+                });
+                if (matching.length > 0) {
+                    return matching.length;
+                }
+            }
+
+            return dbData.length > 0 ? dbData.length : 263;
+        } catch {
+            return 263;
+        }
+    },
+
+    /**
      * Check if user can access a specific batch
      */
     async canAccessBatch(userId: string, batchNumber: number): Promise<boolean> {

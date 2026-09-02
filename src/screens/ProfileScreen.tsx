@@ -74,7 +74,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [quizHistory, setQuizHistory] = useState<any[]>([]);
   const [totalXP, setTotalXP] = useState(0);
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
-  const [totalMCQsCount, setTotalMCQsCount] = useState(240);
+  const [totalMCQsCount, setTotalMCQsCount] = useState(263);
   const [csiData, setCsiData] = useState<any>(null);
   const [milestoneSummary, setMilestoneSummary] = useState<any>(null);
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
@@ -218,7 +218,7 @@ export const ProfileScreen = ({ navigation }: any) => {
         let freshAnsweredQs = 0;
         let freshCsiData: any = null;
         let freshMilestones: any = null;
-        let freshTotalMCQs = 240;
+        let freshTotalMCQs = 263;
         let freshHasNoPlan = false;
 
         // Sync and fetch stats for driver
@@ -240,12 +240,11 @@ export const ProfileScreen = ({ navigation }: any) => {
           }
 
 
-          const batchNumbers = await BatchService.getAvailableBatchNumbers();
-          const [trends, xp, answeredQs, batchTotals, csi, milestones] = await Promise.all([
+          const [trends, xp, answeredQs, categoryTotalMCQs, csi, milestones] = await Promise.all([
             QuizService.getDailyTrends(userProfile.id),
             BatchService.getTotalXP(userProfile.id),
             BatchService.getTotalAnsweredQuestions(userProfile.id),
-            Promise.all(batchNumbers.map(b => BatchService.getBatchTotalQuestions(b, userProfile.id))),
+            BatchService.getTotalCategoryQuestions(userProfile.id),
             BatchService.getCumulativeSafetyIndex(userProfile.id),
             MilestoneService.getUserMilestones(userProfile.id),
           ]);
@@ -255,8 +254,7 @@ export const ProfileScreen = ({ navigation }: any) => {
           freshAnsweredQs = answeredQs;
           freshCsiData = csi;
           freshMilestones = milestones;
-          const totalAllBatches = batchTotals.reduce((sum, count) => sum + count, 0);
-          freshTotalMCQs = totalAllBatches > 0 ? totalAllBatches : 240;
+          freshTotalMCQs = categoryTotalMCQs > 0 ? categoryTotalMCQs : 263;
         }
 
         if (userProfile.role === 'manager' && userProfile.company_id) {
@@ -973,7 +971,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                           end={{ x: 1, y: 0 }}
                           style={[
                             styles.mcqMiniFill,
-                            { width: `${Math.min((totalQuestionsAnswered / (totalMCQsCount || 240)) * 100, 100)}%` }
+                            { width: `${Math.min((totalQuestionsAnswered / (totalMCQsCount || 263)) * 100, 100)}%` }
                           ]}
                         />
                       </View>

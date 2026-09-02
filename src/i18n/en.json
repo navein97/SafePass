@@ -790,7 +790,7 @@
         "trialBannerTitle": "You're on the Free Trial",
         "trialBannerText": "Batch 1 only (30 MCQ). Upgrade to unlock all 8 batches.",
         "perDriverYear": "driver / year",
-        "allBatches": "All 8 Batches Unlocked (240 MCQ)",
+        "allBatches": "All 8 Batches Unlocked",
         "freeManagerRatio": "1 free manager per {{ratio}} drivers",
         "annualBilling": "Annual Billing",
         "exampleCalc": "Example Calculation",

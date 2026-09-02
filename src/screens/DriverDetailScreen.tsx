@@ -26,7 +26,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
     const [csiData, setCsiData] = useState<any>(null);
     const [dailyTrends, setDailyTrends] = useState<{ value: number; label: string }[]>([]);
     const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState<number>(0);
-    const [totalMCQsCount, setTotalMCQsCount] = useState<number>(240);
+    const [totalMCQsCount, setTotalMCQsCount] = useState<number>(263);
     const [exporting, setExporting] = useState<boolean>(false);
     const [batchProgress, setBatchProgress] = useState<any[]>([]);
     const [selectedBatch, setSelectedBatch] = useState<number>(1);
@@ -65,19 +65,18 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
 
             // Fetch dynamic batch numbers, CSI, trends, and answered MCQs in parallel
             const batchNumbers = await BatchService.getAvailableBatchNumbers();
-            const [csi, trends, totalAnswered, batchTotals] = await Promise.all([
+            const [csi, trends, totalAnswered, batchTotals, totalCategoryMCQs] = await Promise.all([
                 BatchService.getCumulativeSafetyIndex(userId),
                 QuizService.getDailyTrends(userId),
                 BatchService.getTotalAnsweredQuestions(userId),
                 Promise.all(batchNumbers.map(b => BatchService.getBatchTotalQuestions(b, userId))),
+                BatchService.getTotalCategoryQuestions(userId),
             ]);
 
             setCsiData(csi);
             setDailyTrends(trends);
             setTotalQuestionsAnswered(totalAnswered);
-
-            const totalAllBatches = batchTotals.reduce((sum, count) => sum + count, 0);
-            setTotalMCQsCount(totalAllBatches > 0 ? totalAllBatches : 240);
+            setTotalMCQsCount(totalCategoryMCQs > 0 ? totalCategoryMCQs : 263);
 
             const scoreResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAverageScore(userId, i)));
             const attemptResults = await Promise.all(batchNumbers.map(i => BatchService.getBatchAttempts(userId, i)));
@@ -526,7 +525,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                                                 end={{ x: 1, y: 0 }}
                                                 style={[
                                                     styles.mcqMiniFill,
-                                                    { width: `${Math.min((totalQuestionsAnswered / (totalMCQsCount || 240)) * 100, 100)}%` }
+                                                    { width: `${Math.min((totalQuestionsAnswered / (totalMCQsCount || 263)) * 100, 100)}%` }
                                                 ]}
                                             />
                                         </View>
