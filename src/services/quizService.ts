@@ -32,6 +32,7 @@ export interface PerformanceTrendPoint {
     attemptsCount?: number;
     isFuture?: boolean;
     isToday?: boolean;
+    hasActivity?: boolean;
 }
 
 export interface PerformanceStats {
@@ -691,7 +692,7 @@ export const QuizService = {
             // needs the full batch history to produce accurate cumulative scores)
             const { data: qData } = await supabase
                 .from('user_question_progress')
-                .select('completed_at, score, batch_number')
+                .select('completed_at, score, is_correct, attempts, batch_number')
                 .eq('user_id', userId);
 
             const allQuestions = qData || [];
@@ -704,90 +705,6 @@ export const QuizService = {
 
             const allBatches = bData || [];
 
-            // Pre-fetch batch average scores (uses provisional logic matching the Batch card)
-            const activeBatches = new Set<number>();
-            allQuestions.forEach((q: any) => { if (q.batch_number) activeBatches.add(q.batch_number); });
-            allBatches.forEach((b: any) => { if (b.batch_number) activeBatches.add(b.batch_number); });
-
-            const batchScoreMap = new Map<number, number>();
-            await Promise.all(
-                Array.from(activeBatches).map(async (batchNum) => {
-                    const score = await BatchService.getBatchAverageScore(userId, batchNum);
-                    batchScoreMap.set(batchNum, score);
-                })
-            );
-
-            // Fetch total questions per batch for accurate percentage calculation
-            const batchTotalMap = new Map<number, number>();
-            await Promise.all(
-                Array.from(activeBatches).map(async (batchNum) => {
-                    const total = await BatchService.getBatchTotalQuestions(batchNum, userId);
-                    batchTotalMap.set(batchNum, total);
-                })
-            );
-
-            /**
-             * computeActiveBatchScore(cutoffDate)
-             *
-             * Returns the Batch Average Score as of a specific moment in time.
-             * Uses the EXACT same formula as the Batch Summary card:
-             *   (sum of question scores for active batch) / (total questions in batch) × 100
-             *
-             * - Figures out which batch was "active" as of the cutoff date (most recently touched batch).
-             * - If that batch had a completed attempt by then, returns the official attempt score.
-             * - If the batch was still in progress, returns the provisional score.
-             * - Returns 0 if there was no activity at all up to that cutoff.
-             */
-            const computeActiveBatchScore = (cutoffDate: Date): number => {
-                const questionsUpTo = allQuestions.filter((q: any) =>
-                    isBefore(new Date(q.completed_at), cutoffDate) || isEqual(new Date(q.completed_at), cutoffDate)
-                );
-                const batchesUpTo = allBatches.filter((b: any) =>
-                    isBefore(new Date(b.completed_at), cutoffDate) || isEqual(new Date(b.completed_at), cutoffDate)
-                );
-
-                if (questionsUpTo.length === 0 && batchesUpTo.length === 0) return 0;
-
-                // Find the most recently touched batch as of the cutoff
-                const sortedQ = [...questionsUpTo].sort(
-                    (a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
-                );
-                const sortedB = [...batchesUpTo].sort(
-                    (a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
-                );
-
-                const latestQ = sortedQ.length > 0 ? sortedQ[sortedQ.length - 1] : null;
-                const latestB = sortedB.length > 0 ? sortedB[sortedB.length - 1] : null;
-
-                let activeBatchNumber: number = 1;
-                if (latestQ && latestB) {
-                    activeBatchNumber = new Date(latestQ.completed_at).getTime() >= new Date(latestB.completed_at).getTime()
-                        ? (latestQ.batch_number || 1)
-                        : (latestB.batch_number || 1);
-                } else if (latestQ) {
-                    activeBatchNumber = latestQ.batch_number || 1;
-                } else if (latestB) {
-                    activeBatchNumber = latestB.batch_number || 1;
-                }
-
-                // If a completed attempt exists for this batch by the cutoff, use that score
-                const completedForBatch = batchesUpTo.filter((b: any) => b.batch_number === activeBatchNumber);
-                if (completedForBatch.length > 0) {
-                    const latest = completedForBatch[completedForBatch.length - 1];
-                    return Math.round(latest.score || 0);
-                }
-
-                // Otherwise compute provisional: same formula as Batch Summary card
-                const activeQuestions = questionsUpTo.filter((q: any) => q.batch_number === activeBatchNumber);
-                if (activeQuestions.length === 0) return 0;
-
-                const totalScore = activeQuestions.reduce(
-                    (sum: number, q: any) => sum + parseFloat(String(q.score || 0)), 0
-                );
-                const totalInBatch = batchTotalMap.get(activeBatchNumber) || activeQuestions.length;
-                return Math.round((totalScore / Math.max(1, totalInBatch)) * 100);
-            };
-
             let points: PerformanceTrendPoint[] = [];
 
             if (range === '1W') {
@@ -795,7 +712,6 @@ export const QuizService = {
                 const today = startOfDay(now);
                 points = dayLabels.map((label, i) => {
                     const dayDate = addDays(startDate, i);
-                    const dayCutoff = endOfDay(dayDate);
                     const isFuture = isBefore(today, startOfDay(dayDate));
                     const isToday = isSameDay(today, startOfDay(dayDate));
 
@@ -808,21 +724,34 @@ export const QuizService = {
                             attemptsCount: 0,
                             isFuture: true,
                             isToday: false,
+                            hasActivity: false,
                         };
                     }
 
-                    const dailyScore = computeActiveBatchScore(dayCutoff);
-
                     const dayQuestions = allQuestions.filter((q: any) => isSameDay(new Date(q.completed_at), dayDate));
                     const dayBatches = allBatches.filter((b: any) => isSameDay(new Date(b.completed_at), dayDate));
+
+                    const hasActivity = dayQuestions.length > 0 || dayBatches.length > 0;
+                    let dailyScore = 0;
+
+                    if (dayQuestions.length > 0) {
+                        const dayMarks = dayQuestions.reduce(
+                            (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
+                            0
+                        );
+                        dailyScore = Math.round((dayMarks / dayQuestions.length) * 100);
+                    } else if (dayBatches.length > 0) {
+                        dailyScore = Math.round(dayBatches[dayBatches.length - 1].score || 0);
+                    }
 
                     return {
                         value: dailyScore,
                         label,
                         fullDate: format(dayDate, 'd MMM yyyy'),
-                        attemptsCount: dayBatches.length + (dayQuestions.length > 0 ? 1 : 0),
+                        attemptsCount: dayQuestions.length + dayBatches.length,
                         isFuture: false,
                         isToday,
+                        hasActivity,
                     };
                 });
             } else if (range === '1M') {
@@ -833,7 +762,6 @@ export const QuizService = {
                     const isFuture = isBefore(today, startOfDay(wStart));
                     const isToday = isWithinInterval(today, { start: startOfDay(wStart), end: endOfDay(wEnd) });
 
-                    // Don't show scores for future weeks
                     if (isFuture) {
                         return {
                             value: 0,
@@ -842,12 +770,9 @@ export const QuizService = {
                             attemptsCount: 0,
                             isFuture: true,
                             isToday: false,
+                            hasActivity: false,
                         };
                     }
-
-                    // Use the earlier of wEnd or today as cutoff
-                    const effectiveCutoff = isBefore(endOfDay(wEnd), endOfDay(now)) ? endOfDay(wEnd) : endOfDay(now);
-                    const weekScore = computeActiveBatchScore(effectiveCutoff);
 
                     const wQuestions = allQuestions.filter((q: any) =>
                         isWithinInterval(new Date(q.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
@@ -856,13 +781,27 @@ export const QuizService = {
                         isWithinInterval(new Date(b.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
                     );
 
+                    const hasActivity = wQuestions.length > 0 || wBatches.length > 0;
+                    let weekScore = 0;
+
+                    if (wQuestions.length > 0) {
+                        const wMarks = wQuestions.reduce(
+                            (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
+                            0
+                        );
+                        weekScore = Math.round((wMarks / wQuestions.length) * 100);
+                    } else if (wBatches.length > 0) {
+                        weekScore = Math.round(wBatches[wBatches.length - 1].score || 0);
+                    }
+
                     return {
                         value: weekScore,
                         label: `W${i + 1}`,
                         fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
-                        attemptsCount: wBatches.length + (wQuestions.length > 0 ? 1 : 0),
+                        attemptsCount: wQuestions.length + wBatches.length,
                         isFuture: false,
                         isToday,
+                        hasActivity,
                     };
                 });
             } else {
@@ -888,15 +827,6 @@ export const QuizService = {
 
                 points = monthsList.map((mStart) => {
                     const mEnd = endOfMonth(mStart);
-                    const monthCutoff = endOfDay(mEnd);
-
-                    const hadActivity = allQuestions.some((q: any) =>
-                        isBefore(new Date(q.completed_at), monthCutoff) || isEqual(new Date(q.completed_at), monthCutoff)
-                    ) || allBatches.some((b: any) =>
-                        isBefore(new Date(b.completed_at), monthCutoff) || isEqual(new Date(b.completed_at), monthCutoff)
-                    );
-
-                    const monthScore = hadActivity ? computeActiveBatchScore(monthCutoff) : 0;
 
                     const mQuestions = allQuestions.filter((q: any) =>
                         isWithinInterval(new Date(q.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
@@ -905,46 +835,71 @@ export const QuizService = {
                         isWithinInterval(new Date(b.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
                     );
 
+                    const hasActivity = mQuestions.length > 0 || mBatches.length > 0;
+                    let monthScore = 0;
+
+                    if (mQuestions.length > 0) {
+                        const mMarks = mQuestions.reduce(
+                            (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
+                            0
+                        );
+                        monthScore = Math.round((mMarks / mQuestions.length) * 100);
+                    } else if (mBatches.length > 0) {
+                        monthScore = Math.round(mBatches[mBatches.length - 1].score || 0);
+                    }
+
                     return {
                         value: monthScore,
                         label: format(mStart, 'MMM'),
                         fullDate: format(mStart, 'MMMM yyyy'),
-                        attemptsCount: mBatches.length + (mQuestions.length > 0 ? 1 : 0),
+                        attemptsCount: mQuestions.length + mBatches.length,
                         isFuture: false,
                         isToday: isWithinInterval(now, { start: startOfDay(mStart), end: endOfDay(mEnd) }),
+                        hasActivity,
                     };
                 });
             }
-
-            // Summary stats — use the current batch score as the reference
-            const nonZeroScores = points.filter(p => !p.isFuture).map(p => p.value).filter(v => v > 0);
-            const averageScore = computeActiveBatchScore(endOfDay(now));
-            const highestScore = nonZeroScores.length > 0 ? Math.max(...nonZeroScores) : 0;
-            const lowestScore = nonZeroScores.length > 0 ? Math.min(...nonZeroScores) : 0;
-            const totalAttempts = allBatches.length;
 
             // Calculate Period Activity & Performance (Dashboard B)
             const periodQuestions = allQuestions.filter((q: any) =>
                 isWithinInterval(new Date(q.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
             );
+            const periodBatches = allBatches.filter((b: any) =>
+                isWithinInterval(new Date(b.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
+            );
+
             const mcqsCompleted = periodQuestions.length;
             const totalMarksEarned = periodQuestions.reduce(
                 (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
                 0
             );
-            const periodPerformance = mcqsCompleted > 0 ? Math.round((totalMarksEarned / mcqsCompleted) * 100) : null;
+            const periodPerformance = mcqsCompleted > 0
+                ? Math.round((totalMarksEarned / mcqsCompleted) * 100)
+                : (periodBatches.length > 0 ? Math.round(periodBatches[periodBatches.length - 1].score || 0) : null);
 
             let activePeriodsCount = 0;
             let activePeriodsLabel = 'Active Days';
             if (range === 'ALL') {
-                const activeMonthsSet = new Set(periodQuestions.map((q: any) => format(new Date(q.completed_at), 'yyyy-MM')));
+                const activeMonthsSet = new Set([
+                    ...periodQuestions.map((q: any) => format(new Date(q.completed_at), 'yyyy-MM')),
+                    ...periodBatches.map((b: any) => format(new Date(b.completed_at), 'yyyy-MM')),
+                ]);
                 activePeriodsCount = activeMonthsSet.size;
                 activePeriodsLabel = 'Active Months';
             } else {
-                const activeDaysSet = new Set(periodQuestions.map((q: any) => format(new Date(q.completed_at), 'yyyy-MM-dd')));
+                const activeDaysSet = new Set([
+                    ...periodQuestions.map((q: any) => format(new Date(q.completed_at), 'yyyy-MM-dd')),
+                    ...periodBatches.map((b: any) => format(new Date(b.completed_at), 'yyyy-MM-dd')),
+                ]);
                 activePeriodsCount = activeDaysSet.size;
                 activePeriodsLabel = 'Active Days';
             }
+
+            const activePoints = points.filter(p => !p.isFuture && p.hasActivity && p.value > 0);
+            const averageScore = periodPerformance ?? (activePoints.length > 0 ? Math.round(activePoints.reduce((s, p) => s + p.value, 0) / activePoints.length) : 0);
+            const highestScore = activePoints.length > 0 ? Math.max(...activePoints.map(p => p.value)) : 0;
+            const lowestScore = activePoints.length > 0 ? Math.min(...activePoints.map(p => p.value)) : 0;
+            const totalAttempts = allBatches.length;
 
             return {
                 points,

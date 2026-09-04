@@ -101,10 +101,11 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   const calculateStatsFromPoints = useCallback(
     (points: PerformanceTrendPoint[]) => {
       const validPoints = points.filter((p, i) => !isPointInFuture(p, i));
-      const nonZero = validPoints.map(p => p.value).filter(v => v > 0);
-      const avg = nonZero.length > 0 ? Math.round(nonZero.reduce((s, v) => s + v, 0) / nonZero.length) : 0;
-      const high = nonZero.length > 0 ? Math.max(...nonZero) : 0;
-      const low = nonZero.length > 0 ? Math.min(...nonZero) : 0;
+      const activePoints = validPoints.filter(p => (p.hasActivity ?? (p.attemptsCount ? p.attemptsCount > 0 : p.value > 0)) && p.value > 0);
+      const activeScores = activePoints.map(p => p.value);
+      const avg = activeScores.length > 0 ? Math.round(activeScores.reduce((s, v) => s + v, 0) / activeScores.length) : 0;
+      const high = activeScores.length > 0 ? Math.max(...activeScores) : 0;
+      const low = activeScores.length > 0 ? Math.min(...activeScores) : 0;
       const attempts = validPoints.reduce((s, p) => s + (p.attemptsCount || 0), 0);
 
       setStats(prev => ({
@@ -113,6 +114,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         highestScore: high,
         lowestScore: low,
         totalAttempts: attempts,
+        activePeriodsCount: activePoints.length,
       }));
     },
     [isPointInFuture]
@@ -218,36 +220,39 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     [height, vPadding, maxValue, chartHeight]
   );
 
-  // Active indices (strictly past and today - no future points)
+  // Helper to determine if a point represents actual quiz activity
+  const isPointActive = useCallback(
+    (point: PerformanceTrendPoint, index: number): boolean => {
+      if (isPointInFuture(point, index)) return false;
+      if (point.hasActivity !== undefined) return point.hasActivity && point.value > 0;
+      return (point.attemptsCount !== undefined ? point.attemptsCount > 0 : point.value > 0);
+    },
+    [isPointInFuture]
+  );
+
+  // Active indices (strictly past and today - points with actual quiz activity)
   const activeIndices = useMemo(() => {
     const indices: number[] = [];
     displayData.forEach((point, index) => {
-      if (!isPointInFuture(point, index)) {
+      if (isPointActive(point, index)) {
         indices.push(index);
       }
     });
     return indices;
-  }, [displayData, isPointInFuture]);
+  }, [displayData, isPointActive]);
 
   const todayIndex = useMemo(() => {
     return displayData.findIndex((p, i) => isPointToday(p, i));
   }, [displayData, isPointToday]);
 
-  // Generate Path and Area Fill strictly for active (non-future) points
+  // Generate Path and Area Fill strictly for active points
   const { d, dArea } = useMemo(() => {
-    if (activeIndices.length === 0) {
+    if (activeIndices.length <= 1) {
       return { d: '', dArea: '' };
     }
 
     const firstIdx = activeIndices[0];
     const lastIdx = activeIndices[activeIndices.length - 1];
-
-    if (activeIndices.length === 1) {
-      return {
-        d: `M ${getX(firstIdx)} ${getY(displayData[firstIdx].value)}`,
-        dArea: '',
-      };
-    }
 
     let linePath = `M ${getX(firstIdx)} ${getY(displayData[firstIdx].value)}`;
     for (let i = 1; i < activeIndices.length; i++) {
@@ -499,9 +504,11 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             const xPos = getX(index);
             const yPos = getY(point.value);
 
+            const hasActivity = isPointActive(point, index);
+
             return (
               <React.Fragment key={index}>
-                {/* Touch hotspot rect for active (non-future) points */}
+                {/* Touch hotspot rect for active and past days */}
                 {!isFuture && (
                   <Rect
                     x={xPos - 16}
@@ -513,35 +520,50 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                   />
                 )}
 
-                {/* Point Circle (Rendered strictly for past and today's points) */}
+                {/* Point Circle (Rendered for active points or today's subtle marker) */}
                 {!isFuture && (
                   <>
-                    {/* Today marker outer ring when not selected */}
-                    {isToday && !isPointSelected && (
+                    {hasActivity ? (
+                      <>
+                        {isToday && !isPointSelected && (
+                          <Circle
+                            cx={xPos}
+                            cy={yPos}
+                            r="6"
+                            fill="transparent"
+                            stroke={colors.primary.DEFAULT}
+                            strokeWidth="1"
+                            opacity={0.5}
+                          />
+                        )}
+                        <Circle
+                          cx={xPos}
+                          cy={yPos}
+                          r={isPointSelected ? '6' : (isToday ? '4.5' : '3.5')}
+                          fill={isPointSelected ? colors.primary.DEFAULT : '#FFFFFF'}
+                          stroke={colors.primary.DEFAULT}
+                          strokeWidth={isPointSelected ? '3' : '2'}
+                          onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
+                        />
+                      </>
+                    ) : isToday ? (
                       <Circle
                         cx={xPos}
-                        cy={yPos}
-                        r="6"
+                        cy={height - vPadding}
+                        r="3.5"
                         fill="transparent"
                         stroke={colors.primary.DEFAULT}
-                        strokeWidth="1"
-                        opacity={0.5}
+                        strokeWidth="1.2"
+                        strokeDasharray="2 2"
+                        opacity={0.6}
+                        onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
                       />
-                    )}
-                    <Circle
-                      cx={xPos}
-                      cy={yPos}
-                      r={isPointSelected ? '6' : (isToday ? '4.5' : '3.5')}
-                      fill={isPointSelected ? colors.primary.DEFAULT : '#FFFFFF'}
-                      stroke={colors.primary.DEFAULT}
-                      strokeWidth={isPointSelected ? '3' : '2'}
-                      onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
-                    />
+                    ) : null}
                   </>
                 )}
 
-                {/* Score label above point (non-future only) */}
-                {!isFuture && (point.value > 0 && (displayData.length <= 7 || isPointSelected)) && (
+                {/* Score label above point (active points only) */}
+                {!isFuture && (hasActivity && point.value > 0 && (displayData.length <= 7 || isPointSelected)) && (
                   <SvgText
                     x={xPos}
                     y={yPos - 9}
@@ -598,7 +620,11 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
               },
             ]}
           >
-            <Text style={styles.tooltipScore}>{activePoint.value}%</Text>
+            <Text style={styles.tooltipScore}>
+              {isPointActive(activePoint, selectedIndex)
+                ? `${activePoint.value}%`
+                : t('profile.noActivity', 'No Activity')}
+            </Text>
             <Text style={styles.tooltipDate}>{activePoint.fullDate || activePoint.label}</Text>
           </View>
         )}
