@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert, ActivityIndicator, RefreshControl, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Alert, ActivityIndicator, RefreshControl, Linking, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
@@ -35,6 +36,15 @@ interface UserProfile {
 export const UserManagementScreen = ({ navigation }: any) => {
     const { t } = useTranslation();
     const { colors, theme } = useTheme();
+    const insets = useSafeAreaInsets();
+    const tabBarHeight = useContext(BottomTabBarHeightContext);
+
+    // Calculate dynamic bottom offset for Three-Button Navigation / Gesture Navigation
+    const isInsideTabBar = tabBarHeight !== undefined;
+    const effectiveBottomBarHeight = isInsideTabBar
+        ? ((tabBarHeight && tabBarHeight > 0) ? tabBarHeight : ((Platform.OS === 'web' ? 70 : 60) + Math.max(insets.bottom, 12)))
+        : Math.max(insets.bottom, 16);
+
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentUserProfile, setCurrentUserProfile] = useState<any>(null); // Store current user profile
@@ -381,7 +391,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                             }
                         />
                     {/* Pagination Controls */}
-                    <View style={styles.paginationContainer}>
+                    <View style={[styles.paginationContainer, { marginBottom: effectiveBottomBarHeight + 12 }]}>
                         <TouchableOpacity 
                             disabled={page === 1} 
                             onPress={() => setPage(p => Math.max(1, p - 1))}
@@ -404,7 +414,7 @@ export const UserManagementScreen = ({ navigation }: any) => {
                 )}
 
                 <TouchableOpacity 
-                    style={[styles.fab, { backgroundColor: colors.primary.DEFAULT }]}
+                    style={[styles.fab, { backgroundColor: colors.primary.DEFAULT, bottom: effectiveBottomBarHeight + 16 }]}
                     onPress={() => setShowCreateModal(true)}
                     activeOpacity={0.8}
                 >
@@ -541,7 +551,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     listContent: {
         padding: 20,
-        paddingBottom: 120,
+        paddingBottom: 40,
     },
     userCard: {
         flexDirection: 'row',
@@ -624,7 +634,6 @@ const createStyles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 10,
         gap: 16,
-        marginBottom: 80,
     },
     pageButton: {
         padding: 8,
@@ -641,7 +650,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 85,
         right: 20,
         width: 56,
         height: 56,

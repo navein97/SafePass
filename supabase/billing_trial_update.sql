@@ -15,7 +15,7 @@ DECLARE
     v_company_id UUID;
 BEGIN
     -- Create the company with 1 month free Standard plan
-    -- Quota: 100 drivers, 4 managers (100 / 25)
+    -- Quota: 50 drivers, 4 managers
     INSERT INTO public.companies (
         name, 
         quota_drivers, 
@@ -26,7 +26,7 @@ BEGIN
     )
     VALUES (
         p_company_name, 
-        100, 
+        50, 
         4, 
         'standard',
         NOW() + INTERVAL '1 month',
@@ -121,7 +121,7 @@ BEGIN
     UPDATE public.companies
     SET 
         subscription_tier = 'standard',
-        quota_drivers = 100,
+        quota_drivers = 50,
         quota_managers = 4,
         trial_end_date = NOW() + INTERVAL '1 month',
         has_used_free_trial = true,
