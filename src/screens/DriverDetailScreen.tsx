@@ -162,10 +162,10 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
 
     const loadBatchQuestionProgress = async () => {
         try {
-            // Load all questions for this batch & driver category to get text
+            // Load questions for this batch to get text
             let query = supabase
                 .from('questions')
-                .select('id, text, text_ms')
+                .select('id, text, text_ms, driver_categories')
                 .eq('batch_number', selectedBatch);
 
             let vType = driverProfile?.vehicle_type;
@@ -174,22 +174,66 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
             }
 
-            if (vType) {
-                query = query.contains('driver_categories', [vType]);
-            }
-
             const { data: questions } = await query;
             const qList = questions || [];
             setBatchQuestions(qList);
 
-            // Load progress rows from DB
+            // 1. Load live question-level progress rows from DB
             const { data: progress } = await supabase
                 .from('user_question_progress')
                 .select('*')
                 .eq('user_id', userId)
                 .eq('batch_number', selectedBatch);
 
-            setProgressList(progress || []);
+            // 2. Load completed batch attempt answers from user_batch_progress
+            const { data: batchAttempts } = await supabase
+                .from('user_batch_progress')
+                .select('answers, attempt_number')
+                .eq('user_id', userId)
+                .eq('batch_number', selectedBatch)
+                .order('attempt_number', { ascending: true });
+
+            const progressMap = new Map<string, any>();
+
+            // Populate live question progress
+            (progress || []).forEach(p => {
+                if (p.question_id) {
+                    progressMap.set(String(p.question_id), {
+                        question_id: String(p.question_id),
+                        attempts: p.attempts || 1,
+                        is_correct: !!p.is_correct,
+                        score: p.score !== undefined ? parseFloat(String(p.score)) : (p.is_correct ? 1.0 : 0.0)
+                    });
+                }
+            });
+
+            // Merge/override from completed batch attempts (latest attempt last)
+            (batchAttempts || []).forEach(ba => {
+                let ansList = ba.answers;
+                if (typeof ansList === 'string') {
+                    try { ansList = JSON.parse(ansList); } catch {}
+                }
+                if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+                    ansList = Object.values(ansList);
+                }
+                if (Array.isArray(ansList)) {
+                    ansList.forEach((ans: any) => {
+                        const qId = String(ans?.questionId || ans?.question_id || ans?.id || '');
+                        if (qId) {
+                            const isCorr = ans.isCorrect !== undefined ? !!ans.isCorrect : !!ans.is_correct;
+                            const att = ans.attempts || 1;
+                            progressMap.set(qId, {
+                                question_id: qId,
+                                attempts: att,
+                                is_correct: isCorr,
+                                score: ans.score !== undefined ? parseFloat(String(ans.score)) : (isCorr ? (att === 2 ? 0.5 : 1.0) : 0.0)
+                            });
+                        }
+                    });
+                }
+            });
+
+            setProgressList(Array.from(progressMap.values()));
         } catch (error) {
             console.error('Error loading question progress details:', error);
         }
@@ -299,18 +343,22 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
 
     // Only show incorrect answered questions
     const incorrectQuestions = useMemo(() => {
-        return batchQuestions
-            .map(q => {
-                const prog = progressList.find(p => p.question_id === q.id);
-                return {
-                    ...q,
-                    answered: !!prog,
-                    attempts: prog?.attempts || 0,
-                    isCorrect: prog?.is_correct || false,
-                    score: prog?.score || 0.0
-                };
-            })
-            .filter(q => q.answered && !q.isCorrect);
+        const incorrectList: any[] = [];
+        progressList.forEach(prog => {
+            if (!prog.is_correct) {
+                const q = batchQuestions.find(bq => String(bq.id) === String(prog.question_id));
+                incorrectList.push({
+                    id: prog.question_id,
+                    text: q?.text || q?.text_ms || `Question #${prog.question_id}`,
+                    text_ms: q?.text_ms,
+                    answered: true,
+                    attempts: prog.attempts || 1,
+                    isCorrect: false,
+                    score: prog.score || 0.0
+                });
+            }
+        });
+        return incorrectList;
     }, [batchQuestions, progressList]);
 
     const INCORRECT_PER_PAGE = 10;
@@ -671,7 +719,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                     {incorrectQuestions.length === 0 ? (
                         <GlassCard style={styles.emptyCard}>
                             <Text style={styles.emptyText}>
-                                {progressList.length === 0
+                                {progressList.length === 0 && (!selectedSummary || selectedSummary.completedCount === 0)
                                     ? t('user.noQuestionsAnswered', 'No questions answered in this batch yet.')
                                     : t('user.noIncorrectQuestions', '✅ No incorrect questions — great performance!')}
                             </Text>
