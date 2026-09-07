@@ -66,7 +66,7 @@ export const ScoringService = {
         let profPossible = 0;
 
         answers.forEach((answer) => {
-            const question = questions.find((q) => q.id === answer.questionId);
+            const question = questions.find((q) => String(q.id) === String(answer.questionId));
             if (!question) return;
 
             const weights = question.componentWeights || this.getDefaultWeights(question.category);

@@ -688,11 +688,10 @@ export const QuizService = {
                 startDate = new Date(2020, 0, 1);
             }
 
-            // Fetch ALL user_question_progress (no time filter — computeActiveBatchScore
-            // needs the full batch history to produce accurate cumulative scores)
+            // Fetch ALL user_question_progress
             const { data: qData } = await supabase
                 .from('user_question_progress')
-                .select('completed_at, score, is_correct, attempts, batch_number')
+                .select('completed_at, score, is_correct, attempts, batch_number, question_id')
                 .eq('user_id', userId);
 
             const allQuestions = qData || [];
@@ -700,7 +699,7 @@ export const QuizService = {
             // Fetch ALL user_batch_progress (completed batch attempts)
             const { data: bData } = await supabase
                 .from('user_batch_progress')
-                .select('completed_at, score, batch_number')
+                .select('completed_at, score, batch_number, answers')
                 .eq('user_id', userId);
 
             const allBatches = bData || [];
@@ -728,8 +727,8 @@ export const QuizService = {
                         };
                     }
 
-                    const dayQuestions = allQuestions.filter((q: any) => isSameDay(new Date(q.completed_at), dayDate));
-                    const dayBatches = allBatches.filter((b: any) => isSameDay(new Date(b.completed_at), dayDate));
+                    const dayQuestions = allQuestions.filter((q: any) => q.completed_at && isSameDay(new Date(q.completed_at), dayDate));
+                    const dayBatches = allBatches.filter((b: any) => b.completed_at && isSameDay(new Date(b.completed_at), dayDate));
 
                     const hasActivity = dayQuestions.length > 0 || dayBatches.length > 0;
                     let dailyScore = 0;
@@ -744,11 +743,16 @@ export const QuizService = {
                         dailyScore = Math.round(dayBatches[dayBatches.length - 1].score || 0);
                     }
 
+                    const batchAnswersCount = dayBatches.reduce(
+                        (sum: number, b: any) => sum + (Array.isArray(b.answers) ? b.answers.length : 0),
+                        0
+                    );
+
                     return {
                         value: dailyScore,
                         label,
                         fullDate: format(dayDate, 'd MMM yyyy'),
-                        attemptsCount: dayQuestions.length + dayBatches.length,
+                        attemptsCount: dayQuestions.length + batchAnswersCount,
                         isFuture: false,
                         isToday,
                         hasActivity,
@@ -775,10 +779,10 @@ export const QuizService = {
                     }
 
                     const wQuestions = allQuestions.filter((q: any) =>
-                        isWithinInterval(new Date(q.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
+                        q.completed_at && isWithinInterval(new Date(q.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
                     );
                     const wBatches = allBatches.filter((b: any) =>
-                        isWithinInterval(new Date(b.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
+                        b.completed_at && isWithinInterval(new Date(b.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
                     );
 
                     const hasActivity = wQuestions.length > 0 || wBatches.length > 0;
@@ -794,11 +798,16 @@ export const QuizService = {
                         weekScore = Math.round(wBatches[wBatches.length - 1].score || 0);
                     }
 
+                    const batchAnswersCount = wBatches.reduce(
+                        (sum: number, b: any) => sum + (Array.isArray(b.answers) ? b.answers.length : 0),
+                        0
+                    );
+
                     return {
                         value: weekScore,
                         label: `W${i + 1}`,
                         fullDate: `${format(wStart, 'd MMM')} - ${format(wEnd, 'd MMM')}`,
-                        attemptsCount: wQuestions.length + wBatches.length,
+                        attemptsCount: wQuestions.length + batchAnswersCount,
                         isFuture: false,
                         isToday,
                         hasActivity,
@@ -807,8 +816,8 @@ export const QuizService = {
             } else {
                 // ALL: Monthly buckets from earliest activity to today
                 const allTimestamps = [
-                    ...allQuestions.map((q: any) => new Date(q.completed_at).getTime()),
-                    ...allBatches.map((b: any) => new Date(b.completed_at).getTime()),
+                    ...allQuestions.map((q: any) => q.completed_at ? new Date(q.completed_at).getTime() : NaN),
+                    ...allBatches.map((b: any) => b.completed_at ? new Date(b.completed_at).getTime() : NaN),
                 ].filter(t => !isNaN(t));
 
                 const earliest = allTimestamps.length > 0 ? new Date(Math.min(...allTimestamps)) : subMonths(now, 5);
@@ -829,10 +838,10 @@ export const QuizService = {
                     const mEnd = endOfMonth(mStart);
 
                     const mQuestions = allQuestions.filter((q: any) =>
-                        isWithinInterval(new Date(q.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
+                        q.completed_at && isWithinInterval(new Date(q.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
                     );
                     const mBatches = allBatches.filter((b: any) =>
-                        isWithinInterval(new Date(b.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
+                        b.completed_at && isWithinInterval(new Date(b.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
                     );
 
                     const hasActivity = mQuestions.length > 0 || mBatches.length > 0;
@@ -848,11 +857,16 @@ export const QuizService = {
                         monthScore = Math.round(mBatches[mBatches.length - 1].score || 0);
                     }
 
+                    const batchAnswersCount = mBatches.reduce(
+                        (sum: number, b: any) => sum + (Array.isArray(b.answers) ? b.answers.length : 0),
+                        0
+                    );
+
                     return {
                         value: monthScore,
                         label: format(mStart, 'MMM'),
                         fullDate: format(mStart, 'MMMM yyyy'),
-                        attemptsCount: mQuestions.length + mBatches.length,
+                        attemptsCount: mQuestions.length + batchAnswersCount,
                         isFuture: false,
                         isToday: isWithinInterval(now, { start: startOfDay(mStart), end: endOfDay(mEnd) }),
                         hasActivity,
@@ -862,19 +876,33 @@ export const QuizService = {
 
             // Calculate Period Activity & Performance (Dashboard B)
             const periodQuestions = allQuestions.filter((q: any) =>
-                isWithinInterval(new Date(q.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
+                q.completed_at && isWithinInterval(new Date(q.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
             );
             const periodBatches = allBatches.filter((b: any) =>
-                isWithinInterval(new Date(b.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
+                b.completed_at && isWithinInterval(new Date(b.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
             );
 
-            const mcqsCompleted = periodQuestions.length;
+            // Collect unique answered question IDs across user_question_progress and user_batch_progress.answers
+            const periodAnsweredIds = new Set<string>();
+            periodQuestions.forEach((q: any) => {
+                if (q.question_id) periodAnsweredIds.add(String(q.question_id));
+            });
+            periodBatches.forEach((b: any) => {
+                if (Array.isArray(b.answers)) {
+                    b.answers.forEach((ans: any) => {
+                        const qId = ans?.questionId || ans?.question_id || ans?.id;
+                        if (qId) periodAnsweredIds.add(String(qId));
+                    });
+                }
+            });
+
+            const mcqsCompleted = periodAnsweredIds.size > 0 ? periodAnsweredIds.size : periodQuestions.length;
             const totalMarksEarned = periodQuestions.reduce(
                 (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
                 0
             );
-            const periodPerformance = mcqsCompleted > 0
-                ? Math.round((totalMarksEarned / mcqsCompleted) * 100)
+            const periodPerformance = periodQuestions.length > 0
+                ? Math.round((totalMarksEarned / periodQuestions.length) * 100)
                 : (periodBatches.length > 0 ? Math.round(periodBatches[periodBatches.length - 1].score || 0) : null);
 
             let activePeriodsCount = 0;

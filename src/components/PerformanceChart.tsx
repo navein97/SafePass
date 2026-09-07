@@ -151,6 +151,12 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           cacheRef.current[range] = result;
           setChartPoints(result.points);
           setStats(result.stats);
+
+          // Default selection to latest active point if available
+          const lastActiveIdx = result.points.reduce((last: number, pt: PerformanceTrendPoint, idx: number) => (pt.hasActivity && !pt.isFuture ? idx : last), -1);
+          if (lastActiveIdx !== -1) {
+            setSelectedIndex(lastActiveIdx);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch performance trend for range:', range, err);
