@@ -5,7 +5,9 @@ export const PracticeService = {
     _vehicleTypesCache: null as string[] | null,
 
     /**
-     * Fetch all unique vehicle types from existing questions driver_categories.
+     * Fetch all unique vehicle types from existing questions category column.
+     * Uses 'category' instead of 'driver_categories' to avoid showing aliases
+     * (e.g. 'Urban Delivery', 'Curtain Sider') as separate selectable options.
      */
     async getVehicleTypes(forceRefresh = false): Promise<string[]> {
         if (!forceRefresh && this._vehicleTypesCache) {
@@ -14,18 +16,14 @@ export const PracticeService = {
         try {
             const { data, error } = await supabase
                 .from('questions')
-                .select('driver_categories');
+                .select('category');
             
             if (error) throw error;
             
             const categoriesSet = new Set<string>();
             data?.forEach(row => {
-                if (row.driver_categories && Array.isArray(row.driver_categories)) {
-                    row.driver_categories.forEach((cat: string) => {
-                        if (cat && cat.trim()) {
-                            categoriesSet.add(cat.trim());
-                        }
-                    });
+                if (row.category && typeof row.category === 'string' && row.category.trim()) {
+                    categoriesSet.add(row.category.trim());
                 }
             });
             
