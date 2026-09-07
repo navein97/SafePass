@@ -989,7 +989,7 @@ export const ProfileScreen = ({ navigation }: any) => {
                         ? quizHistory
                         : undefined
                     } 
-                    allowedRanges={['1W']}
+                    allowedRanges={['1W', '1M', 'ALL']}
                 />
              </GlassCard>
 
