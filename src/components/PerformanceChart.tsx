@@ -115,8 +115,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         lowestScore: low,
         totalAttempts: attempts,
         activePeriodsCount: activePoints.length,
-        mcqsCompleted: prev.mcqsCompleted > 0 ? prev.mcqsCompleted : attempts,
-        periodPerformance: prev.periodPerformance ?? (avg > 0 ? avg : null),
+        mcqsCompleted: (prev?.mcqsCompleted && prev.mcqsCompleted > 0) ? prev.mcqsCompleted : attempts,
+        periodPerformance: prev?.periodPerformance ?? (avg > 0 ? avg : null),
       }));
     },
     [isPointInFuture]

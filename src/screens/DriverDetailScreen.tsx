@@ -162,22 +162,6 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
 
     const loadBatchQuestionProgress = async () => {
         try {
-            // Load questions for this batch to get text
-            let query = supabase
-                .from('questions')
-                .select('id, text, text_ms, driver_categories')
-                .eq('batch_number', selectedBatch);
-
-            let vType = driverProfile?.vehicle_type;
-            const validTypes = await PracticeService.getVehicleTypes();
-            if (vType && !validTypes.includes(vType)) {
-                vType = validTypes.includes('General Cargo') ? 'General Cargo' : (validTypes[0] || 'General Cargo');
-            }
-
-            const { data: questions } = await query;
-            const qList = questions || [];
-            setBatchQuestions(qList);
-
             // 1. Load live question-level progress rows from DB
             const { data: progress } = await supabase
                 .from('user_question_progress')
@@ -233,7 +217,34 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 }
             });
 
-            setProgressList(Array.from(progressMap.values()));
+            const currentProgressList = Array.from(progressMap.values());
+            setProgressList(currentProgressList);
+
+            // Fetch questions by batch AND by question IDs to ensure question text is retrieved for all progress items
+            const questionIds = Array.from(progressMap.keys());
+
+            const [batchQsRes, byIdsRes] = await Promise.all([
+                supabase
+                    .from('questions')
+                    .select('id, text, text_ms, text_bm, driver_categories')
+                    .eq('batch_number', selectedBatch),
+                questionIds.length > 0
+                    ? supabase
+                        .from('questions')
+                        .select('id, text, text_ms, text_bm, driver_categories')
+                        .in('id', questionIds)
+                    : Promise.resolve({ data: [], error: null })
+            ]);
+
+            const qMap = new Map<string, any>();
+            (batchQsRes.data || []).forEach(q => {
+                if (q && q.id) qMap.set(String(q.id), q);
+            });
+            (byIdsRes.data || []).forEach(q => {
+                if (q && q.id) qMap.set(String(q.id), q);
+            });
+
+            setBatchQuestions(Array.from(qMap.values()));
         } catch (error) {
             console.error('Error loading question progress details:', error);
         }
@@ -347,10 +358,11 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
         progressList.forEach(prog => {
             if (!prog.is_correct) {
                 const q = batchQuestions.find(bq => String(bq.id) === String(prog.question_id));
+                const qText = q?.text || q?.text_ms || q?.text_bm;
                 incorrectList.push({
                     id: prog.question_id,
-                    text: q?.text || q?.text_ms || `Question #${prog.question_id}`,
-                    text_ms: q?.text_ms,
+                    text: qText || `Question #${prog.question_id}`,
+                    text_ms: q?.text_ms || q?.text_bm,
                     answered: true,
                     attempts: prog.attempts || 1,
                     isCorrect: false,
