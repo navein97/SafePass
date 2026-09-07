@@ -674,6 +674,8 @@ export const BatchService = {
 
             if (qError) console.error('[BatchService] Error fetching question progress for dimensions:', qError);
 
+            console.log('[DimensionScores] user_question_progress rows:', qProgress?.length ?? 0);
+
             const answersMap = new Map<string, { questionId: string; score: number; isCorrect: boolean; attempts: number }>();
             (qProgress || []).forEach(q => {
                 if (q.question_id) {
@@ -692,9 +694,17 @@ export const BatchService = {
                 .select('answers')
                 .eq('user_id', userId);
 
+            let batchAnswerCount = 0;
             (batchData || []).forEach(b => {
-                if (Array.isArray(b.answers)) {
-                    b.answers.forEach((ans: any) => {
+                let ansList = b.answers;
+                if (typeof ansList === 'string') {
+                    try { ansList = JSON.parse(ansList); } catch {}
+                }
+                if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+                    ansList = Object.values(ansList);
+                }
+                if (Array.isArray(ansList)) {
+                    ansList.forEach((ans: any) => {
                         const qId = String(ans?.questionId || ans?.question_id || ans?.id || '');
                         if (qId && !answersMap.has(qId)) {
                             const isCorr = !!ans.isCorrect;
@@ -706,15 +716,24 @@ export const BatchService = {
                                 isCorrect: isCorr,
                                 attempts: att
                             });
+                            batchAnswerCount++;
                         }
                     });
                 }
             });
 
+            console.log('[DimensionScores] batch_progress rows:', batchData?.length ?? 0, '| new answers from batches:', batchAnswerCount);
+
             const allAnswers = Array.from(answersMap.values());
+            console.log('[DimensionScores] total unique answers:', allAnswers.length);
             if (allAnswers.length === 0) {
+                console.warn('[DimensionScores] No answers found at all — returning nulls');
                 return { operation: null, discipline: null, professionalism: null };
             }
+
+            // Log sample answer IDs for debugging
+            const sampleIds = allAnswers.slice(0, 3).map(a => a.questionId);
+            console.log('[DimensionScores] sample answer questionIds:', sampleIds);
 
             const questionIds = allAnswers.map(a => a.questionId);
             const { data: questionsData, error: qDataError } = await supabase
@@ -722,8 +741,22 @@ export const BatchService = {
                 .select('id, category, component_weights')
                 .in('id', questionIds);
 
-            if (qDataError || !questionsData || questionsData.length === 0) {
+            if (qDataError) {
+                console.error('[DimensionScores] Error fetching questions:', qDataError);
                 return { operation: null, discipline: null, professionalism: null };
+            }
+
+            console.log('[DimensionScores] questions found in DB:', questionsData?.length ?? 0, '| answer IDs count:', questionIds.length);
+
+            if (!questionsData || questionsData.length === 0) {
+                console.warn('[DimensionScores] No matching questions in DB — returning nulls');
+                return { operation: null, discipline: null, professionalism: null };
+            }
+
+            // Log a sample question to check structure
+            if (questionsData.length > 0) {
+                const sample = questionsData[0];
+                console.log('[DimensionScores] sample question:', { id: sample.id, category: sample.category, component_weights: sample.component_weights });
             }
 
             const questions = questionsData.map(q => ({
@@ -732,7 +765,9 @@ export const BatchService = {
                 componentWeights: q.component_weights || (q as any).componentWeights
             })) as Question[];
 
-            return ScoringService.calculateDimensionScores(questions, allAnswers);
+            const result = ScoringService.calculateDimensionScores(questions, allAnswers);
+            console.log('[DimensionScores] RESULT:', result);
+            return result;
         } catch (err) {
             console.error('[BatchService] Error getting driver dimension scores:', err);
             return { operation: null, discipline: null, professionalism: null };
@@ -1119,16 +1154,22 @@ export const BatchService = {
             const dimensionScores = await this.getDriverDimensionScores(userId);
 
             if (!attempts || attempts.length === 0) {
-                await supabase
+                const emptyProfilePayload = {
+                    safety_index: 0,
+                    total_score: 0,
+                    total_batches_completed: 0
+                };
+                const { error: emptyErr } = await supabase
                     .from('profiles')
-                    .update({
-                        safety_index: 0,
-                        component_scores: dimensionScores,
-                        total_score: 0,
-                        total_batches_completed: 0
-                    })
+                    .update({ ...emptyProfilePayload, component_scores: dimensionScores })
                     .eq('id', userId);
-                
+
+                if (emptyErr) {
+                    await supabase
+                        .from('profiles')
+                        .update(emptyProfilePayload)
+                        .eq('id', userId);
+                }
                 return;
             }
 
@@ -1161,15 +1202,35 @@ export const BatchService = {
             }
 
             // 4. Update Profile with CGPA Score & Cumulative Dimension Scores
-            await supabase
+            console.log('[syncProfileStats] Writing to profiles:', { cgpaScore, dimensionScores, passedBatchesCount });
+            const profilePayload: any = {
+                safety_index: cgpaScore,
+                total_score: cgpaScore,
+                total_batches_completed: passedBatchesCount
+            };
+
+            const { error: updateError } = await supabase
                 .from('profiles')
                 .update({
-                    safety_index: cgpaScore,
+                    ...profilePayload,
                     component_scores: dimensionScores,
-                    total_score: cgpaScore,
-                    total_batches_completed: passedBatchesCount
                 })
                 .eq('id', userId);
+
+            if (updateError) {
+                console.warn('[syncProfileStats] Update with component_scores failed, retrying without column:', updateError.message);
+                const { error: retryError } = await supabase
+                    .from('profiles')
+                    .update(profilePayload)
+                    .eq('id', userId);
+                if (retryError) {
+                    console.error('[syncProfileStats] Basic profile update error:', retryError);
+                } else {
+                    console.log('[syncProfileStats] Basic profile updated successfully');
+                }
+            } else {
+                console.log('[syncProfileStats] Profile updated successfully');
+            }
 
             // 5. Update compliance logs with latest attempt score and cumulative dimension scores
             const now = new Date();
@@ -1265,8 +1326,15 @@ export const BatchService = {
 
             if (!batchError && batchData) {
                 batchData.forEach((row: any) => {
-                    if (row.answers && Array.isArray(row.answers)) {
-                        row.answers.forEach((ans: any) => {
+                    let ansList = row.answers;
+                    if (typeof ansList === 'string') {
+                        try { ansList = JSON.parse(ansList); } catch {}
+                    }
+                    if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+                        ansList = Object.values(ansList);
+                    }
+                    if (ansList && Array.isArray(ansList)) {
+                        ansList.forEach((ans: any) => {
                             const qId = ans?.questionId || ans?.question_id || ans?.id;
                             if (qId) {
                                 answeredIds.add(String(qId));

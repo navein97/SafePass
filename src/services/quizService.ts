@@ -5,6 +5,7 @@ import {
     getYear,
     startOfWeek,
     addDays,
+    subDays,
     subWeeks,
     subMonths,
     addMonths,
@@ -704,6 +705,38 @@ export const QuizService = {
 
             const allBatches = bData || [];
 
+            const parseAnswersArray = (answers: any): any[] => {
+                if (!answers) return [];
+                if (Array.isArray(answers)) return answers;
+                if (typeof answers === 'string') {
+                    try {
+                        const parsed = JSON.parse(answers);
+                        if (Array.isArray(parsed)) return parsed;
+                        if (parsed && typeof parsed === 'object') return Object.values(parsed);
+                    } catch {
+                        return [];
+                    }
+                }
+                if (typeof answers === 'object') {
+                    return Object.values(answers);
+                }
+                return [];
+            };
+
+            const getQuestionTimestamp = (q: any): Date | null => {
+                const ts = q.completed_at || q.created_at || q.updated_at;
+                if (ts) return new Date(ts);
+                const matchingBatch = allBatches.find((b: any) => b.batch_number === q.batch_number);
+                if (matchingBatch?.completed_at) return new Date(matchingBatch.completed_at);
+                return null;
+            };
+
+            const getBatchTimestamp = (b: any): Date | null => {
+                const ts = b.completed_at || b.created_at;
+                if (ts) return new Date(ts);
+                return null;
+            };
+
             let points: PerformanceTrendPoint[] = [];
 
             if (range === '1W') {
@@ -727,24 +760,30 @@ export const QuizService = {
                         };
                     }
 
-                    const dayQuestions = allQuestions.filter((q: any) => q.completed_at && isSameDay(new Date(q.completed_at), dayDate));
-                    const dayBatches = allBatches.filter((b: any) => b.completed_at && isSameDay(new Date(b.completed_at), dayDate));
+                    const dayQuestions = allQuestions.filter((q: any) => {
+                        const d = getQuestionTimestamp(q);
+                        return d && isSameDay(d, dayDate);
+                    });
+                    const dayBatches = allBatches.filter((b: any) => {
+                        const d = getBatchTimestamp(b);
+                        return d && isSameDay(d, dayDate);
+                    });
 
                     const hasActivity = dayQuestions.length > 0 || dayBatches.length > 0;
                     let dailyScore = 0;
 
-                    if (dayQuestions.length > 0) {
+                    if (dayBatches.length > 0) {
+                        dailyScore = Math.round(dayBatches[dayBatches.length - 1].score || 0);
+                    } else if (dayQuestions.length > 0) {
                         const dayMarks = dayQuestions.reduce(
                             (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
                             0
                         );
-                        dailyScore = Math.round((dayMarks / dayQuestions.length) * 100);
-                    } else if (dayBatches.length > 0) {
-                        dailyScore = Math.round(dayBatches[dayBatches.length - 1].score || 0);
+                        dailyScore = Math.min(100, Math.max(0, Math.round((dayMarks / 30) * 100)));
                     }
 
                     const batchAnswersCount = dayBatches.reduce(
-                        (sum: number, b: any) => sum + (Array.isArray(b.answers) ? b.answers.length : 0),
+                        (sum: number, b: any) => sum + parseAnswersArray(b.answers).length,
                         0
                     );
 
@@ -778,28 +817,30 @@ export const QuizService = {
                         };
                     }
 
-                    const wQuestions = allQuestions.filter((q: any) =>
-                        q.completed_at && isWithinInterval(new Date(q.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
-                    );
-                    const wBatches = allBatches.filter((b: any) =>
-                        b.completed_at && isWithinInterval(new Date(b.completed_at), { start: startOfDay(wStart), end: endOfDay(wEnd) })
-                    );
+                    const wQuestions = allQuestions.filter((q: any) => {
+                        const d = getQuestionTimestamp(q);
+                        return d && isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
+                    });
+                    const wBatches = allBatches.filter((b: any) => {
+                        const d = getBatchTimestamp(b);
+                        return d && isWithinInterval(d, { start: startOfDay(wStart), end: endOfDay(wEnd) });
+                    });
 
                     const hasActivity = wQuestions.length > 0 || wBatches.length > 0;
                     let weekScore = 0;
 
-                    if (wQuestions.length > 0) {
+                    if (wBatches.length > 0) {
+                        weekScore = Math.round(wBatches[wBatches.length - 1].score || 0);
+                    } else if (wQuestions.length > 0) {
                         const wMarks = wQuestions.reduce(
                             (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
                             0
                         );
-                        weekScore = Math.round((wMarks / wQuestions.length) * 100);
-                    } else if (wBatches.length > 0) {
-                        weekScore = Math.round(wBatches[wBatches.length - 1].score || 0);
+                        weekScore = Math.min(100, Math.max(0, Math.round((wMarks / 30) * 100)));
                     }
 
                     const batchAnswersCount = wBatches.reduce(
-                        (sum: number, b: any) => sum + (Array.isArray(b.answers) ? b.answers.length : 0),
+                        (sum: number, b: any) => sum + parseAnswersArray(b.answers).length,
                         0
                     );
 
@@ -816,8 +857,14 @@ export const QuizService = {
             } else {
                 // ALL: Monthly buckets from earliest activity to today
                 const allTimestamps = [
-                    ...allQuestions.map((q: any) => q.completed_at ? new Date(q.completed_at).getTime() : NaN),
-                    ...allBatches.map((b: any) => b.completed_at ? new Date(b.completed_at).getTime() : NaN),
+                    ...allQuestions.map((q: any) => {
+                        const d = getQuestionTimestamp(q);
+                        return d ? d.getTime() : NaN;
+                    }),
+                    ...allBatches.map((b: any) => {
+                        const d = getBatchTimestamp(b);
+                        return d ? d.getTime() : NaN;
+                    }),
                 ].filter(t => !isNaN(t));
 
                 const earliest = allTimestamps.length > 0 ? new Date(Math.min(...allTimestamps)) : subMonths(now, 5);
@@ -837,28 +884,30 @@ export const QuizService = {
                 points = monthsList.map((mStart) => {
                     const mEnd = endOfMonth(mStart);
 
-                    const mQuestions = allQuestions.filter((q: any) =>
-                        q.completed_at && isWithinInterval(new Date(q.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
-                    );
-                    const mBatches = allBatches.filter((b: any) =>
-                        b.completed_at && isWithinInterval(new Date(b.completed_at), { start: startOfDay(mStart), end: endOfDay(mEnd) })
-                    );
+                    const mQuestions = allQuestions.filter((q: any) => {
+                        const d = getQuestionTimestamp(q);
+                        return d && isWithinInterval(d, { start: startOfDay(mStart), end: endOfDay(mEnd) });
+                    });
+                    const mBatches = allBatches.filter((b: any) => {
+                        const d = getBatchTimestamp(b);
+                        return d && isWithinInterval(d, { start: startOfDay(mStart), end: endOfDay(mEnd) });
+                    });
 
                     const hasActivity = mQuestions.length > 0 || mBatches.length > 0;
                     let monthScore = 0;
 
-                    if (mQuestions.length > 0) {
+                    if (mBatches.length > 0) {
+                        monthScore = Math.round(mBatches[mBatches.length - 1].score || 0);
+                    } else if (mQuestions.length > 0) {
                         const mMarks = mQuestions.reduce(
                             (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
                             0
                         );
-                        monthScore = Math.round((mMarks / mQuestions.length) * 100);
-                    } else if (mBatches.length > 0) {
-                        monthScore = Math.round(mBatches[mBatches.length - 1].score || 0);
+                        monthScore = Math.min(100, Math.max(0, Math.round((mMarks / 30) * 100)));
                     }
 
                     const batchAnswersCount = mBatches.reduce(
-                        (sum: number, b: any) => sum + (Array.isArray(b.answers) ? b.answers.length : 0),
+                        (sum: number, b: any) => sum + parseAnswersArray(b.answers).length,
                         0
                     );
 
@@ -875,12 +924,14 @@ export const QuizService = {
             }
 
             // Calculate Period Activity & Performance (Dashboard B)
-            const periodQuestions = allQuestions.filter((q: any) =>
-                q.completed_at && isWithinInterval(new Date(q.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
-            );
-            const periodBatches = allBatches.filter((b: any) =>
-                b.completed_at && isWithinInterval(new Date(b.completed_at), { start: startOfDay(startDate), end: endOfDay(now) })
-            );
+            const periodQuestions = allQuestions.filter((q: any) => {
+                const d = getQuestionTimestamp(q);
+                return d && isWithinInterval(d, { start: startOfDay(startDate), end: endOfDay(now) });
+            });
+            const periodBatches = allBatches.filter((b: any) => {
+                const d = getBatchTimestamp(b);
+                return d && isWithinInterval(d, { start: startOfDay(startDate), end: endOfDay(now) });
+            });
 
             // Collect unique answered question IDs across user_question_progress and user_batch_progress.answers
             const periodAnsweredIds = new Set<string>();
@@ -888,38 +939,61 @@ export const QuizService = {
                 if (q.question_id) periodAnsweredIds.add(String(q.question_id));
             });
             periodBatches.forEach((b: any) => {
-                if (Array.isArray(b.answers)) {
-                    b.answers.forEach((ans: any) => {
-                        const qId = ans?.questionId || ans?.question_id || ans?.id;
-                        if (qId) periodAnsweredIds.add(String(qId));
-                    });
-                }
+                const ansList = parseAnswersArray(b.answers);
+                ansList.forEach((ans: any) => {
+                    const qId = ans?.questionId || ans?.question_id || ans?.id;
+                    if (qId) periodAnsweredIds.add(String(qId));
+                });
             });
 
-            const mcqsCompleted = periodAnsweredIds.size > 0 ? periodAnsweredIds.size : periodQuestions.length;
+            // If periodAnsweredIds is empty but user completed batches or questions, determine completed count
+            let mcqsCompleted = periodAnsweredIds.size;
+            if (mcqsCompleted === 0) {
+                if (periodQuestions.length > 0) {
+                    mcqsCompleted = periodQuestions.length;
+                } else if (periodBatches.length > 0) {
+                    const uniqueBatches = new Set(periodBatches.map((b: any) => b.batch_number));
+                    mcqsCompleted = allQuestions.length > 0 ? allQuestions.length : (uniqueBatches.size * 30);
+                }
+            }
+
             const totalMarksEarned = periodQuestions.reduce(
                 (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
                 0
             );
-            const periodPerformance = periodQuestions.length > 0
-                ? Math.round((totalMarksEarned / periodQuestions.length) * 100)
-                : (periodBatches.length > 0 ? Math.round(periodBatches[periodBatches.length - 1].score || 0) : null);
+            const periodPerformance = periodBatches.length > 0
+                ? Math.round(periodBatches[periodBatches.length - 1].score || 0)
+                : (periodQuestions.length > 0
+                    ? Math.min(100, Math.max(0, Math.round((totalMarksEarned / 30) * 100)))
+                    : null);
 
             let activePeriodsCount = 0;
             let activePeriodsLabel = 'Active Days';
             if (range === 'ALL') {
                 const activeMonthsSet = new Set([
-                    ...periodQuestions.map((q: any) => format(new Date(q.completed_at), 'yyyy-MM')),
-                    ...periodBatches.map((b: any) => format(new Date(b.completed_at), 'yyyy-MM')),
+                    ...periodQuestions.map((q: any) => {
+                        const d = getQuestionTimestamp(q);
+                        return d ? format(d, 'yyyy-MM') : null;
+                    }).filter(Boolean),
+                    ...periodBatches.map((b: any) => {
+                        const d = getBatchTimestamp(b);
+                        return d ? format(d, 'yyyy-MM') : null;
+                    }).filter(Boolean),
                 ]);
-                activePeriodsCount = activeMonthsSet.size;
+                activePeriodsCount = activeMonthsSet.size || (periodBatches.length > 0 ? 1 : 0);
                 activePeriodsLabel = 'Active Months';
             } else {
                 const activeDaysSet = new Set([
-                    ...periodQuestions.map((q: any) => format(new Date(q.completed_at), 'yyyy-MM-dd')),
-                    ...periodBatches.map((b: any) => format(new Date(b.completed_at), 'yyyy-MM-dd')),
+                    ...periodQuestions.map((q: any) => {
+                        const d = getQuestionTimestamp(q);
+                        return d ? format(d, 'yyyy-MM-dd') : null;
+                    }).filter(Boolean),
+                    ...periodBatches.map((b: any) => {
+                        const d = getBatchTimestamp(b);
+                        return d ? format(d, 'yyyy-MM-dd') : null;
+                    }).filter(Boolean),
                 ]);
-                activePeriodsCount = activeDaysSet.size;
+                activePeriodsCount = activeDaysSet.size || (periodBatches.length > 0 ? 1 : 0);
                 activePeriodsLabel = 'Active Days';
             }
 

@@ -115,6 +115,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         lowestScore: low,
         totalAttempts: attempts,
         activePeriodsCount: activePoints.length,
+        mcqsCompleted: prev.mcqsCompleted > 0 ? prev.mcqsCompleted : attempts,
+        periodPerformance: prev.periodPerformance ?? (avg > 0 ? avg : null),
       }));
     },
     [isPointInFuture]
@@ -122,11 +124,20 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
   // Sync initialData if provided and on 1W
   useEffect(() => {
-    if (initialData && initialData.length > 0 && selectedRange === '1W') {
-      setChartPoints(initialData);
-      calculateStatsFromPoints(initialData);
+    if (initialData && initialData.length > 0) {
+      // Clear cache to ensure switching tabs after a refresh fetches fresh data
+      cacheRef.current = {};
+      
+      if (selectedRange === '1W') {
+        setChartPoints(initialData);
+        calculateStatsFromPoints(initialData);
+        const lastActiveIdx = initialData.reduce((last: number, pt: PerformanceTrendPoint, idx: number) => (pt.hasActivity && !pt.isFuture ? idx : last), -1);
+        if (lastActiveIdx !== -1) {
+          setSelectedIndex(lastActiveIdx);
+        }
+      }
     }
-  }, [initialData, selectedRange, calculateStatsFromPoints]);
+  }, [initialData]); // deliberately omit selectedRange to only run when initialData updates
 
   const fetchRangeData = useCallback(
     async (range: PerformanceTimeRange) => {
@@ -139,8 +150,13 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       }
 
       if (cacheRef.current[range]) {
-        setChartPoints(cacheRef.current[range].points);
-        setStats(cacheRef.current[range].stats);
+        const cached = cacheRef.current[range];
+        setChartPoints(cached.points);
+        setStats(cached.stats);
+        const lastActiveIdx = cached.points.reduce((last: number, pt: PerformanceTrendPoint, idx: number) => (pt.hasActivity && !pt.isFuture ? idx : last), -1);
+        if (lastActiveIdx !== -1) {
+          setSelectedIndex(lastActiveIdx);
+        }
         return;
       }
 
@@ -251,26 +267,72 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     return displayData.findIndex((p, i) => isPointToday(p, i));
   }, [displayData, isPointToday]);
 
-  // Generate Path and Area Fill strictly for active points
+  // Generate Path and Area Fill
   const { d, dArea } = useMemo(() => {
-    if (activeIndices.length <= 1) {
+    if (!displayData || displayData.length === 0) {
       return { d: '', dArea: '' };
     }
 
+    const pastOrTodayPoints = displayData.filter((p, i) => !isPointInFuture(p, i));
+    if (pastOrTodayPoints.length === 0 || activeIndices.length === 0) {
+      return { d: '', dArea: '' };
+    }
+
+    const bottomY = height - vPadding;
+
+    if (activeIndices.length === 1) {
+      const activeIdx = activeIndices[0];
+      const activeVal = displayData[activeIdx].value;
+      const endIdx = todayIndex !== -1 && todayIndex >= activeIdx ? todayIndex : (pastOrTodayPoints.length - 1);
+
+      let linePath = `M ${getX(0)} ${getY(activeIdx === 0 ? activeVal : 0)}`;
+      if (activeIdx > 0) {
+        for (let i = 1; i < activeIdx; i++) {
+          linePath += ` L ${getX(i)} ${getY(0)}`;
+        }
+        linePath += ` L ${getX(activeIdx)} ${getY(activeVal)}`;
+      }
+      if (endIdx > activeIdx) {
+        for (let i = activeIdx + 1; i <= endIdx; i++) {
+          linePath += ` L ${getX(i)} ${getY(activeVal)}`;
+        }
+      }
+
+      const areaPath = `${linePath} L ${getX(endIdx)} ${bottomY} L ${getX(0)} ${bottomY} Z`;
+      return { d: linePath, dArea: areaPath };
+    }
+
+    // 2 or more active points
     const firstIdx = activeIndices[0];
     const lastIdx = activeIndices[activeIndices.length - 1];
+    const endIdx = todayIndex !== -1 && todayIndex >= lastIdx ? todayIndex : lastIdx;
 
-    let linePath = `M ${getX(firstIdx)} ${getY(displayData[firstIdx].value)}`;
+    let linePath = '';
+    if (firstIdx > 0) {
+      linePath = `M ${getX(0)} ${getY(0)}`;
+      for (let i = 1; i < firstIdx; i++) {
+        linePath += ` L ${getX(i)} ${getY(0)}`;
+      }
+      linePath += ` L ${getX(firstIdx)} ${getY(displayData[firstIdx].value)}`;
+    } else {
+      linePath = `M ${getX(0)} ${getY(displayData[0].value)}`;
+    }
+
     for (let i = 1; i < activeIndices.length; i++) {
       const idx = activeIndices[i];
       linePath += ` L ${getX(idx)} ${getY(displayData[idx].value)}`;
     }
 
-    const bottomY = height - vPadding;
-    const areaPath = `${linePath} L ${getX(lastIdx)} ${bottomY} L ${getX(firstIdx)} ${bottomY} Z`;
+    if (endIdx > lastIdx) {
+      const lastVal = displayData[lastIdx].value;
+      for (let i = lastIdx + 1; i <= endIdx; i++) {
+        linePath += ` L ${getX(i)} ${getY(lastVal)}`;
+      }
+    }
 
+    const areaPath = `${linePath} L ${getX(endIdx)} ${bottomY} L ${getX(0)} ${bottomY} Z`;
     return { d: linePath, dArea: areaPath };
-  }, [activeIndices, displayData, height, vPadding, getX, getY]);
+  }, [activeIndices, displayData, height, vPadding, getX, getY, isPointInFuture, todayIndex]);
 
   const getRangeLabel = (range: PerformanceTimeRange) => {
     switch (range) {

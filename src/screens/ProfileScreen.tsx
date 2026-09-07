@@ -255,6 +255,16 @@ export const ProfileScreen = ({ navigation }: any) => {
           freshCsiData = csi;
           freshMilestones = milestones;
           freshTotalMCQs = categoryTotalMCQs > 0 ? categoryTotalMCQs : 263;
+
+          // Merge dimension scores from CSI calculation into profile
+          if (freshCsiData?.componentScores) {
+            updatedProfile = {
+              ...updatedProfile,
+              operationalEffectiveness: freshCsiData.componentScores.operation ?? updatedProfile.operationalEffectiveness ?? null,
+              operationalDiscipline: freshCsiData.componentScores.discipline ?? updatedProfile.operationalDiscipline ?? null,
+              professionalConduct: freshCsiData.componentScores.professionalism ?? updatedProfile.professionalConduct ?? null,
+            };
+          }
         }
 
         if (userProfile.role === 'manager' && userProfile.company_id) {
@@ -843,9 +853,9 @@ export const ProfileScreen = ({ navigation }: any) => {
 
              {/* Driver Performance Dashboard */}
               {(() => {
-                const pcScore = profile?.professionalConduct;
-                const odScore = profile?.operationalDiscipline;
-                const oeScore = profile?.operationalEffectiveness;
+                const pcScore = profile?.professionalConduct ?? csiData?.componentScores?.professionalism;
+                const odScore = profile?.operationalDiscipline ?? csiData?.componentScores?.discipline;
+                const oeScore = profile?.operationalEffectiveness ?? csiData?.componentScores?.operation;
 
                 const pcRating = ScoringService.getPerformanceRating(pcScore);
                 const odRating = ScoringService.getPerformanceRating(odScore);
