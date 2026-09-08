@@ -217,32 +217,48 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 }
             });
 
-            const currentProgressList = Array.from(progressMap.values());
-            setProgressList(currentProgressList);
-
             // Fetch questions by batch AND by question IDs to ensure question text is retrieved for all progress items
             const questionIds = Array.from(progressMap.keys());
 
-            const [batchQsRes, byIdsRes] = await Promise.all([
-                supabase
-                    .from('questions')
-                    .select('id, text, text_ms, text_bm, driver_categories')
-                    .eq('batch_number', selectedBatch),
-                questionIds.length > 0
-                    ? supabase
-                        .from('questions')
-                        .select('id, text, text_ms, text_bm, driver_categories')
-                        .in('id', questionIds)
-                    : Promise.resolve({ data: [], error: null })
-            ]);
+            // Fetch batch questions first
+            const batchQsRes = await supabase
+                .from('questions')
+                .select('*')
+                .eq('batch_number', selectedBatch);
 
             const qMap = new Map<string, any>();
             (batchQsRes.data || []).forEach(q => {
                 if (q && q.id) qMap.set(String(q.id), q);
             });
-            (byIdsRes.data || []).forEach(q => {
-                if (q && q.id) qMap.set(String(q.id), q);
+
+            // Find which question IDs are still missing from batch query
+            const missingIds = questionIds.filter(id => !qMap.has(id));
+
+            // Fetch missing questions by ID (in chunks to avoid URL length limits)
+            if (missingIds.length > 0) {
+                const CHUNK_SIZE = 50;
+                for (let i = 0; i < missingIds.length; i += CHUNK_SIZE) {
+                    const chunk = missingIds.slice(i, i + CHUNK_SIZE);
+                    const { data: chunkData } = await supabase
+                        .from('questions')
+                        .select('*')
+                        .in('id', chunk);
+                    (chunkData || []).forEach(q => {
+                        if (q && q.id) qMap.set(String(q.id), q);
+                    });
+                }
+            }
+
+            // Embed resolved question text into progress entries for reliable display
+            const currentProgressList = Array.from(progressMap.entries()).map(([qId, prog]) => {
+                const q = qMap.get(qId);
+                return {
+                    ...prog,
+                    _resolvedText: q?.text || q?.text_bm || q?.text_ms || null,
+                    _resolvedTextMs: q?.text_bm || q?.text_ms || null,
+                };
             });
+            setProgressList(currentProgressList);
 
             setBatchQuestions(Array.from(qMap.values()));
         } catch (error) {
@@ -352,17 +368,31 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
         return batchProgress.find(b => b.batchNumber === selectedBatch);
     }, [batchProgress, selectedBatch]);
 
-    // Only show incorrect answered questions
+    // Only show incorrect answered questions (skip orphaned questions no longer in DB)
     const incorrectQuestions = useMemo(() => {
         const incorrectList: any[] = [];
         progressList.forEach(prog => {
             if (!prog.is_correct) {
-                const q = batchQuestions.find(bq => String(bq.id) === String(prog.question_id));
-                const qText = q?.text || q?.text_ms || q?.text_bm;
+                // Prefer pre-resolved text embedded during data loading
+                let qText = prog._resolvedText;
+                let qTextMs = prog._resolvedTextMs;
+
+                // Fallback: lookup from batchQuestions array
+                if (!qText) {
+                    const q = batchQuestions.find(bq => String(bq.id) === String(prog.question_id));
+                    qText = q?.text || q?.text_bm || q?.text_ms;
+                    qTextMs = q?.text_bm || q?.text_ms;
+                }
+
+                // Fallback for questions removed from DB
+                if (!qText) {
+                    qText = '⚠️ Question removed from database';
+                }
+
                 incorrectList.push({
                     id: prog.question_id,
-                    text: qText || `Question #${prog.question_id}`,
-                    text_ms: q?.text_ms || q?.text_bm,
+                    text: qText,
+                    text_ms: qTextMs,
                     answered: true,
                     attempts: prog.attempts || 1,
                     isCorrect: false,
