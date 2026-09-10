@@ -896,16 +896,10 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                     {/* Time & type — pinned to the right */}
                     <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                       <Text style={[styles.loginLogTime, { color: colors.text.secondary }]}>{timeLabel}</Text>
-                      <View style={[styles.loginTypeBadge, {
-                        backgroundColor: log.login_type === 'session_restore' ? '#10B98120' : colors.primary.DEFAULT + '20'
-                      }]}>
-                        {log.login_type === 'session_restore'
-                          ? <Smartphone size={10} color='#10B981' />
-                          : <LogIn size={10} color={colors.primary.DEFAULT} />}
-                        <Text style={[styles.loginTypeBadgeText, {
-                          color: log.login_type === 'session_restore' ? '#10B981' : colors.primary.DEFAULT
-                        }]}>
-                          {log.login_type === 'session_restore' ? 'Restore' : 'Login'}
+                      <View style={[styles.loginTypeBadge, { backgroundColor: colors.primary.DEFAULT + '20' }]}>
+                        <LogIn size={10} color={colors.primary.DEFAULT} />
+                        <Text style={[styles.loginTypeBadgeText, { color: colors.primary.DEFAULT }]}>
+                          Login
                         </Text>
                       </View>
                     </View>
