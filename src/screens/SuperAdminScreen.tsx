@@ -733,6 +733,8 @@ export const SuperAdminScreen = ({ navigation }: any) => {
         {/* TAB 5: LOGIN ACTIVITY */}
         {activeTab === 'login_activity' && (
           <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
+            {/* Web-friendly max-width wrapper */}
+            <View style={Platform.OS === 'web' ? { maxWidth: 720, alignSelf: 'center', width: '100%' } : undefined}>
 
             {/* Stats Summary Grid */}
             <View style={styles.loginStatsGrid}>
@@ -866,8 +868,8 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                     </View>
 
                     {/* Main info */}
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <Text style={[styles.loginLogName, { color: colors.text.primary }]} numberOfLines={1}>
                           {log.full_name || log.employee_id || 'Unknown User'}
                         </Text>
@@ -875,13 +877,13 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                           <Text style={[styles.loginRoleBadgeText, { color: roleColor }]}>{roleLabel}</Text>
                         </View>
                       </View>
-                      <Text style={[styles.loginLogSub, { color: colors.text.tertiary }]}>
-                        {log.employee_id && `ID: ${log.employee_id}  ·  `}{log.company_name || 'No Company'}
+                      <Text style={[styles.loginLogSub, { color: colors.text.tertiary }]} numberOfLines={1}>
+                        {log.employee_id && `ID: ${log.employee_id}  ·  `}{log.company_name || '—'}
                       </Text>
                     </View>
 
                     {/* Time & type */}
-                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                    <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                       <Text style={[styles.loginLogTime, { color: colors.text.secondary }]}>{timeLabel}</Text>
                       <View style={[styles.loginTypeBadge, { backgroundColor: log.login_type === 'session_restore' ? '#10B98120' : colors.primary.DEFAULT + '20' }]}>
                         {log.login_type === 'session_restore'
@@ -896,6 +898,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 );
               })
             )}
+            </View>
           </ScrollView>
         )}
 

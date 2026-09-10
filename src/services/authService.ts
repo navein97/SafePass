@@ -175,7 +175,7 @@ export const AuthService = {
             // After successful auth, check if the account is ACTIVE in the profiles table
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('status, full_name, employee_id, role, manager_level, company_id, company_name')
+                .select('status, full_name, employee_id, role, manager_level, company_id, companies(name)')
                 .eq('id', authData.user.id)
                 .single();
 
@@ -196,7 +196,7 @@ export const AuthService = {
                 role: profileData?.role || authData.user.user_metadata?.role || 'driver',
                 manager_level: profileData?.manager_level ?? null,
                 company_id: profileData?.company_id ?? authData.user.user_metadata?.company_id ?? null,
-                company_name: profileData?.company_name ?? null,
+                company_name: (profileData?.companies as any)?.name ?? null,
                 login_type: 'password',
             });
 
@@ -348,7 +348,7 @@ export const AuthService = {
         try {
             const { data: profileData } = await supabase
                 .from('profiles')
-                .select('full_name, employee_id, role, manager_level, company_id, company_name')
+                .select('full_name, employee_id, role, manager_level, company_id, companies(name)')
                 .eq('id', userId)
                 .single();
 
@@ -359,7 +359,7 @@ export const AuthService = {
                 role: profileData?.role || 'driver',
                 manager_level: profileData?.manager_level ?? null,
                 company_id: profileData?.company_id ?? null,
-                company_name: profileData?.company_name ?? null,
+                company_name: (profileData?.companies as any)?.name ?? null,
                 login_type: 'session_restore',
             });
         } catch (err) {
