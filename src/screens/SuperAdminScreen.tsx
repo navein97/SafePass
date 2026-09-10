@@ -293,55 +293,58 @@ export const SuperAdminScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Tab Selector Bar — scrollable so 5 tabs never overflow on any screen */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{
-            marginHorizontal: 20,
-            marginVertical: 10,
-          }}
-          contentContainerStyle={{
-            flexGrow: Platform.OS === 'web' ? 0 : 1,
-            alignItems: 'center',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: colors.border,
-            padding: 4,
-            gap: 2,
-            ...(Platform.OS === 'web' ? { maxWidth: 720, width: '100%', alignSelf: 'center' as any } : {}),
-          }}
-        >
-          {([
-            { key: 'masters',        icon: <Users       size={16} color={activeTab === 'masters'        ? '#fff' : colors.text.secondary} />, label: 'Masters'   },
-            { key: 'broadcast',      icon: <Send        size={16} color={activeTab === 'broadcast'      ? '#fff' : colors.text.secondary} />, label: 'Messaging' },
-            { key: 'analytics',      icon: <Activity    size={16} color={activeTab === 'analytics'      ? '#fff' : colors.text.secondary} />, label: 'Analytics' },
-            { key: 'settings',       icon: <Settings    size={16} color={activeTab === 'settings'       ? '#fff' : colors.text.secondary} />, label: 'Settings'  },
-            { key: 'login_activity', icon: <LogIn       size={16} color={activeTab === 'login_activity' ? '#fff' : colors.text.secondary} />, label: 'Logins'    },
-          ] as const).map(tab => {
-            const isActive = activeTab === tab.key;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[
-                  styles.tabItem,
-                  isActive && { backgroundColor: colors.primary.DEFAULT },
-                  // On mobile give each tab equal share; on web use auto width
-                  Platform.OS !== 'web' && { flex: 1 },
-                  Platform.OS === 'web' && { paddingHorizontal: 14 },
-                ]}
-                onPress={() => setActiveTab(tab.key as any)}
-              >
-                {tab.icon}
-                {/* On mobile: always show label (short enough now). On web: always show. */}
-                <Text style={[styles.tabText, { color: isActive ? '#fff' : colors.text.secondary }]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* Tab Selector Bar */}
+        <View style={[styles.tabBar, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'masters' && { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={() => setActiveTab('masters')}
+          >
+            <Users size={16} color={activeTab === 'masters' ? '#fff' : colors.text.secondary} />
+            <Text style={[styles.tabText, { color: activeTab === 'masters' ? '#fff' : colors.text.secondary }]}>
+              Master Users
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'broadcast' && { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={() => setActiveTab('broadcast')}
+          >
+            <Send size={16} color={activeTab === 'broadcast' ? '#fff' : colors.text.secondary} />
+            <Text style={[styles.tabText, { color: activeTab === 'broadcast' ? '#fff' : colors.text.secondary }]}>
+              Messaging
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'analytics' && { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={() => setActiveTab('analytics')}
+          >
+            <Activity size={16} color={activeTab === 'analytics' ? '#fff' : colors.text.secondary} />
+            <Text style={[styles.tabText, { color: activeTab === 'analytics' ? '#fff' : colors.text.secondary }]}>
+              Analytics & Logs
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'settings' && { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={() => setActiveTab('settings')}
+          >
+            <Settings size={16} color={activeTab === 'settings' ? '#fff' : colors.text.secondary} />
+            <Text style={[styles.tabText, { color: activeTab === 'settings' ? '#fff' : colors.text.secondary }]}>
+              Settings
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'login_activity' && { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={() => setActiveTab('login_activity')}
+          >
+            <LogIn size={16} color={activeTab === 'login_activity' ? '#fff' : colors.text.secondary} />
+            <Text style={[styles.tabText, { color: activeTab === 'login_activity' ? '#fff' : colors.text.secondary }]}>
+              Logins
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* TAB 1: MASTER USERS & INCOGNITO MONITORING */}
         {activeTab === 'masters' && (
@@ -730,8 +733,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
         {/* TAB 5: LOGIN ACTIVITY */}
         {activeTab === 'login_activity' && (
           <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* Web-friendly max-width wrapper */}
-            <View style={Platform.OS === 'web' ? { maxWidth: 720, alignSelf: 'center', width: '100%' } : undefined}>
 
             {/* Stats Summary Grid */}
             <View style={styles.loginStatsGrid}>
@@ -912,7 +913,6 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 );
               })
             )}
-            </View>
           </ScrollView>
         )}
 
@@ -1027,16 +1027,17 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   tabItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 10,
-    gap: 5,
+    gap: 6,
   },
   tabText: {
     fontFamily: typography.fonts.medium,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
   },
   tabContent: {
