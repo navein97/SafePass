@@ -293,58 +293,55 @@ export const SuperAdminScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Tab Selector Bar */}
-        <View style={[styles.tabBar, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.tabItem, activeTab === 'masters' && { backgroundColor: colors.primary.DEFAULT }]}
-            onPress={() => setActiveTab('masters')}
-          >
-            <Users size={16} color={activeTab === 'masters' ? '#fff' : colors.text.secondary} />
-            <Text style={[styles.tabText, { color: activeTab === 'masters' ? '#fff' : colors.text.secondary }]}>
-              Master Users
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabItem, activeTab === 'broadcast' && { backgroundColor: colors.primary.DEFAULT }]}
-            onPress={() => setActiveTab('broadcast')}
-          >
-            <Send size={16} color={activeTab === 'broadcast' ? '#fff' : colors.text.secondary} />
-            <Text style={[styles.tabText, { color: activeTab === 'broadcast' ? '#fff' : colors.text.secondary }]}>
-              Messaging
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabItem, activeTab === 'analytics' && { backgroundColor: colors.primary.DEFAULT }]}
-            onPress={() => setActiveTab('analytics')}
-          >
-            <Activity size={16} color={activeTab === 'analytics' ? '#fff' : colors.text.secondary} />
-            <Text style={[styles.tabText, { color: activeTab === 'analytics' ? '#fff' : colors.text.secondary }]}>
-              Analytics & Logs
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabItem, activeTab === 'settings' && { backgroundColor: colors.primary.DEFAULT }]}
-            onPress={() => setActiveTab('settings')}
-          >
-            <Settings size={16} color={activeTab === 'settings' ? '#fff' : colors.text.secondary} />
-            <Text style={[styles.tabText, { color: activeTab === 'settings' ? '#fff' : colors.text.secondary }]}>
-              Settings
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabItem, activeTab === 'login_activity' && { backgroundColor: colors.primary.DEFAULT }]}
-            onPress={() => setActiveTab('login_activity')}
-          >
-            <LogIn size={16} color={activeTab === 'login_activity' ? '#fff' : colors.text.secondary} />
-            <Text style={[styles.tabText, { color: activeTab === 'login_activity' ? '#fff' : colors.text.secondary }]}>
-              Logins
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Tab Selector Bar — scrollable so 5 tabs never overflow on any screen */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{
+            marginHorizontal: 20,
+            marginVertical: 10,
+          }}
+          contentContainerStyle={{
+            flexGrow: Platform.OS === 'web' ? 0 : 1,
+            alignItems: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: 4,
+            gap: 2,
+            ...(Platform.OS === 'web' ? { maxWidth: 720, width: '100%', alignSelf: 'center' as any } : {}),
+          }}
+        >
+          {([
+            { key: 'masters',        icon: <Users       size={16} color={activeTab === 'masters'        ? '#fff' : colors.text.secondary} />, label: 'Masters'   },
+            { key: 'broadcast',      icon: <Send        size={16} color={activeTab === 'broadcast'      ? '#fff' : colors.text.secondary} />, label: 'Messaging' },
+            { key: 'analytics',      icon: <Activity    size={16} color={activeTab === 'analytics'      ? '#fff' : colors.text.secondary} />, label: 'Analytics' },
+            { key: 'settings',       icon: <Settings    size={16} color={activeTab === 'settings'       ? '#fff' : colors.text.secondary} />, label: 'Settings'  },
+            { key: 'login_activity', icon: <LogIn       size={16} color={activeTab === 'login_activity' ? '#fff' : colors.text.secondary} />, label: 'Logins'    },
+          ] as const).map(tab => {
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  styles.tabItem,
+                  isActive && { backgroundColor: colors.primary.DEFAULT },
+                  // On mobile give each tab equal share; on web use auto width
+                  Platform.OS !== 'web' && { flex: 1 },
+                  Platform.OS === 'web' && { paddingHorizontal: 14 },
+                ]}
+                onPress={() => setActiveTab(tab.key as any)}
+              >
+                {tab.icon}
+                {/* On mobile: always show label (short enough now). On web: always show. */}
+                <Text style={[styles.tabText, { color: isActive ? '#fff' : colors.text.secondary }]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {/* TAB 1: MASTER USERS & INCOGNITO MONITORING */}
         {activeTab === 'masters' && (
@@ -850,7 +847,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 const isManager = log.role === 'manager' && log.manager_level !== 1;
                 const roleLabel = isMaster ? 'Master User' : isManager ? 'Manager' : 'Driver';
                 const roleColor = isMaster ? '#F59E0B' : isManager ? '#8B5CF6' : '#3B82F6';
-                const roleIcon = isMaster ? <Crown size={12} color={roleColor} /> : isManager ? <UserCheck size={12} color={roleColor} /> : <Car size={12} color={roleColor} />;
+                const roleIcon = isMaster ? <Crown size={14} color={roleColor} /> : isManager ? <UserCheck size={14} color={roleColor} /> : <Car size={14} color={roleColor} />;
                 const loginDate = new Date(log.logged_in_at);
                 const now = new Date();
                 const diffMs = now.getTime() - loginDate.getTime();
@@ -861,13 +858,26 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                   : loginDate.toLocaleDateString() + ' ' + loginDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                 return (
-                  <GlassCard key={log.id} style={styles.loginLogRow}>
+                  <View
+                    key={log.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 14,
+                      borderRadius: 14,
+                      marginBottom: 10,
+                      gap: 12,
+                      backgroundColor: colors.background.card,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
                     {/* Role icon badge */}
                     <View style={[styles.loginRoleIcon, { backgroundColor: roleColor + '20' }]}>
                       {roleIcon}
                     </View>
 
-                    {/* Main info */}
+                    {/* Main info — flex:1 so it takes remaining space */}
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <Text style={[styles.loginLogName, { color: colors.text.primary }]} numberOfLines={1}>
@@ -882,19 +892,23 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                       </Text>
                     </View>
 
-                    {/* Time & type */}
+                    {/* Time & type — pinned to the right */}
                     <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                       <Text style={[styles.loginLogTime, { color: colors.text.secondary }]}>{timeLabel}</Text>
-                      <View style={[styles.loginTypeBadge, { backgroundColor: log.login_type === 'session_restore' ? '#10B98120' : colors.primary.DEFAULT + '20' }]}>
+                      <View style={[styles.loginTypeBadge, {
+                        backgroundColor: log.login_type === 'session_restore' ? '#10B98120' : colors.primary.DEFAULT + '20'
+                      }]}>
                         {log.login_type === 'session_restore'
                           ? <Smartphone size={10} color='#10B981' />
                           : <LogIn size={10} color={colors.primary.DEFAULT} />}
-                        <Text style={[styles.loginTypeBadgeText, { color: log.login_type === 'session_restore' ? '#10B981' : colors.primary.DEFAULT }]}>
+                        <Text style={[styles.loginTypeBadgeText, {
+                          color: log.login_type === 'session_restore' ? '#10B981' : colors.primary.DEFAULT
+                        }]}>
                           {log.login_type === 'session_restore' ? 'Restore' : 'Login'}
                         </Text>
                       </View>
                     </View>
-                  </GlassCard>
+                  </View>
                 );
               })
             )}
@@ -1013,17 +1027,16 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   tabItem: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 10,
-    gap: 6,
+    gap: 5,
   },
   tabText: {
     fontFamily: typography.fonts.medium,
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
   },
   tabContent: {
