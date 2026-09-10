@@ -55,6 +55,8 @@ export const LoginScreen = ({ navigation }: any) => {
       if (session) {
         // User has a persisted session — skip login screen
         console.log('✅ Existing session found, auto-navigating to MainTabs');
+        // Log session restore event (fire-and-forget)
+        AuthService.logSessionRestore(session.user.id).catch(() => {});
         await WorkspaceService.setupWorkspaceIfNeeded();
         navigation.replace('MainTabs');
       }

@@ -20,6 +20,29 @@ export interface MasterCompany {
   average_score?: number;
 }
 
+export interface LoginLog {
+  id: string;
+  user_id?: string;
+  full_name?: string;
+  employee_id?: string;
+  role?: string;              // 'driver' | 'manager'
+  manager_level?: number;     // 1 = master user, 2 = sub-manager
+  company_id?: string;
+  company_name?: string;
+  login_type: 'password' | 'session_restore';
+  logged_in_at: string;
+}
+
+export interface LoginStats {
+  total_today: number;
+  unique_users_today: number;
+  driver_logins_today: number;
+  manager_logins_today: number;
+  master_logins_today: number;
+  total_all_time: number;
+}
+
+
 export const SuperAdminService = {
   /**
    * Fetches all registered companies and their corresponding master users (Level 1 Managers).
@@ -265,4 +288,58 @@ export const SuperAdminService = {
       return false;
     }
   },
+
+  /**
+   * Fetch login activity records for the Super Admin Login Activity tab.
+   * Calls the SECURITY DEFINER RPC to bypass RLS.
+   */
+  async getLoginLogs(
+    limit: number = 100,
+    roleFilter?: string,
+    companyIdFilter?: string
+  ): Promise<LoginLog[]> {
+    try {
+      const { data, error } = await supabase.rpc('get_login_logs', {
+        p_limit: limit,
+        p_role: roleFilter || null,
+        p_company_id: companyIdFilter || null,
+      });
+
+      if (error) {
+        console.warn('[SuperAdminService] getLoginLogs RPC error:', error.message);
+        return [];
+      }
+      return (data as LoginLog[]) || [];
+    } catch (err) {
+      console.error('[SuperAdminService] getLoginLogs error:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Fetch today's login stats summary for the Super Admin Login Activity tab.
+   * Calls the SECURITY DEFINER RPC to bypass RLS.
+   */
+  async getLoginStats(): Promise<LoginStats> {
+    const defaultStats: LoginStats = {
+      total_today: 0,
+      unique_users_today: 0,
+      driver_logins_today: 0,
+      manager_logins_today: 0,
+      master_logins_today: 0,
+      total_all_time: 0,
+    };
+    try {
+      const { data, error } = await supabase.rpc('get_login_stats');
+      if (error) {
+        console.warn('[SuperAdminService] getLoginStats RPC error:', error.message);
+        return defaultStats;
+      }
+      return (data as LoginStats) || defaultStats;
+    } catch (err) {
+      console.error('[SuperAdminService] getLoginStats error:', err);
+      return defaultStats;
+    }
+  },
 };
+

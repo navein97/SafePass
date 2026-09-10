@@ -29,12 +29,17 @@ import {
   RefreshCw,
   Clock,
   Layers,
-  Settings
+  Settings,
+  LogIn,
+  Car,
+  UserCheck,
+  Crown,
+  Smartphone
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { PasscodeGateModal } from '../components/PasscodeGateModal';
-import { SuperAdminService, MasterCompany } from '../services/superAdminService';
+import { SuperAdminService, MasterCompany, LoginLog, LoginStats } from '../services/superAdminService';
 import { AnalyticsService, AppEvent } from '../services/analyticsService';
 import { PasscodeService } from '../services/passcodeService';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -46,7 +51,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
   // Access Control State
   const [unlocked, setUnlocked] = useState(false);
-  const [activeTab, setActiveTab] = useState<'masters' | 'broadcast' | 'analytics' | 'settings'>('masters');
+  const [activeTab, setActiveTab] = useState<'masters' | 'broadcast' | 'analytics' | 'settings' | 'login_activity'>('masters');
 
   // Master Users State
   const [loadingCompanies, setLoadingCompanies] = useState(false);
@@ -74,6 +79,20 @@ export const SuperAdminScreen = ({ navigation }: any) => {
   const [metrics, setMetrics] = useState({ totalEvents: 0, totalCompanies: 0, totalUsers: 0, totalQuizzes: 0 });
   const [eventLogs, setEventLogs] = useState<AppEvent[]>([]);
 
+  // Login Activity State
+  const [loadingLoginActivity, setLoadingLoginActivity] = useState(false);
+  const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
+  const [loginStats, setLoginStats] = useState<LoginStats>({
+    total_today: 0,
+    unique_users_today: 0,
+    driver_logins_today: 0,
+    manager_logins_today: 0,
+    master_logins_today: 0,
+    total_all_time: 0,
+  });
+  const [loginRoleFilter, setLoginRoleFilter] = useState<'all' | 'driver' | 'manager' | 'master'>('all');
+  const [loginCompanyFilter, setLoginCompanyFilter] = useState<string | undefined>(undefined);
+
   // Global Settings State
   const [globalLimitInput, setGlobalLimitInput] = useState('5');
   const [loadingLimit, setLoadingLimit] = useState(false);
@@ -88,6 +107,12 @@ export const SuperAdminScreen = ({ navigation }: any) => {
     }
   }, [unlocked]);
 
+  useEffect(() => {
+    if (unlocked && activeTab === 'login_activity') {
+      loadLoginActivity();
+    }
+  }, [unlocked, activeTab, loginRoleFilter, loginCompanyFilter]);
+
   const loadData = async () => {
     setLoadingCompanies(true);
     setLoadingAnalytics(true);
@@ -101,6 +126,24 @@ export const SuperAdminScreen = ({ navigation }: any) => {
     setMetrics(fetchedMetrics);
     setEventLogs(fetchedLogs);
     setLoadingAnalytics(false);
+  };
+
+  const loadLoginActivity = async () => {
+    setLoadingLoginActivity(true);
+    const roleParam = loginRoleFilter === 'all' ? undefined
+      : loginRoleFilter === 'master' ? 'manager'
+      : loginRoleFilter;
+    const [logs, stats] = await Promise.all([
+      SuperAdminService.getLoginLogs(150, roleParam, loginCompanyFilter),
+      SuperAdminService.getLoginStats(),
+    ]);
+    // If filtering by 'master', further filter client-side by manager_level === 1
+    const filteredLogs = loginRoleFilter === 'master'
+      ? logs.filter(l => l.manager_level === 1)
+      : logs;
+    setLoginLogs(filteredLogs);
+    setLoginStats(stats);
+    setLoadingLoginActivity(false);
   };
 
   // Beta Toggle Handler
@@ -289,6 +332,16 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             <Settings size={16} color={activeTab === 'settings' ? '#fff' : colors.text.secondary} />
             <Text style={[styles.tabText, { color: activeTab === 'settings' ? '#fff' : colors.text.secondary }]}>
               Settings
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'login_activity' && { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={() => setActiveTab('login_activity')}
+          >
+            <LogIn size={16} color={activeTab === 'login_activity' ? '#fff' : colors.text.secondary} />
+            <Text style={[styles.tabText, { color: activeTab === 'login_activity' ? '#fff' : colors.text.secondary }]}>
+              Logins
             </Text>
           </TouchableOpacity>
         </View>
@@ -674,6 +727,175 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 style={{ marginTop: 8 }}
               />
             </GlassCard>
+          </ScrollView>
+        )}
+
+        {/* TAB 5: LOGIN ACTIVITY */}
+        {activeTab === 'login_activity' && (
+          <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
+
+            {/* Stats Summary Grid */}
+            <View style={styles.loginStatsGrid}>
+              <GlassCard style={styles.loginStatCard}>
+                <LogIn size={20} color={colors.primary.DEFAULT} />
+                <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.total_today}</Text>
+                <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Today</Text>
+              </GlassCard>
+              <GlassCard style={styles.loginStatCard}>
+                <Users size={20} color='#8B5CF6' />
+                <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.unique_users_today}</Text>
+                <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Unique Users</Text>
+              </GlassCard>
+              <GlassCard style={styles.loginStatCard}>
+                <Car size={20} color='#3B82F6' />
+                <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.driver_logins_today}</Text>
+                <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Drivers</Text>
+              </GlassCard>
+              <GlassCard style={styles.loginStatCard}>
+                <Crown size={20} color='#F59E0B' />
+                <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.master_logins_today}</Text>
+                <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Masters</Text>
+              </GlassCard>
+            </View>
+
+            {/* All-time count */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 6 }}>
+              <Activity size={14} color={colors.text.tertiary} />
+              <Text style={{ color: colors.text.tertiary, fontSize: 12, fontFamily: typography.fonts.regular }}>
+                {loginStats.total_all_time.toLocaleString()} total logins recorded all time
+              </Text>
+            </View>
+
+            {/* Role Filter Bar */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {(['all', 'driver', 'manager', 'master'] as const).map(f => (
+                  <TouchableOpacity
+                    key={f}
+                    style={[
+                      styles.loginFilterChip,
+                      loginRoleFilter === f && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
+                    ]}
+                    onPress={() => setLoginRoleFilter(f)}
+                  >
+                    <Text style={[
+                      styles.loginFilterChipText,
+                      { color: loginRoleFilter === f ? '#fff' : colors.text.secondary }
+                    ]}>
+                      {f === 'all' ? '🌐 All' : f === 'driver' ? '🚗 Drivers' : f === 'manager' ? '👔 Managers' : '👑 Masters'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Company Filter (chips from companies list) */}
+            {companies.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.loginFilterChip,
+                      !loginCompanyFilter && { backgroundColor: colors.primary.DEFAULT + '30', borderColor: colors.primary.DEFAULT }
+                    ]}
+                    onPress={() => setLoginCompanyFilter(undefined)}
+                  >
+                    <Text style={[styles.loginFilterChipText, { color: colors.text.secondary }]}>All Companies</Text>
+                  </TouchableOpacity>
+                  {companies.map(c => (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={[
+                        styles.loginFilterChip,
+                        loginCompanyFilter === c.id && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
+                      ]}
+                      onPress={() => setLoginCompanyFilter(loginCompanyFilter === c.id ? undefined : c.id)}
+                    >
+                      <Text style={[
+                        styles.loginFilterChipText,
+                        { color: loginCompanyFilter === c.id ? '#fff' : colors.text.secondary }
+                      ]}>{c.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            )}
+
+            {/* Refresh button */}
+            <TouchableOpacity
+              style={[styles.refreshBtn, { borderColor: colors.border, alignSelf: 'flex-end', marginBottom: 12 }]}
+              onPress={loadLoginActivity}
+            >
+              <RefreshCw size={18} color={colors.text.primary} />
+            </TouchableOpacity>
+
+            {/* Login Records List */}
+            {loadingLoginActivity ? (
+              <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={{ marginTop: 40 }} />
+            ) : loginLogs.length === 0 ? (
+              <View style={styles.emptyState}>
+                <LogIn size={48} color={colors.text.tertiary} />
+                <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+                  No login records yet.
+                </Text>
+                <Text style={[styles.emptyText, { color: colors.text.tertiary, fontSize: 12 }]}>
+                  Run the SQL migration first, then users need to log in.
+                </Text>
+              </View>
+            ) : (
+              loginLogs.map((log) => {
+                const isMaster = log.role === 'manager' && log.manager_level === 1;
+                const isManager = log.role === 'manager' && log.manager_level !== 1;
+                const roleLabel = isMaster ? 'Master User' : isManager ? 'Manager' : 'Driver';
+                const roleColor = isMaster ? '#F59E0B' : isManager ? '#8B5CF6' : '#3B82F6';
+                const roleIcon = isMaster ? <Crown size={12} color={roleColor} /> : isManager ? <UserCheck size={12} color={roleColor} /> : <Car size={12} color={roleColor} />;
+                const loginDate = new Date(log.logged_in_at);
+                const now = new Date();
+                const diffMs = now.getTime() - loginDate.getTime();
+                const diffMins = Math.floor(diffMs / 60000);
+                const timeLabel = diffMins < 1 ? 'Just now'
+                  : diffMins < 60 ? `${diffMins}m ago`
+                  : diffMins < 1440 ? `${Math.floor(diffMins / 60)}h ago`
+                  : loginDate.toLocaleDateString() + ' ' + loginDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                return (
+                  <GlassCard key={log.id} style={styles.loginLogRow}>
+                    {/* Role icon badge */}
+                    <View style={[styles.loginRoleIcon, { backgroundColor: roleColor + '20' }]}>
+                      {roleIcon}
+                    </View>
+
+                    {/* Main info */}
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.loginLogName, { color: colors.text.primary }]} numberOfLines={1}>
+                          {log.full_name || log.employee_id || 'Unknown User'}
+                        </Text>
+                        <View style={[styles.loginRoleBadge, { backgroundColor: roleColor + '25' }]}>
+                          <Text style={[styles.loginRoleBadgeText, { color: roleColor }]}>{roleLabel}</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.loginLogSub, { color: colors.text.tertiary }]}>
+                        {log.employee_id && `ID: ${log.employee_id}  ·  `}{log.company_name || 'No Company'}
+                      </Text>
+                    </View>
+
+                    {/* Time & type */}
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <Text style={[styles.loginLogTime, { color: colors.text.secondary }]}>{timeLabel}</Text>
+                      <View style={[styles.loginTypeBadge, { backgroundColor: log.login_type === 'session_restore' ? '#10B98120' : colors.primary.DEFAULT + '20' }]}>
+                        {log.login_type === 'session_restore'
+                          ? <Smartphone size={10} color='#10B981' />
+                          : <LogIn size={10} color={colors.primary.DEFAULT} />}
+                        <Text style={[styles.loginTypeBadgeText, { color: log.login_type === 'session_restore' ? '#10B981' : colors.primary.DEFAULT }]}>
+                          {log.login_type === 'session_restore' ? 'Restore' : 'Login'}
+                        </Text>
+                      </View>
+                    </View>
+                  </GlassCard>
+                );
+              })
+            )}
           </ScrollView>
         )}
 
@@ -1109,5 +1331,96 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Login Activity Tab
+  loginStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  loginStatCard: {
+    width: '47%',
+    padding: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    gap: 4,
+  },
+  loginStatValue: {
+    fontSize: typography.sizes.xl,
+    fontFamily: typography.fonts.bold,
+    fontWeight: '800',
+  },
+  loginStatLabel: {
+    fontSize: 11,
+    fontFamily: typography.fonts.regular,
+  },
+  loginFilterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  loginFilterChipText: {
+    fontSize: 12,
+    fontFamily: typography.fonts.medium,
+    fontWeight: '600',
+  },
+  loginLogRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+    gap: 12,
+  },
+  loginRoleIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginLogName: {
+    fontSize: 13,
+    fontFamily: typography.fonts.bold,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  loginLogSub: {
+    fontSize: 11,
+    fontFamily: typography.fonts.regular,
+    marginTop: 2,
+  },
+  loginLogTime: {
+    fontSize: 11,
+    fontFamily: typography.fonts.medium,
+    fontWeight: '600',
+  },
+  loginRoleBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  loginRoleBadgeText: {
+    fontSize: 10,
+    fontFamily: typography.fonts.bold,
+    fontWeight: '700',
+  },
+  loginTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  loginTypeBadgeText: {
+    fontSize: 10,
+    fontFamily: typography.fonts.medium,
+    fontWeight: '600',
   },
 });

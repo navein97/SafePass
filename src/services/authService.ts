@@ -3,6 +3,38 @@ import { Region } from '../types/models';
 import { Platform } from 'react-native';
 import { NotificationService } from './notificationService';
 
+/**
+ * Silently inserts a row into login_logs.
+ * Always fire-and-forget — never throws, never blocks login.
+ */
+async function _logLoginActivity(params: {
+    userId: string;
+    fullName?: string;
+    employeeId?: string;
+    role?: string;
+    manager_level?: number | null;
+    company_id?: string | null;
+    company_name?: string | null;
+    login_type: 'password' | 'session_restore';
+}) {
+    try {
+        await supabase.from('login_logs').insert({
+            user_id: params.userId,
+            full_name: params.fullName || null,
+            employee_id: params.employeeId || null,
+            role: params.role || 'driver',
+            manager_level: params.manager_level ?? null,
+            company_id: params.company_id ?? null,
+            company_name: params.company_name ?? null,
+            login_type: params.login_type,
+            logged_in_at: new Date().toISOString(),
+        });
+    } catch (err) {
+        // Fail silently — login tracking must never break the login flow
+        console.debug('[AuthService] login_logs insert failed (non-critical):', err);
+    }
+}
+
 export interface SignUpData {
     email?: string;
     password: string;
@@ -140,10 +172,10 @@ export const AuthService = {
 
             if (authError) throw authError;
 
-            // NEW: After successful auth, check if the account is ACTIVE in the profiles table
+            // After successful auth, check if the account is ACTIVE in the profiles table
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('status')
+                .select('status, full_name, employee_id, role, manager_level, company_id, company_name')
                 .eq('id', authData.user.id)
                 .single();
 
@@ -155,6 +187,18 @@ export const AuthService = {
                 await supabase.auth.signOut();
                 throw new Error('Account inactive. Please contact your administrator.');
             }
+
+            // Log successful password login (fire-and-forget)
+            _logLoginActivity({
+                userId: authData.user.id,
+                fullName: profileData?.full_name || authData.user.user_metadata?.full_name,
+                employeeId: profileData?.employee_id || rawInput,
+                role: profileData?.role || authData.user.user_metadata?.role || 'driver',
+                manager_level: profileData?.manager_level ?? null,
+                company_id: profileData?.company_id ?? authData.user.user_metadata?.company_id ?? null,
+                company_name: profileData?.company_name ?? null,
+                login_type: 'password',
+            });
 
             return { session: authData.session, user: authData.user, error: null };
         } catch (error: any) {
@@ -294,6 +338,33 @@ export const AuthService = {
 
     onAuthStateChange(callback: (event: string, session: any) => void) {
         return supabase.auth.onAuthStateChange(callback);
+    },
+
+    /**
+     * Called by LoginScreen when an existing Supabase session is detected on app launch.
+     * Logs a 'session_restore' login event so Super Admin can see the activity.
+     */
+    async logSessionRestore(userId: string) {
+        try {
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('full_name, employee_id, role, manager_level, company_id, company_name')
+                .eq('id', userId)
+                .single();
+
+            await _logLoginActivity({
+                userId,
+                fullName: profileData?.full_name,
+                employeeId: profileData?.employee_id,
+                role: profileData?.role || 'driver',
+                manager_level: profileData?.manager_level ?? null,
+                company_id: profileData?.company_id ?? null,
+                company_name: profileData?.company_name ?? null,
+                login_type: 'session_restore',
+            });
+        } catch (err) {
+            console.debug('[AuthService] logSessionRestore failed (non-critical):', err);
+        }
     },
 
     /**
