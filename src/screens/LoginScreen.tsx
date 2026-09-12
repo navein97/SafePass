@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, StatusBar, KeyboardAvoidingView, Platform, ScrollView, Image, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Mail, Lock, HelpCircle, Car, Building } from 'lucide-react-native';
@@ -17,6 +17,7 @@ import { CompanySettingsService } from '../services/companySettingsService';
 import { WorkspaceService } from '../services/workspaceService';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t, i18n } = useTranslation();
@@ -29,6 +30,7 @@ export const LoginScreen = ({ navigation }: any) => {
   const [errors, setErrors] = useState({ companyCode: '', employeeId: '', password: '', general: '' });
   const [activeLang, setActiveLang] = useState(i18n.language);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const captchaRef = useRef<any>(null);
 
   const termsTextParts = useMemo(() => {
     const agreementText = t('auth.termsAgreement', 'By logging in, you agree to the {{terms}} of CNG Synergy (KT0512750V).');
@@ -107,17 +109,7 @@ export const LoginScreen = ({ navigation }: any) => {
   };
 
   const handleWhatsAppRegistration = () => {
-    const message = `Hi there, I would like to register my company:
-Company Name: 
-Preferred Company Code (e.g. PRO, HAYAT): 
-Manager Email: 
-Name: 
-Region: 
-Phone: +60
-Designation: `;
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/601120616323?text=${encodedMessage}`;
-    Linking.openURL(whatsappUrl);
+    navigation.navigate('RegisterWorkspace');
   };
 
   const handleLogin = async () => {
@@ -135,27 +127,53 @@ Designation: `;
       }
     }
 
-    const { session, error } = await AuthService.signIn({
-      companyCode: isEmail ? undefined : companyCode.trim().toUpperCase(),
-      employeeId,
-      password,
-    });
+    // Trigger hCaptcha check
+    if (captchaRef.current) {
+        captchaRef.current.show();
+    } else {
+        setLoading(false);
+        setErrors(prev => ({ ...prev, general: 'Captcha component not ready' }));
+    }
+  };
 
-    setLoading(false);
+  const onCaptchaMessage = async (event: any) => {
+    if (event && event.nativeEvent.data) {
+      const data = event.nativeEvent.data;
+      if (['cancel', 'error', 'expired'].includes(data)) {
+        setLoading(false);
+        if (data !== 'cancel') {
+          setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
+        }
+        return;
+      }
 
-    if (error) {
-      const friendlyMsg = Validation.getFriendlyErrorMessage(error);
-      setErrors(prev => ({ ...prev, general: friendlyMsg }));
-      Alert.alert(t('auth.loginFailed'), friendlyMsg);
-    } else if (session) {
-      // If this is a new Master User's first login, create their company
-      await WorkspaceService.setupWorkspaceIfNeeded();
-      
-      const userMeta = session.user?.user_metadata;
-      if (userMeta?.role === 'manager' && !userMeta?.data_retention_agreed) {
-        setShowPolicyModal(true);
-      } else {
-        navigation.replace('MainTabs');
+      // We have a token
+      const token = data;
+      const isEmail = employeeId.trim().includes('@');
+
+      const { session, error } = await AuthService.signIn({
+        companyCode: isEmail ? undefined : companyCode.trim().toUpperCase(),
+        employeeId,
+        password,
+        captchaToken: token,
+      });
+
+      setLoading(false);
+
+      if (error) {
+        const friendlyMsg = Validation.getFriendlyErrorMessage(error);
+        setErrors(prev => ({ ...prev, general: friendlyMsg }));
+        Alert.alert(t('auth.loginFailed'), friendlyMsg);
+      } else if (session) {
+        // If this is a new Master User's first login, create their company
+        await WorkspaceService.setupWorkspaceIfNeeded();
+        
+        const userMeta = session.user?.user_metadata;
+        if (userMeta?.role === 'manager' && !userMeta?.data_retention_agreed) {
+          setShowPolicyModal(true);
+        } else {
+          navigation.replace('MainTabs');
+        }
       }
     }
   };
@@ -300,9 +318,9 @@ Designation: `;
                     style={[styles.guideButton, { marginTop: 12, backgroundColor: '#25D36615', borderColor: '#25D366', borderWidth: 1 }]}
                     onPress={handleWhatsAppRegistration}
                   >
-                    <Mail size={18} color="#25D366" style={{ marginRight: 8 }} />
+                    <Building size={18} color="#25D366" style={{ marginRight: 8 }} />
                     <Text style={[styles.guideButtonText, { color: '#25D366', fontFamily: typography.fonts.bold }]}>
-                      {t('auth.registerCompany', 'Request Trial')}
+                      {t('auth.registerCompany', 'Register')}
                     </Text>
                   </TouchableOpacity>
 
@@ -367,6 +385,15 @@ Designation: `;
               </View>
             </View>
           </ScrollView>
+
+          <ConfirmHcaptcha
+            ref={captchaRef}
+            siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
+            baseUrl="https://hcaptcha.com"
+            languageCode="en"
+            onMessage={onCaptchaMessage}
+            size="invisible"
+          />
 
           {/* Data Retention Policy Modal */}
           {showPolicyModal && (

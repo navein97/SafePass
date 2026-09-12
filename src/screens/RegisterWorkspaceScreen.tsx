@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar, KeyboardAvoidingView, ScrollView, Modal } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar, KeyboardAvoidingView, ScrollView, Modal, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Mail, Lock, User, Building, ArrowLeft, CheckCircle, Eye, EyeOff, Phone } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -13,12 +13,13 @@ import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PasscodeGateModal } from '../components/PasscodeGateModal';
+import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 
 export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
   const { colors, theme } = useTheme();
   
-  const [unlocked, setUnlocked] = useState(false);
+  const captchaRef = useRef<any>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -83,50 +84,57 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
     if (!validateForm()) return;
 
     setLoading(true);
-    try {
-      const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
-      const result = await WorkspaceService.registerWorkspace({
-        fullName,
-        email,
-        password,
-        companyName,
-        companyCode: companyCode.trim().toUpperCase(),
-        phone_number: formattedPhone,
-        employeeId: email.split('@')[0],
-        region: 'MY',
-      });
+    setErrors(prev => ({ ...prev, general: '' }));
 
-      setLoading(false);
-
-      if (result.success) {
-        setRegistered(true); // Show success screen
-      } else {
-        const errorMsg = result.error || t('common.unexpectedErrorOccurred');
-        setErrors(prev => ({ ...prev, general: errorMsg }));
-      }
-    } catch (error: any) {
-      setLoading(false);
-      const errorMsg = error.message || t('common.unexpectedErrorOccurred');
-      setErrors(prev => ({ ...prev, general: errorMsg }));
+    if (captchaRef.current) {
+        captchaRef.current.show();
+    } else {
+        setLoading(false);
+        setErrors(prev => ({ ...prev, general: 'Captcha component not ready' }));
     }
   };
 
-  if (!unlocked) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background.default }}>
-        <PasscodeGateModal
-          visible={!unlocked}
-          title="Workspace Registration Access"
-          subtitle="Please enter passcode to unlock workspace registration page (/salsa)."
-          onUnlocked={() => setUnlocked(true)}
-          onCancel={() => {
-            if (navigation.canGoBack()) navigation.goBack();
-            else navigation.navigate('Login');
-          }}
-        />
-      </View>
-    );
-  }
+  const onCaptchaMessage = async (event: any) => {
+    if (event && event.nativeEvent.data) {
+      const data = event.nativeEvent.data;
+      if (['cancel', 'error', 'expired'].includes(data)) {
+        setLoading(false);
+        if (data !== 'cancel') {
+          setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
+        }
+        return;
+      }
+
+      const token = data;
+      try {
+        const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
+        const result = await WorkspaceService.registerWorkspace({
+          fullName,
+          email,
+          password,
+          companyName,
+          companyCode: companyCode.trim().toUpperCase(),
+          phone_number: formattedPhone,
+          employeeId: email.split('@')[0],
+          region: 'MY',
+          captchaToken: token,
+        });
+
+        setLoading(false);
+
+        if (result.success) {
+          setRegistered(true); // Show success screen
+        } else {
+          const errorMsg = result.error || t('common.unexpectedErrorOccurred');
+          setErrors(prev => ({ ...prev, general: errorMsg }));
+        }
+      } catch (error: any) {
+        setLoading(false);
+        const errorMsg = error.message || t('common.unexpectedErrorOccurred');
+        setErrors(prev => ({ ...prev, general: errorMsg }));
+      }
+    }
+  };
 
   // ==========================================
   // SUCCESS SCREEN - shown after registration
@@ -295,6 +303,15 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
               </View>
             </GlassCard>
           </ScrollView>
+
+          <ConfirmHcaptcha
+            ref={captchaRef}
+            siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
+            baseUrl="https://hcaptcha.com"
+            languageCode="en"
+            onMessage={onCaptchaMessage}
+            size="invisible"
+          />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </GradientBackground>

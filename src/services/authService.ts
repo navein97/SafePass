@@ -46,6 +46,7 @@ export interface SignUpData {
     phone_number?: string;
     companyId?: string;
     isPublic?: boolean; // NEW: Flag to force public signup
+    captchaToken?: string;
     [key: string]: any;
 }
 
@@ -53,6 +54,7 @@ export interface SignInData {
     employeeId: string; // Employee ID or email
     password: string;
     companyCode?: string;
+    captchaToken?: string;
 }
 
 export const AuthService = {
@@ -108,6 +110,7 @@ export const AuthService = {
                 email: email,
                 password: data.password,
                 options: {
+                    captchaToken: data.captchaToken,
                     emailRedirectTo: redirectUrl,
                     data: {
                         full_name: data.fullName.trim(),
@@ -168,6 +171,9 @@ export const AuthService = {
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: email,
                 password: data.password,
+                options: {
+                    captchaToken: data.captchaToken,
+                },
             });
 
             if (authError) throw authError;
@@ -449,7 +455,7 @@ export const AuthService = {
     /**
      * Send password reset email (for Forgot Password flow)
      */
-    async resetPassword(email: string) {
+    async resetPassword(email: string, captchaToken?: string) {
         try {
             const origin = (Platform.OS === 'web' && typeof window !== 'undefined')
                 ? window.location.origin
@@ -459,6 +465,7 @@ export const AuthService = {
 
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: redirectUrl,
+                captchaToken: captchaToken,
             });
 
             if (error) throw error;

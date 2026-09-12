@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Toast } from '../components/Toast';
+import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 
 export const ForgotPasswordScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -30,6 +31,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [errors, setErrors] = useState({ email: '', general: '' });
+  const captchaRef = useRef<any>(null);
 
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
@@ -60,35 +62,57 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
     if (isRequesting.current) return;
     if (!validateForm()) return;
 
-    isRequesting.current = true;
     setLoading(true);
     setErrors({ email: '', general: '' });
 
-    try {
-      const { error } = await AuthService.resetPassword(email);
-      
-      if (error) {
-        const friendlyMsg = Validation.getFriendlyErrorMessage(error);
-        setErrors(prev => ({ ...prev, general: friendlyMsg }));
-        Alert.alert(t('common.error'), friendlyMsg);
-      } else {
-        if (emailSent) {
-          setToastType('success');
-          setToastMessage(t('auth.emailResent'));
-          setToastVisible(true);
-        } else {
-          setEmailSent(true);
+    if (captchaRef.current) {
+        captchaRef.current.show();
+    } else {
+        setLoading(false);
+        setErrors(prev => ({ ...prev, general: 'Captcha component not ready' }));
+    }
+  };
+
+  const onCaptchaMessage = async (event: any) => {
+    if (event && event.nativeEvent.data) {
+      const data = event.nativeEvent.data;
+      if (['cancel', 'error', 'expired'].includes(data)) {
+        setLoading(false);
+        if (data !== 'cancel') {
+          setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
         }
+        return;
       }
-    } catch (error) {
-      console.error('Password reset error:', error);
-      setErrors(prev => ({ 
-        ...prev, 
-        general: t('auth.unexpectedError') 
-      }));
-    } finally {
-      isRequesting.current = false;
-      setLoading(false);
+
+      isRequesting.current = true;
+      const token = data;
+
+      try {
+        const { error } = await AuthService.resetPassword(email, token);
+        
+        if (error) {
+          const friendlyMsg = Validation.getFriendlyErrorMessage(error);
+          setErrors(prev => ({ ...prev, general: friendlyMsg }));
+          Alert.alert(t('common.error'), friendlyMsg);
+        } else {
+          if (emailSent) {
+            setToastType('success');
+            setToastMessage(t('auth.emailResent'));
+            setToastVisible(true);
+          } else {
+            setEmailSent(true);
+          }
+        }
+      } catch (error) {
+        console.error('Password reset error:', error);
+        setErrors(prev => ({ 
+          ...prev, 
+          general: t('auth.unexpectedError') 
+        }));
+      } finally {
+        isRequesting.current = false;
+        setLoading(false);
+      }
     }
   };
 
@@ -134,6 +158,15 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               </Text>
             </TouchableOpacity>
           </View>
+          
+          <ConfirmHcaptcha
+            ref={captchaRef}
+            siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
+            baseUrl="https://hcaptcha.com"
+            languageCode="en"
+            onMessage={onCaptchaMessage}
+            size="invisible"
+          />
         </SafeAreaView>
       </GradientBackground>
     );
@@ -218,6 +251,15 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               </View>
             </GlassCard>
           </ScrollView>
+
+          <ConfirmHcaptcha
+            ref={captchaRef}
+            siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
+            baseUrl="https://hcaptcha.com"
+            languageCode="en"
+            onMessage={onCaptchaMessage}
+            size="invisible"
+          />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </GradientBackground>

@@ -5,6 +5,7 @@ import { AuthService, SignUpData } from './authService';
 export interface RegisterWorkspaceData extends SignUpData {
     companyName: string;
     companyCode?: string;
+    captchaToken?: string;
 }
 
 export const WorkspaceService = {
@@ -23,6 +24,7 @@ export const WorkspaceService = {
                 isPublic: true,
                 company_name: data.companyName, // Stored in metadata for later
                 company_code: data.companyCode ? data.companyCode.trim().toUpperCase() : undefined,
+                captchaToken: data.captchaToken,
             });
 
             if (signUpResult.error) {
