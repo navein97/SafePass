@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar, KeyboardAvoidingView, ScrollView, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar, KeyboardAvoidingView, ScrollView, Modal, Alert, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Mail, Lock, User, Building, ArrowLeft, CheckCircle, Eye, EyeOff, Phone } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -133,6 +133,11 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
     setLoading(false);
   };
 
+  const handleContactSupport = () => {
+    const whatsappUrl = 'https://wa.me/601120616323?text=Hi%20Driver%20360%20Support,%20I%20just%20registered%20but%20didn\'t%20get%20the%20verification%20email.%20Can%20you%20verify%20me?';
+    Linking.openURL(whatsappUrl);
+  };
+
   // ==========================================
   // SUCCESS SCREEN - shown after registration
   // ==========================================
@@ -165,6 +170,20 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                 onPress={() => navigation.navigate('Login')}
                 style={styles.goToLoginButton}
               />
+
+              <View style={{ marginTop: 32, alignItems: 'center', width: '100%' }}>
+                <Text style={{ fontSize: 13, color: colors.text.secondary, textAlign: 'center', marginBottom: 12 }}>
+                  {t('auth.emailNotFound', "Can't find the email in your Inbox or Spam folder?")}
+                </Text>
+                
+                <GlassButton
+                  title={t('auth.contactWhatsApp', 'Verify via WhatsApp')}
+                  onPress={handleContactSupport}
+                  variant="outline"
+                  icon={<Phone size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />}
+                  style={{ width: '100%' }}
+                />
+              </View>
             </LinearGradient>
           </ScrollView>
         </SafeAreaView>

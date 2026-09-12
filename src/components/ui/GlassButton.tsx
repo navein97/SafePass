@@ -6,7 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 interface GlassButtonProps {
   onPress: () => void;
   title: string;
-  variant?: 'primary' | 'secondary' | 'danger' | 'outline';
+  variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'success';
   loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -34,6 +34,8 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
         return colors.gradients.primary;
       case 'danger':
         return colors.gradients.danger;
+      case 'success':
+        return colors.gradients.success || ['#00C853', '#00E676'];
       case 'secondary':
         return theme === 'light' ? ['#E5E5EA', '#D1D1D6'] : ['#3A3A3C', '#2C2C2E']; // Light gray for light mode, Dark gray for dark mode
       case 'outline':

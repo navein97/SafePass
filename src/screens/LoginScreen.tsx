@@ -301,14 +301,13 @@ export const LoginScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
 
                 <View style={[styles.linkButton, { marginTop: 24, alignItems: 'center' }]}>
-                  <TouchableOpacity
-                    style={styles.registerButton}
+                  <GlassButton
+                    title={t('auth.registerCompany', 'Register')}
                     onPress={handleWhatsAppRegistration}
-                    activeOpacity={0.7}
+                    variant="success"
+                    style={{ marginTop: 12, width: '60%' }}
                     disabled={loading}
-                  >
-                    <Text style={styles.registerButtonText}>{t('auth.registerCompany', 'Register')}</Text>
-                  </TouchableOpacity>
+                  />
 
                   <TouchableOpacity
                     style={[styles.guideButton, { marginTop: 12 }]}
@@ -484,21 +483,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   linkButton: {
     alignItems: 'center',
     marginTop: 24,
-  },
-  registerButton: {
-    width: '100%',
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: colors.primary.DEFAULT + '18',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-  },
-  registerButtonText: {
-    fontSize: 16,
-    fontFamily: typography.fonts.bold,
-    color: colors.primary.DEFAULT,
-    letterSpacing: 0.5,
   },
   linkText: {
     color: colors.text.secondary,
