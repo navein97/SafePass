@@ -301,13 +301,41 @@ export const LoginScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
 
                 <View style={[styles.linkButton, { marginTop: 24, alignItems: 'center' }]}>
-                  <GlassButton
-                    title={t('auth.registerCompany', 'Register')}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
                     onPress={handleWhatsAppRegistration}
-                    variant="success"
-                    style={{ marginTop: 12, width: '60%' }}
                     disabled={loading}
-                  />
+                  >
+                    <LinearGradient
+                      colors={colors.gradients.primary as any}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={{
+                        padding: 2,
+                        borderRadius: 24,
+                      }}
+                    >
+                      <View style={{
+                        paddingHorizontal: 24,
+                        paddingVertical: 10,
+                        borderRadius: 22,
+                        backgroundColor: colors.background.card,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row',
+                        gap: 8,
+                      }}>
+                        <Building size={16} color={colors.primary.DEFAULT} />
+                        <Text style={{
+                          fontSize: 15,
+                          fontFamily: typography.fonts.bold,
+                          color: colors.primary.DEFAULT,
+                        }}>
+                          {t('auth.registerCompany', 'Register')}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
 
                   <TouchableOpacity
                     style={[styles.guideButton, { marginTop: 12 }]}

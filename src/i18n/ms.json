@@ -113,6 +113,8 @@
         "accountCreatedWithEmail": "Akaun anda telah dicipta dengan e-mel:",
         "loginActivateWorkspace": "Sila semak e-mel anda (dan folder Spam) dan klik pautan pengesahan untuk mengaktifkan ruang kerja sebelum log masuk.",
         "goToLogin": "Pergi ke Log Masuk",
+        "emailNotFound": "Tidak jumpa e-mel di dalam Peti Masuk atau Spam anda?",
+        "contactWhatsApp": "Sahkan melalui WhatsApp",
         "registerSubtitle": "Cipta akaun syarikat anda untuk mula mengurus armada anda",
         "iAgreeTo": "Saya setuju",
         "dataRetentionPolicy": "Dasar Penyimpanan Data",
