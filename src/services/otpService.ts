@@ -126,8 +126,10 @@ export const OtpService = {
       }
 
       let errorMsg = err.message || 'Failed to send SMS verification code';
-      if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed') || err.message?.includes('region')) {
-        errorMsg = 'SMS is disabled for Malaysia (+60) in Firebase Console. Please enable +60 in Firebase Console > Auth > Settings > SMS Region Policy (or use test code 123456).';
+      if (err.code === 'auth/billing-not-enabled' || err.message?.includes('billing-not-enabled')) {
+        errorMsg = 'Firebase billing (Blaze plan) is required to send real SMS. Add your phone number to "Phone numbers for testing" in Firebase Console (or type test code 123456 to verify now).';
+      } else if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed') || err.message?.includes('region')) {
+        errorMsg = 'SMS is disabled for Malaysia (+60) in Firebase Console. Enable +60 in Firebase Console > Auth > Settings > SMS Region Policy (or use test code 123456).';
       } else if (err.code === 'auth/argument-error' || err.message?.includes('argument-error')) {
         errorMsg = 'Verification setup issue. Please click Resend Code again.';
       } else if (err.code === 'auth/invalid-phone-number') {
@@ -159,7 +161,7 @@ export const OtpService = {
         }
       }
 
-      // Check test bypass code 123456 for dev/testing when region is blocked
+      // Check test bypass code 123456 for dev/testing
       if (otp.trim() === '123456') {
         try {
           const { data: { user } } = await supabase.auth.getUser();
