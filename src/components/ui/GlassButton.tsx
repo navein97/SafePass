@@ -27,7 +27,9 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
   const { colors, theme } = useTheme();
 
   const getGradientColors = () => {
-    if (disabled) return ['#3A3A3C', '#2C2C2E'];
+    if (disabled) {
+      return theme === 'light' ? ['#E5E5EA', '#D1D1D6'] : ['#3A3A3C', '#2C2C2E'];
+    }
     
     switch (variant) {
       case 'primary':
@@ -47,7 +49,9 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
   };
 
   const getTextColor = () => {
-    if (disabled) return colors.text.tertiary;
+    if (disabled) {
+      return theme === 'light' ? '#8E8E93' : colors.text.tertiary;
+    }
     if (variant === 'outline') {
         // Darker gold/primary for visibility on light backgrounds
         return theme === 'light' ? colors.primary.dark : colors.primary.DEFAULT;

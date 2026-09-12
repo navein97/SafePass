@@ -97,13 +97,22 @@ export const OtpVerificationScreen = ({
     };
   }, [expiryCountdown, success]);
 
-  // Auto-focus the first input on screen load
+  // Auto-focus the first input on screen load & auto-trigger SMS if no active OTP session
   useEffect(() => {
     const timer = setTimeout(() => {
       if (inputRefs.current[0]) {
         inputRefs.current[0].focus();
       }
     }, 400);
+
+    if (!OtpService.hasActiveSession() && phone) {
+      OtpService.sendSmsOtp(phone).then((res) => {
+        if (!res.success && res.error) {
+          setError(res.error);
+        }
+      });
+    }
+
     return () => clearTimeout(timer);
   }, []);
 
