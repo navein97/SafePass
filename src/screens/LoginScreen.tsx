@@ -302,21 +302,21 @@ export const LoginScreen = ({ navigation }: any) => {
 
                 <View style={[styles.linkButton, { marginTop: 24, alignItems: 'center' }]}>
                   <TouchableOpacity
-                    style={styles.guideButton}
-                    onPress={() => navigation.navigate('HelpCenter')}
-                  >
-                    <HelpCircle size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
-                    <Text style={styles.guideButtonText}>{t('auth.newUserGuide', 'New User? View App Guide')}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.guideButton, { marginTop: 12, backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT, borderWidth: 1 }]}
+                    style={[styles.guideButton, { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT, borderWidth: 1 }]}
                     onPress={handleWhatsAppRegistration}
                   >
                     <Building size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
                     <Text style={[styles.guideButtonText, { color: '#FFFFFF', fontFamily: typography.fonts.bold }]}>
                       {t('auth.registerCompany', 'Register')}
                     </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.guideButton, { marginTop: 12 }]}
+                    onPress={() => navigation.navigate('HelpCenter')}
+                  >
+                    <HelpCircle size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />
+                    <Text style={styles.guideButtonText}>{t('auth.newUserGuide', 'New User? View App Guide')}</Text>
                   </TouchableOpacity>
 
                   <View style={styles.divider} />

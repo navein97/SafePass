@@ -54,7 +54,7 @@ const linking = {
   config: {
     screens: {
       Login: 'login',
-      RegisterWorkspace: 'salsa',
+      RegisterWorkspace: 'register',
       SuperAdmin: 'woof',
       AuthCallback: 'auth/callback',
       MainTabs: 'home',

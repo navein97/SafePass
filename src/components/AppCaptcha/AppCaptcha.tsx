@@ -40,7 +40,7 @@ const AppCaptcha = forwardRef<AppCaptchaRef, AppCaptchaProps>(({ onVerify, onErr
   return (
     <ConfirmHcaptcha
       ref={captchaRef}
-      siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
+      siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || '8270cd1e-c924-43f2-acc6-d0fe308e90ec'}
       baseUrl="https://hcaptcha.com"
       languageCode="en"
       onMessage={onMessage}

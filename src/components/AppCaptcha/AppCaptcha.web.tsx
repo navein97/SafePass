@@ -25,7 +25,7 @@ const AppCaptcha = forwardRef<AppCaptchaRef, AppCaptchaProps>(({ onVerify, onErr
   return (
     <HCaptcha
       ref={captchaRef}
-      sitekey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
+      sitekey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || '8270cd1e-c924-43f2-acc6-d0fe308e90ec'}
       onVerify={onVerify}
       onError={(err) => onError(err || 'Captcha error')}
       onExpire={() => onError('Captcha expired')}
