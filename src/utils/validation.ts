@@ -101,6 +101,9 @@ export const Validation = {
         if (lowerError.includes('rate limit')) {
             return 'Too many attempts. Please wait a moment before trying again.';
         }
+        if (lowerError.includes('email not confirmed')) {
+            return 'Please verify your email address before logging in. (Check your spam folder if you haven\'t received it)';
+        }
         if (lowerError.includes('network')) {
             return 'Network error. Please check your internet connection.';
         }

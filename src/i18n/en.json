@@ -111,7 +111,7 @@
         "languageLabel": "Language / Bahasa:",
         "registrationSuccessful": "Registration Successful! 🎉",
         "accountCreatedWithEmail": "Your account has been created with the email:",
-        "loginActivateWorkspace": "Please check your email and click the verification link to activate your workspace before logging in.",
+        "loginActivateWorkspace": "Please check your email (and Spam folder) and click the verification link to activate your workspace before logging in.",
         "goToLogin": "Go to Login",
         "registerSubtitle": "Create your company account to start managing your fleet",
         "iAgreeTo": "I agree",
