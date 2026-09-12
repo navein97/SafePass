@@ -17,7 +17,6 @@ import { CompanySettingsService } from '../services/companySettingsService';
 import { WorkspaceService } from '../services/workspaceService';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AppCaptcha, { AppCaptchaRef } from '../components/AppCaptcha';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t, i18n } = useTranslation();
@@ -30,7 +29,6 @@ export const LoginScreen = ({ navigation }: any) => {
   const [errors, setErrors] = useState({ companyCode: '', employeeId: '', password: '', general: '' });
   const [activeLang, setActiveLang] = useState(i18n.language);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
-  const captchaRef = useRef<AppCaptchaRef>(null);
 
   const termsTextParts = useMemo(() => {
     const agreementText = t('auth.termsAgreement', 'By logging in, you agree to the {{terms}} of CNG Synergy (KT0512750V).');
@@ -127,23 +125,10 @@ export const LoginScreen = ({ navigation }: any) => {
       }
     }
 
-    // Trigger hCaptcha check
-    if (captchaRef.current) {
-        captchaRef.current.show();
-    } else {
-        setLoading(false);
-        setErrors(prev => ({ ...prev, general: 'Captcha component not ready' }));
-    }
-  };
-
-  const handleVerifyCaptcha = async (token: string) => {
-    const isEmail = employeeId.trim().includes('@');
-
     const { session, error } = await AuthService.signIn({
       companyCode: isEmail ? undefined : companyCode.trim().toUpperCase(),
       employeeId,
       password,
-      captchaToken: token,
     });
 
     setLoading(false);
@@ -151,7 +136,7 @@ export const LoginScreen = ({ navigation }: any) => {
     if (error) {
       const friendlyMsg = Validation.getFriendlyErrorMessage(error);
       setErrors(prev => ({ ...prev, general: friendlyMsg }));
-      Alert.alert(t('auth.loginFailed'), friendlyMsg);
+      Alert.alert(t('auth.loginFailed', 'Login Failed'), friendlyMsg);
     } else if (session) {
       await WorkspaceService.setupWorkspaceIfNeeded();
       
@@ -162,15 +147,6 @@ export const LoginScreen = ({ navigation }: any) => {
         navigation.replace('MainTabs');
       }
     }
-  };
-
-  const handleCaptchaError = (errorMsg: string) => {
-    setLoading(false);
-    setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
-  };
-
-  const handleCaptchaCancel = () => {
-    setLoading(false);
   };
 
   const handleAgreePolicy = async () => {
@@ -406,13 +382,6 @@ export const LoginScreen = ({ navigation }: any) => {
               </View>
             </View>
           </ScrollView>
-
-          <AppCaptcha
-            ref={captchaRef}
-            onVerify={handleVerifyCaptcha}
-            onError={handleCaptchaError}
-            onCancel={handleCaptchaCancel}
-          />
 
           {/* Data Retention Policy Modal */}
           {showPolicyModal && (

@@ -37,10 +37,12 @@ const AppCaptcha = forwardRef<AppCaptchaRef, AppCaptchaProps>(({ onVerify, onErr
     }
   };
 
+  const siteKey = process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || '10000000-ffff-ffff-ffff-000000000001';
+
   return (
     <ConfirmHcaptcha
       ref={captchaRef}
-      siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || '8270cd1e-c924-43f2-acc6-d0fe308e90ec'}
+      siteKey={siteKey}
       baseUrl="https://hcaptcha.com"
       languageCode="en"
       onMessage={onMessage}

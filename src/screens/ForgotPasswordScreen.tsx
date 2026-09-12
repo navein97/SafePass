@@ -22,7 +22,6 @@ import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Toast } from '../components/Toast';
-import AppCaptcha, { AppCaptchaRef } from '../components/AppCaptcha';
 
 export const ForgotPasswordScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -31,7 +30,6 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [errors, setErrors] = useState({ email: '', general: '' });
-  const captchaRef = useRef<AppCaptchaRef>(null);
 
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
@@ -62,21 +60,12 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
     if (isRequesting.current) return;
     if (!validateForm()) return;
 
+    isRequesting.current = true;
     setLoading(true);
     setErrors({ email: '', general: '' });
 
-    if (captchaRef.current) {
-        captchaRef.current.show();
-    } else {
-        setLoading(false);
-        setErrors(prev => ({ ...prev, general: 'Captcha component not ready' }));
-    }
-  };
-
-  const handleVerifyCaptcha = async (token: string) => {
-    isRequesting.current = true;
     try {
-      const { error } = await AuthService.resetPassword(email, token);
+      const { error } = await AuthService.resetPassword(email);
       
       if (error) {
         const friendlyMsg = Validation.getFriendlyErrorMessage(error);
@@ -101,15 +90,6 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
       isRequesting.current = false;
       setLoading(false);
     }
-  };
-
-  const handleCaptchaError = (errorMsg: string) => {
-    setLoading(false);
-    setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
-  };
-
-  const handleCaptchaCancel = () => {
-    setLoading(false);
   };
 
   if (emailSent) {
@@ -154,13 +134,6 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               </Text>
             </TouchableOpacity>
           </View>
-          
-          <AppCaptcha
-            ref={captchaRef}
-            onVerify={handleVerifyCaptcha}
-            onError={handleCaptchaError}
-            onCancel={handleCaptchaCancel}
-          />
         </SafeAreaView>
       </GradientBackground>
     );
@@ -245,13 +218,6 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
               </View>
             </GlassCard>
           </ScrollView>
-
-          <AppCaptcha
-            ref={captchaRef}
-            onVerify={handleVerifyCaptcha}
-            onError={handleCaptchaError}
-            onCancel={handleCaptchaCancel}
-          />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </GradientBackground>

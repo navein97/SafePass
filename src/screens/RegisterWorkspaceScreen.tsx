@@ -1,77 +1,91 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar, KeyboardAvoidingView, ScrollView, Modal, Alert, Linking } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { Mail, Lock, User, Building, ArrowLeft, CheckCircle, Eye, EyeOff, Phone } from 'lucide-react-native';
+import { User, Mail, Lock, Building, ArrowLeft, Phone } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { WorkspaceService } from '../services/workspaceService';
-import { Validation } from '../utils/validation';
-import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
-import { LinearGradient } from 'expo-linear-gradient';
-import { PasscodeGateModal } from '../components/PasscodeGateModal';
-import AppCaptcha, { AppCaptchaRef } from '../components/AppCaptcha';
+import { GradientBackground } from '../components/ui/GradientBackground';
+import { WorkspaceService } from '../services/workspaceService';
+import { Validation } from '../utils/validation';
 
 export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
-  const { colors, theme } = useTheme();
-  
-  const captchaRef = useRef<AppCaptchaRef>(null);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const { colors } = useTheme();
+
   const [companyName, setCompanyName] = useState('');
   const [companyCode, setCompanyCode] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirmPassword: '', companyName: '', companyCode: '', phoneNumber: '', general: '' });
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const styles = createStyles(colors);
 
   const validateForm = () => {
     let isValid = true;
-    const newErrors = { fullName: '', email: '', password: '', confirmPassword: '', companyName: '', companyCode: '', phoneNumber: '', general: '' };
+    const newErrors: { [key: string]: string } = {};
+
+    if (!companyName.trim()) {
+      newErrors.companyName = t('auth.companyNameRequired', 'Company name is required');
+      isValid = false;
+    }
+
+    if (!companyCode.trim()) {
+      newErrors.companyCode = t('auth.companyCodeRequired', 'Company code is required');
+      isValid = false;
+    } else if (!/^[A-Z0-9]{2,10}$/i.test(companyCode.trim())) {
+      newErrors.companyCode = t('auth.companyCodeInvalid', 'Code must be 2-10 uppercase alphanumeric characters');
+      isValid = false;
+    }
 
     if (!fullName.trim()) {
-      newErrors.fullName = t('auth.fullNameRequired', 'Full Name is required');
+      newErrors.fullName = t('auth.fullNameRequired', 'Full name is required');
       isValid = false;
     }
-    if (!email.trim() || !Validation.isValidEmail(email)) {
-      newErrors.email = t('auth.invalidEmail', 'Invalid email address');
+
+    if (!email.trim()) {
+      newErrors.email = t('auth.emailRequired', 'Email address is required');
+      isValid = false;
+    } else if (!Validation.isValidEmail(email)) {
+      newErrors.email = t('auth.emailInvalid', 'Please enter a valid email address');
       isValid = false;
     }
-    if (password.length < 6) {
-      newErrors.password = t('auth.passwordTooShort', 'Password must be at least 6 characters');
-      isValid = false;
-    }
-    if (password !== confirmPassword) {
-      newErrors.confirmPassword = t('auth.passwordsDoNotMatch', 'Passwords do not match');
-      isValid = false;
-    }
-    if (!companyName.trim()) {
-      newErrors.companyName = t('auth.companyNameRequired', 'Company Name is required');
-      isValid = false;
-    }
-    if (!companyCode.trim()) {
-      newErrors.companyCode = t('auth.companyCodeRequired', 'Company Code is required (e.g. PRO, HAYAT)');
-      isValid = false;
-    } else if (!/^[A-Za-z0-9]+$/.test(companyCode.trim())) {
-      newErrors.companyCode = t('auth.invalidCompanyCode', 'Company Code must contain letters and numbers only');
-      isValid = false;
-    }
+
     const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
     if (!phoneNumber.trim()) {
       newErrors.phoneNumber = t('auth.phoneRequired', 'Phone number is required');
       isValid = false;
     } else if (!Validation.hasCountryCode(formattedPhone)) {
       newErrors.phoneNumber = t('auth.phoneCountryCodeRequired', 'Please enter a valid phone number (e.g. +60123456789 or 0123456789)');
+      isValid = false;
+    }
+
+    if (!password) {
+      newErrors.password = t('auth.passwordRequired', 'Password is required');
+      isValid = false;
+    } else if (password.length < 6) {
+      newErrors.password = t('auth.passwordMinLength', 'Password must be at least 6 characters');
+      isValid = false;
+    }
+
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = t('auth.passwordsDoNotMatch', 'Passwords do not match');
       isValid = false;
     }
 
@@ -85,15 +99,6 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
     setLoading(true);
     setErrors(prev => ({ ...prev, general: '' }));
 
-    if (captchaRef.current) {
-        captchaRef.current.show();
-    } else {
-        setLoading(false);
-        setErrors(prev => ({ ...prev, general: 'Captcha component not ready' }));
-    }
-  };
-
-  const handleVerifyCaptcha = async (token: string) => {
     try {
       const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
       const result = await WorkspaceService.registerWorkspace({
@@ -105,7 +110,6 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
         phone_number: formattedPhone,
         employeeId: email.split('@')[0],
         region: 'MY',
-        captchaToken: token,
       });
 
       setLoading(false);
@@ -129,37 +133,21 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
     }
   };
 
-  const handleCaptchaError = (errorMsg: string) => {
-    setLoading(false);
-    setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
-  };
-
-  const handleCaptchaCancel = () => {
-    setLoading(false);
-  };
-
-  // ==========================================
-  // REGISTRATION FORM
-  // ==========================================
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <ScrollView contentContainerStyle={styles.content}>
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={() => navigation.goBack()}
-            >
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <ArrowLeft size={24} color={colors.text.primary} />
             </TouchableOpacity>
 
             <View style={styles.header}>
-              <Text style={styles.title}>{t('auth.registerWorkspace', 'Register Workspace')}</Text>
-              <Text style={styles.subtitle}>{t('auth.registerSubtitle', 'Create your company account to start managing your fleet')}</Text>
+              <Text style={styles.title}>{t('auth.createWorkspace', 'Create Workspace')}</Text>
+              <Text style={styles.subtitle}>{t('auth.workspaceSubtitle', 'Register your company account')}</Text>
             </View>
 
             <GlassCard style={styles.formCard}>
@@ -172,49 +160,72 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
 
                 <GlassInput
                   label={t('auth.companyName', 'Company Name')}
-                  placeholder={t('company.namePlaceholder', 'ACME Logistics')}
+                  placeholder="e.g. Acme Corporation"
                   value={companyName}
-                  onChangeText={setCompanyName}
+                  onChangeText={(text) => {
+                    setCompanyName(text);
+                    if (errors.companyName) setErrors(prev => ({ ...prev, companyName: '' }));
+                  }}
+                  autoCapitalize="words"
+                  editable={!loading}
                   error={errors.companyName}
                   leftIcon={<Building size={20} color={colors.text.secondary} />}
                 />
 
                 <GlassInput
-                  label={t('auth.companyCode', 'Company Code (for Driver Logins)')}
-                  placeholder="e.g. PRO, HAYAT, CNG"
+                  label={t('auth.companyCode', 'Company Code')}
+                  placeholder="e.g. ACME (2-10 chars)"
                   value={companyCode}
-                  onChangeText={(val) => setCompanyCode(Validation.cleanCompanyCode(val))}
+                  onChangeText={(text) => {
+                    setCompanyCode(Validation.cleanCompanyCode(text));
+                    if (errors.companyCode) setErrors(prev => ({ ...prev, companyCode: '' }));
+                  }}
                   autoCapitalize="characters"
+                  maxLength={10}
+                  editable={!loading}
                   error={errors.companyCode}
                   leftIcon={<Building size={20} color={colors.text.secondary} />}
                 />
 
                 <GlassInput
-                  label={t('auth.fullName', 'Your Full Name')}
-                  placeholder={t('auth.fullNamePlaceholder', 'John Doe')}
+                  label={t('auth.fullName', 'Full Name')}
+                  placeholder="e.g. John Doe"
                   value={fullName}
-                  onChangeText={setFullName}
+                  onChangeText={(text) => {
+                    setFullName(text);
+                    if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
+                  }}
+                  autoCapitalize="words"
+                  editable={!loading}
                   error={errors.fullName}
                   leftIcon={<User size={20} color={colors.text.secondary} />}
                 />
 
                 <GlassInput
-                  label={t('auth.email', 'Business Email')}
-                  placeholder="john@example.com"
+                  label={t('auth.emailAddress', 'Email Address')}
+                  placeholder="e.g. john@acme.com"
                   value={email}
-                  onChangeText={(text) => setEmail(Validation.cleanEmail(text))}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                  }}
                   autoCapitalize="none"
                   keyboardType="email-address"
+                  editable={!loading}
                   error={errors.email}
                   leftIcon={<Mail size={20} color={colors.text.secondary} />}
                 />
 
                 <GlassInput
-                  label={t('auth.phone', 'Phone Number')}
-                  placeholder="+60123456789 or 0123456789"
+                  label={t('auth.phoneNumber', 'Phone Number')}
+                  placeholder="e.g. 0123456789 or +60123456789"
                   value={phoneNumber}
-                  onChangeText={(text) => setPhoneNumber(Validation.cleanPhoneNumber(text))}
+                  onChangeText={(text) => {
+                    setPhoneNumber(text);
+                    if (errors.phoneNumber) setErrors(prev => ({ ...prev, phoneNumber: '' }));
+                  }}
                   keyboardType="phone-pad"
+                  editable={!loading}
                   error={errors.phoneNumber}
                   leftIcon={<Phone size={20} color={colors.text.secondary} />}
                 />
@@ -223,38 +234,28 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   label={t('auth.password', 'Password')}
                   placeholder="••••••••"
                   value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
+                  }}
+                  secureTextEntry
+                  editable={!loading}
                   error={errors.password}
                   leftIcon={<Lock size={20} color={colors.text.secondary} />}
-                  rightIcon={
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                      {showPassword ? (
-                        <EyeOff size={20} color={colors.text.secondary} />
-                      ) : (
-                        <Eye size={20} color={colors.text.secondary} />
-                      )}
-                    </TouchableOpacity>
-                  }
                 />
 
                 <GlassInput
                   label={t('auth.confirmPassword', 'Confirm Password')}
                   placeholder="••••••••"
                   value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: '' }));
+                  }}
+                  secureTextEntry
+                  editable={!loading}
                   error={errors.confirmPassword}
                   leftIcon={<Lock size={20} color={colors.text.secondary} />}
-                  rightIcon={
-                    <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                      {showConfirmPassword ? (
-                        <EyeOff size={20} color={colors.text.secondary} />
-                      ) : (
-                        <Eye size={20} color={colors.text.secondary} />
-                      )}
-                    </TouchableOpacity>
-                  }
                 />
 
                 <GlassButton
@@ -266,13 +267,6 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
               </View>
             </GlassCard>
           </ScrollView>
-
-          <AppCaptcha
-            ref={captchaRef}
-            onVerify={handleVerifyCaptcha}
-            onError={handleCaptchaError}
-            onCancel={handleCaptchaCancel}
-          />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </GradientBackground>

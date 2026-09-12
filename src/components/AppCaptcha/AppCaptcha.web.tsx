@@ -17,15 +17,23 @@ const AppCaptcha = forwardRef<AppCaptchaRef, AppCaptchaProps>(({ onVerify, onErr
   useImperativeHandle(ref, () => ({
     show: () => {
       if (captchaRef.current) {
-        captchaRef.current.execute();
+        try {
+          captchaRef.current.execute();
+        } catch (e: any) {
+          onError(e?.message || 'Captcha execution error');
+        }
+      } else {
+        onError('Captcha ref not ready');
       }
     }
   }));
 
+  const siteKey = process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || '10000000-ffff-ffff-ffff-000000000001';
+
   return (
     <HCaptcha
       ref={captchaRef}
-      sitekey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || '8270cd1e-c924-43f2-acc6-d0fe308e90ec'}
+      sitekey={siteKey}
       onVerify={onVerify}
       onError={(err) => onError(err || 'Captcha error')}
       onExpire={() => onError('Captcha expired')}
