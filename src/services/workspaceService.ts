@@ -140,9 +140,6 @@ export const WorkspaceService = {
                     return;
                 }
             }
-
-
-            }
         } catch (error: any) {
             console.error('Setup workspace error:', error);
         }
