@@ -164,7 +164,7 @@
         "otpResent": "Kod baharu telah dihantar melalui SMS! 📲",
         "otpExpiresIn": "Kod tamat tempoh dalam {{minutes}} minit",
         "otpSendFailed": "Gagal menghantar kod. Sila cuba lagi.",
-        "otpSmsNote": "Sila semak peti masuk SMS anda untuk menyemak kod",
+        "otpSmsNote": "Masukkan kod 6 digit daripada Firebase",
         "otpIncorrectPhone": "Nombor telefon salah? Kembali untuk kemas kini",
         "otpVerificationRequired": "Sila sahkan nombor telefon anda melalui SMS untuk melengkapkan pendaftaran"
     },

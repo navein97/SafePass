@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth';
 
 // Firebase Project Configuration for SafePass
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyBZf8aveoreffeln5oB6KzKNPXJbhlhAJc",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "",
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "safepass-69b04.firebaseapp.com",
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "safepass-69b04",
   storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "safepass-69b04.firebasestorage.app",

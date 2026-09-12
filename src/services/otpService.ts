@@ -22,6 +22,7 @@ export interface VerifyOtpResponse {
 // Stores active Firebase confirmation session
 let activeConfirmationResult: ConfirmationResult | null = null;
 let recaptchaVerifier: RecaptchaVerifier | null = null;
+let isSendingOtp = false;
 
 export const OtpService = {
   /**
@@ -33,20 +34,20 @@ export const OtpService = {
 
   /**
    * Initializes or resets RecaptchaVerifier for Firebase Phone Auth
+   * Completely replaces the DOM container to avoid "already rendered in this element" error
    */
   getRecaptchaVerifier(containerId: string = 'recaptcha-container'): RecaptchaVerifier {
-    // Ensure DOM element container exists when running on Web
     if (typeof document !== 'undefined') {
-      let container = document.getElementById(containerId);
-      if (container) {
-        // Clear inner HTML to remove rendered recaptcha iframes and prevent "already rendered" error
-        container.innerHTML = '';
-      } else {
-        container = document.createElement('div');
-        container.id = containerId;
-        container.style.display = 'none';
-        document.body.appendChild(container);
+      const old = document.getElementById(containerId);
+      if (old) {
+        try {
+          old.remove();
+        } catch (e) {}
       }
+      const container = document.createElement('div');
+      container.id = containerId;
+      container.style.display = 'none';
+      document.body.appendChild(container);
     }
 
     if (recaptchaVerifier) {
@@ -75,6 +76,12 @@ export const OtpService = {
    * Sends a 6-digit SMS OTP using Firebase Phone Auth.
    */
   async sendSmsOtp(phone: string): Promise<SendOtpResponse> {
+    if (isSendingOtp) {
+      return { success: false, error: 'SMS send already in progress. Please wait.' };
+    }
+
+    isSendingOtp = true;
+
     try {
       // Clean and normalize phone number (e.g. +601120616323)
       let formattedPhone = phone.trim().replace(/\s+/g, '');
@@ -88,17 +95,19 @@ export const OtpService = {
         }
       }
 
-      // Initialize invisible recaptcha verifier
+      // Initialize fresh invisible recaptcha verifier
       const verifier = this.getRecaptchaVerifier('recaptcha-container');
 
       // Trigger Firebase SMS send
       activeConfirmationResult = await signInWithPhoneNumber(firebaseAuth, formattedPhone, verifier);
 
+      isSendingOtp = false;
       return {
         success: true,
         message: 'SMS verification code sent via Firebase',
       };
     } catch (err: any) {
+      isSendingOtp = false;
       console.error('[OtpService] Firebase sendSmsOtp error:', err);
 
       // Clean up verifier instance on error so next retry creates a fresh one
@@ -130,7 +139,7 @@ export const OtpService = {
         errorMsg = 'Firebase billing (Blaze plan) is required to send real SMS. Add your phone number to "Phone numbers for testing" in Firebase Console (or type test code 123456 to verify now).';
       } else if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed') || err.message?.includes('region')) {
         errorMsg = 'SMS is disabled for Malaysia (+60) in Firebase Console. Enable +60 in Firebase Console > Auth > Settings > SMS Region Policy (or use test code 123456).';
-      } else if (err.code === 'auth/argument-error' || err.message?.includes('argument-error')) {
+      } else if (err.code === 'auth/argument-error' || err.message?.includes('argument-error') || err.message?.includes('already been rendered')) {
         errorMsg = 'Verification setup issue. Please click Resend Code again.';
       } else if (err.code === 'auth/invalid-phone-number') {
         errorMsg = 'Invalid phone number format. Please check your phone number.';

@@ -379,7 +379,7 @@ export const OtpVerificationScreen = ({
               {/* SMS Notice */}
               <View style={styles.noteBox}>
                 <Text style={styles.noteText}>
-                  {t('auth.otpSmsNote', 'Please check your SMS inbox for the verification code.')}
+                  {t('auth.otpSmsNote', 'Enter the 6-digit code from Firebase')}
                 </Text>
               </View>
 
