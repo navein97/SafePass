@@ -1,6 +1,7 @@
 
 import { supabase } from '../lib/supabase';
 import { AuthService, SignUpData } from './authService';
+import { OtpService } from './otpService';
 
 export interface RegisterWorkspaceData extends SignUpData {
     companyName: string;
@@ -12,7 +13,8 @@ export const WorkspaceService = {
     /**
      * Step 1: Register the Master User (no company yet)
      * Company name is stored in user metadata for later.
-     * Company is only created AFTER email verification + first login.
+     * Company is created upon setupWorkspaceIfNeeded after login.
+     * Triggers SMS OTP send immediately to user's phone number.
      */
     async registerWorkspace(data: RegisterWorkspaceData) {
         try {
@@ -29,6 +31,18 @@ export const WorkspaceService = {
 
             if (signUpResult.error) {
                 return { success: false, error: signUpResult.error };
+            }
+
+            const userId = signUpResult.user?.id;
+            const phone = data.phone_number;
+
+            // Automatically send the first SMS OTP via Supabase Auth
+            if (phone) {
+                try {
+                    await OtpService.sendSmsOtp(phone);
+                } catch (otpErr) {
+                    console.warn('[WorkspaceService] Initial OTP send error:', otpErr);
+                }
             }
 
             return { success: true, user: signUpResult.user };

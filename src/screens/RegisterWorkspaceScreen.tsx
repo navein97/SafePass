@@ -31,7 +31,6 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [loading, setLoading] = useState(false);
-  const [registered, setRegistered] = useState(false); // SUCCESS state
   const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirmPassword: '', companyName: '', companyCode: '', phoneNumber: '', general: '' });
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -72,7 +71,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
       newErrors.phoneNumber = t('auth.phoneRequired', 'Phone number is required');
       isValid = false;
     } else if (!Validation.hasCountryCode(formattedPhone)) {
-      newErrors.phoneNumber = t('auth.phoneCountryCodeRequired', 'Please include country code (e.g. +60123456789) for WhatsApp compatibility');
+      newErrors.phoneNumber = t('auth.phoneCountryCodeRequired', 'Please enter a valid phone number (e.g. +60123456789 or 0123456789)');
       isValid = false;
     }
 
@@ -112,7 +111,13 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
       setLoading(false);
 
       if (result.success) {
-        setRegistered(true); // Show success screen
+        // Navigate directly to SMS OTP verification screen
+        navigation.navigate('OtpVerification', {
+          phone: formattedPhone,
+          userId: result.user?.id,
+          email,
+          companyName,
+        });
       } else {
         const errorMsg = result.error || t('common.unexpectedErrorOccurred');
         setErrors(prev => ({ ...prev, general: errorMsg }));
@@ -132,64 +137,6 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const handleCaptchaCancel = () => {
     setLoading(false);
   };
-
-  const handleContactSupport = () => {
-    const whatsappUrl = 'https://wa.me/601120616323?text=Hi%20Driver%20360%20Support,%20I%20just%20registered%20but%20didn\'t%20get%20the%20verification%20email.%20Can%20you%20verify%20me?';
-    Linking.openURL(whatsappUrl);
-  };
-
-  // ==========================================
-  // SUCCESS SCREEN - shown after registration
-  // ==========================================
-  if (registered) {
-    return (
-      <GradientBackground>
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView contentContainerStyle={styles.successContent}>
-            <LinearGradient
-              colors={['rgba(76, 175, 80, 0.15)', 'rgba(76, 175, 80, 0.05)'] as any}
-              style={styles.successCard}
-            >
-              <View style={styles.successIconCircle}>
-                <CheckCircle size={48} color="#4CAF50" />
-              </View>
-
-              <Text style={styles.successTitle}>{t('auth.registrationSuccessful')}</Text>
-
-              <Text style={styles.successMessage}>
-                {t('auth.accountCreatedWithEmail')}
-              </Text>
-              <Text style={styles.successEmail}>{email}</Text>
-
-              <Text style={styles.successNote}>
-                {t('auth.loginActivateWorkspace', { companyName })}
-              </Text>
-
-              <GlassButton
-                title={t('auth.goToLogin')}
-                onPress={() => navigation.navigate('Login')}
-                style={styles.goToLoginButton}
-              />
-
-              <View style={{ marginTop: 32, alignItems: 'center', width: '100%' }}>
-                <Text style={{ fontSize: 13, color: colors.text.secondary, textAlign: 'center', marginBottom: 12 }}>
-                  {t('auth.emailNotFound', "Can't find the email in your Inbox or Spam folder?")}
-                </Text>
-                
-                <GlassButton
-                  title={t('auth.contactWhatsApp', 'Verify via WhatsApp')}
-                  onPress={handleContactSupport}
-                  variant="outline"
-                  icon={<Phone size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />}
-                  style={{ width: '100%' }}
-                />
-              </View>
-            </LinearGradient>
-          </ScrollView>
-        </SafeAreaView>
-      </GradientBackground>
-    );
-  }
 
   // ==========================================
   // REGISTRATION FORM
@@ -264,7 +211,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
 
                 <GlassInput
                   label={t('auth.phone', 'Phone Number')}
-                  placeholder="+1234567890"
+                  placeholder="+60123456789 or 0123456789"
                   value={phoneNumber}
                   onChangeText={(text) => setPhoneNumber(Validation.cleanPhoneNumber(text))}
                   keyboardType="phone-pad"
@@ -344,19 +291,4 @@ const createStyles = (colors: any) => StyleSheet.create({
   registerButton: { marginTop: 20 },
   errorBanner: { backgroundColor: 'rgba(255, 59, 48, 0.1)', borderWidth: 1, borderColor: colors.status.danger, borderRadius: 12, padding: 12, marginBottom: 16 },
   errorBannerText: { color: colors.status.danger, fontSize: 14, fontFamily: typography.fonts.medium, textAlign: 'center' },
-
-  // Success Screen Styles
-  successContent: { padding: 24, flexGrow: 1, justifyContent: 'center' },
-  successCard: { borderRadius: 24, padding: 32, alignItems: 'center' as const, borderWidth: 1, borderColor: 'rgba(76, 175, 80, 0.3)' },
-  successIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(76, 175, 80, 0.15)', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-  successTitle: { fontSize: 24, fontFamily: typography.fonts.bold, color: colors.text.primary, marginBottom: 16, textAlign: 'center' as const },
-  successMessage: { fontSize: 16, fontFamily: typography.fonts.regular, color: colors.text.secondary, textAlign: 'center' as const },
-  successEmail: { fontSize: 16, fontFamily: typography.fonts.bold, color: colors.text.primary, marginTop: 4, marginBottom: 24 },
-  successSteps: { width: '100%' as any, gap: 16, marginBottom: 24 },
-  stepRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 14 },
-  stepDot: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center' as const, alignItems: 'center' as const },
-  stepNumber: { color: '#FFF', fontSize: 14, fontFamily: typography.fonts.bold },
-  stepText: { fontSize: 15, fontFamily: typography.fonts.medium, color: colors.text.primary },
-  successNote: { fontSize: 13, fontFamily: typography.fonts.regular, color: colors.text.tertiary, textAlign: 'center' as const, marginBottom: 24, lineHeight: 20 },
-  goToLoginButton: { width: '100%' as any },
 });

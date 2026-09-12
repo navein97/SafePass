@@ -246,13 +246,11 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
             </GlassCard>
           </ScrollView>
 
-          <ConfirmHcaptcha
+          <AppCaptcha
             ref={captchaRef}
-            siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
-            baseUrl="https://hcaptcha.com"
-            languageCode="en"
-            onMessage={onCaptchaMessage}
-            size="invisible"
+            onVerify={handleVerifyCaptcha}
+            onError={handleCaptchaError}
+            onCancel={handleCaptchaCancel}
           />
         </KeyboardAvoidingView>
       </SafeAreaView>
