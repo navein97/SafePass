@@ -301,15 +301,14 @@ export const LoginScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
 
                 <View style={[styles.linkButton, { marginTop: 24, alignItems: 'center' }]}>
-                  <TouchableOpacity
-                    style={[styles.guideButton, { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT, borderWidth: 1 }]}
+                  <GlassButton
+                    title={t('auth.registerCompany', 'Register')}
                     onPress={handleWhatsAppRegistration}
-                  >
-                    <Building size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={[styles.guideButtonText, { color: '#FFFFFF', fontFamily: typography.fonts.bold }]}>
-                      {t('auth.registerCompany', 'Register')}
-                    </Text>
-                  </TouchableOpacity>
+                    variant="outline"
+                    icon={<Building size={18} color={colors.primary.DEFAULT} style={{ marginRight: 8 }} />}
+                    style={{ marginTop: 12, width: '100%' }}
+                    textStyle={{ fontFamily: typography.fonts.bold, color: colors.primary.DEFAULT }}
+                  />
 
                   <TouchableOpacity
                     style={[styles.guideButton, { marginTop: 12 }]}
