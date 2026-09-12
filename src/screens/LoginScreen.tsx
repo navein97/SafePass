@@ -17,7 +17,7 @@ import { CompanySettingsService } from '../services/companySettingsService';
 import { WorkspaceService } from '../services/workspaceService';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
+import AppCaptcha, { AppCaptchaRef } from '../components/AppCaptcha';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t, i18n } = useTranslation();
@@ -30,7 +30,7 @@ export const LoginScreen = ({ navigation }: any) => {
   const [errors, setErrors] = useState({ companyCode: '', employeeId: '', password: '', general: '' });
   const [activeLang, setActiveLang] = useState(i18n.language);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
-  const captchaRef = useRef<any>(null);
+  const captchaRef = useRef<AppCaptchaRef>(null);
 
   const termsTextParts = useMemo(() => {
     const agreementText = t('auth.termsAgreement', 'By logging in, you agree to the {{terms}} of CNG Synergy (KT0512750V).');
@@ -136,46 +136,41 @@ export const LoginScreen = ({ navigation }: any) => {
     }
   };
 
-  const onCaptchaMessage = async (event: any) => {
-    if (event && event.nativeEvent.data) {
-      const data = event.nativeEvent.data;
-      if (['cancel', 'error', 'expired'].includes(data)) {
-        setLoading(false);
-        if (data !== 'cancel') {
-          setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
-        }
-        return;
-      }
+  const handleVerifyCaptcha = async (token: string) => {
+    const isEmail = employeeId.trim().includes('@');
 
-      // We have a token
-      const token = data;
-      const isEmail = employeeId.trim().includes('@');
+    const { session, error } = await AuthService.signIn({
+      companyCode: isEmail ? undefined : companyCode.trim().toUpperCase(),
+      employeeId,
+      password,
+      captchaToken: token,
+    });
 
-      const { session, error } = await AuthService.signIn({
-        companyCode: isEmail ? undefined : companyCode.trim().toUpperCase(),
-        employeeId,
-        password,
-        captchaToken: token,
-      });
+    setLoading(false);
 
-      setLoading(false);
-
-      if (error) {
-        const friendlyMsg = Validation.getFriendlyErrorMessage(error);
-        setErrors(prev => ({ ...prev, general: friendlyMsg }));
-        Alert.alert(t('auth.loginFailed'), friendlyMsg);
-      } else if (session) {
-        // If this is a new Master User's first login, create their company
-        await WorkspaceService.setupWorkspaceIfNeeded();
-        
-        const userMeta = session.user?.user_metadata;
-        if (userMeta?.role === 'manager' && !userMeta?.data_retention_agreed) {
-          setShowPolicyModal(true);
-        } else {
-          navigation.replace('MainTabs');
-        }
+    if (error) {
+      const friendlyMsg = Validation.getFriendlyErrorMessage(error);
+      setErrors(prev => ({ ...prev, general: friendlyMsg }));
+      Alert.alert(t('auth.loginFailed'), friendlyMsg);
+    } else if (session) {
+      await WorkspaceService.setupWorkspaceIfNeeded();
+      
+      const userMeta = session.user?.user_metadata;
+      if (userMeta?.role === 'manager' && !userMeta?.data_retention_agreed) {
+        setShowPolicyModal(true);
+      } else {
+        navigation.replace('MainTabs');
       }
     }
+  };
+
+  const handleCaptchaError = (errorMsg: string) => {
+    setLoading(false);
+    setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
+  };
+
+  const handleCaptchaCancel = () => {
+    setLoading(false);
   };
 
   const handleAgreePolicy = async () => {
@@ -315,11 +310,11 @@ export const LoginScreen = ({ navigation }: any) => {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.guideButton, { marginTop: 12, backgroundColor: '#25D36615', borderColor: '#25D366', borderWidth: 1 }]}
+                    style={[styles.guideButton, { marginTop: 12, backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT, borderWidth: 1 }]}
                     onPress={handleWhatsAppRegistration}
                   >
-                    <Building size={18} color="#25D366" style={{ marginRight: 8 }} />
-                    <Text style={[styles.guideButtonText, { color: '#25D366', fontFamily: typography.fonts.bold }]}>
+                    <Building size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={[styles.guideButtonText, { color: '#FFFFFF', fontFamily: typography.fonts.bold }]}>
                       {t('auth.registerCompany', 'Register')}
                     </Text>
                   </TouchableOpacity>
@@ -386,13 +381,11 @@ export const LoginScreen = ({ navigation }: any) => {
             </View>
           </ScrollView>
 
-          <ConfirmHcaptcha
+          <AppCaptcha
             ref={captchaRef}
-            siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
-            baseUrl="https://hcaptcha.com"
-            languageCode="en"
-            onMessage={onCaptchaMessage}
-            size="invisible"
+            onVerify={handleVerifyCaptcha}
+            onError={handleCaptchaError}
+            onCancel={handleCaptchaCancel}
           />
 
           {/* Data Retention Policy Modal */}

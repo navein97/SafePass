@@ -22,7 +22,7 @@ import { GlassInput } from '../components/ui/GlassInput';
 import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Toast } from '../components/Toast';
-import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
+import AppCaptcha, { AppCaptchaRef } from '../components/AppCaptcha';
 
 export const ForgotPasswordScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -31,7 +31,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [errors, setErrors] = useState({ email: '', general: '' });
-  const captchaRef = useRef<any>(null);
+  const captchaRef = useRef<AppCaptchaRef>(null);
 
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
@@ -73,47 +73,43 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
     }
   };
 
-  const onCaptchaMessage = async (event: any) => {
-    if (event && event.nativeEvent.data) {
-      const data = event.nativeEvent.data;
-      if (['cancel', 'error', 'expired'].includes(data)) {
-        setLoading(false);
-        if (data !== 'cancel') {
-          setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
-        }
-        return;
-      }
-
-      isRequesting.current = true;
-      const token = data;
-
-      try {
-        const { error } = await AuthService.resetPassword(email, token);
-        
-        if (error) {
-          const friendlyMsg = Validation.getFriendlyErrorMessage(error);
-          setErrors(prev => ({ ...prev, general: friendlyMsg }));
-          Alert.alert(t('common.error'), friendlyMsg);
+  const handleVerifyCaptcha = async (token: string) => {
+    isRequesting.current = true;
+    try {
+      const { error } = await AuthService.resetPassword(email, token);
+      
+      if (error) {
+        const friendlyMsg = Validation.getFriendlyErrorMessage(error);
+        setErrors(prev => ({ ...prev, general: friendlyMsg }));
+        Alert.alert(t('common.error'), friendlyMsg);
+      } else {
+        if (emailSent) {
+          setToastType('success');
+          setToastMessage(t('auth.emailResent'));
+          setToastVisible(true);
         } else {
-          if (emailSent) {
-            setToastType('success');
-            setToastMessage(t('auth.emailResent'));
-            setToastVisible(true);
-          } else {
-            setEmailSent(true);
-          }
+          setEmailSent(true);
         }
-      } catch (error) {
-        console.error('Password reset error:', error);
-        setErrors(prev => ({ 
-          ...prev, 
-          general: t('auth.unexpectedError') 
-        }));
-      } finally {
-        isRequesting.current = false;
-        setLoading(false);
       }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      setErrors(prev => ({ 
+        ...prev, 
+        general: t('auth.unexpectedError') 
+      }));
+    } finally {
+      isRequesting.current = false;
+      setLoading(false);
     }
+  };
+
+  const handleCaptchaError = (errorMsg: string) => {
+    setLoading(false);
+    setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
+  };
+
+  const handleCaptchaCancel = () => {
+    setLoading(false);
   };
 
   if (emailSent) {
@@ -159,13 +155,11 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           </View>
           
-          <ConfirmHcaptcha
+          <AppCaptcha
             ref={captchaRef}
-            siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
-            baseUrl="https://hcaptcha.com"
-            languageCode="en"
-            onMessage={onCaptchaMessage}
-            size="invisible"
+            onVerify={handleVerifyCaptcha}
+            onError={handleCaptchaError}
+            onCancel={handleCaptchaCancel}
           />
         </SafeAreaView>
       </GradientBackground>

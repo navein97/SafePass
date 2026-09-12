@@ -13,13 +13,13 @@ import { GlassButton } from '../components/ui/GlassButton';
 import { GlassCard } from '../components/ui/GlassCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PasscodeGateModal } from '../components/PasscodeGateModal';
-import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
+import AppCaptcha, { AppCaptchaRef } from '../components/AppCaptcha';
 
 export const RegisterWorkspaceScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
   const { colors, theme } = useTheme();
   
-  const captchaRef = useRef<any>(null);
+  const captchaRef = useRef<AppCaptchaRef>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -94,46 +94,43 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
     }
   };
 
-  const onCaptchaMessage = async (event: any) => {
-    if (event && event.nativeEvent.data) {
-      const data = event.nativeEvent.data;
-      if (['cancel', 'error', 'expired'].includes(data)) {
-        setLoading(false);
-        if (data !== 'cancel') {
-          setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
-        }
-        return;
-      }
+  const handleVerifyCaptcha = async (token: string) => {
+    try {
+      const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
+      const result = await WorkspaceService.registerWorkspace({
+        fullName,
+        email,
+        password,
+        companyName,
+        companyCode: companyCode.trim().toUpperCase(),
+        phone_number: formattedPhone,
+        employeeId: email.split('@')[0],
+        region: 'MY',
+        captchaToken: token,
+      });
 
-      const token = data;
-      try {
-        const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
-        const result = await WorkspaceService.registerWorkspace({
-          fullName,
-          email,
-          password,
-          companyName,
-          companyCode: companyCode.trim().toUpperCase(),
-          phone_number: formattedPhone,
-          employeeId: email.split('@')[0],
-          region: 'MY',
-          captchaToken: token,
-        });
+      setLoading(false);
 
-        setLoading(false);
-
-        if (result.success) {
-          setRegistered(true); // Show success screen
-        } else {
-          const errorMsg = result.error || t('common.unexpectedErrorOccurred');
-          setErrors(prev => ({ ...prev, general: errorMsg }));
-        }
-      } catch (error: any) {
-        setLoading(false);
-        const errorMsg = error.message || t('common.unexpectedErrorOccurred');
+      if (result.success) {
+        setRegistered(true); // Show success screen
+      } else {
+        const errorMsg = result.error || t('common.unexpectedErrorOccurred');
         setErrors(prev => ({ ...prev, general: errorMsg }));
       }
+    } catch (error: any) {
+      setLoading(false);
+      const errorMsg = error.message || t('common.unexpectedErrorOccurred');
+      setErrors(prev => ({ ...prev, general: errorMsg }));
     }
+  };
+
+  const handleCaptchaError = (errorMsg: string) => {
+    setLoading(false);
+    setErrors(prev => ({ ...prev, general: 'Captcha verification failed. Please try again.' }));
+  };
+
+  const handleCaptchaCancel = () => {
+    setLoading(false);
   };
 
   // ==========================================
@@ -304,13 +301,11 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
             </GlassCard>
           </ScrollView>
 
-          <ConfirmHcaptcha
+          <AppCaptcha
             ref={captchaRef}
-            siteKey={process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY || ''}
-            baseUrl="https://hcaptcha.com"
-            languageCode="en"
-            onMessage={onCaptchaMessage}
-            size="invisible"
+            onVerify={handleVerifyCaptcha}
+            onError={handleCaptchaError}
+            onCancel={handleCaptchaCancel}
           />
         </KeyboardAvoidingView>
       </SafeAreaView>
