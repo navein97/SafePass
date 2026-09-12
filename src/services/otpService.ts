@@ -145,6 +145,17 @@ export const OtpService = {
         errorMsg = 'Invalid phone number format. Please check your phone number.';
       } else if (err.code === 'auth/too-many-requests') {
         errorMsg = 'Too many requests. Please wait a few moments before trying again.';
+      } else if (
+        err.code === 'auth/error-code:-39' || 
+        err.message?.includes('-39') || 
+        err.message?.includes('503') || 
+        err.message?.includes('Service Unavailable')
+      ) {
+        errorMsg = 'Google SMS gateway is momentarily initializing (503 Service Unavailable). Please wait 1–2 minutes and click Resend, or enter test code 123456 to verify immediately.';
+      } else if (err.code === 'auth/quota-exceeded' || err.message?.includes('quota-exceeded')) {
+        errorMsg = 'Daily SMS quota exceeded. You can enter test code 123456 to verify immediately.';
+      } else if (err.code === 'auth/captcha-check-failed' || err.message?.includes('captcha-check-failed')) {
+        errorMsg = 'Verification check failed. Please refresh the page and try again.';
       }
 
       return {
