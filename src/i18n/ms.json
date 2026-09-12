@@ -140,7 +140,7 @@
         "companyCode": "Kod Syarikat",
         "companyCodeRequired": "Kod Syarikat diperlukan (cth. PRO, HAYAT)",
         "invalidCompanyCode": "Kod Syarikat mestilah mengandungi huruf dan nombor sahaja",
-        "registerCompany": "Mohon Percubaan",
+        "registerCompany": "Daftar",
         "newUserGuide": "Pengguna Baharu? Lihat Panduan Aplikasi",
         "termsAgreement": "Dengan log masuk, anda bersetuju dengan {{terms}} CNG Synergy (KT0512750V).",
         "termsLinkText": "Syarat Perkhidmatan & Polisi Harta Intelek",

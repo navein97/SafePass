@@ -140,7 +140,7 @@
         "companyCode": "Company Code",
         "companyCodeRequired": "Company Code is required (e.g. PRO, HAYAT)",
         "invalidCompanyCode": "Company Code must contain letters and numbers only",
-        "registerCompany": "Request Trial",
+        "registerCompany": "Register",
         "newUserGuide": "New User? View App Guide",
         "termsAgreement": "By logging in, you agree to the {{terms}} of CNG Synergy (KT0512750V).",
         "termsLinkText": "Terms of Service & Intellectual Property Policies",
