@@ -18,6 +18,23 @@ export const WorkspaceService = {
      */
     async registerWorkspace(data: RegisterWorkspaceData) {
         try {
+            // Check if company code is already taken before signing up user
+            if (data.companyCode) {
+                const cleanCode = data.companyCode.trim().toUpperCase();
+                const { data: existingComp } = await supabase
+                    .from('companies')
+                    .select('id')
+                    .eq('code', cleanCode)
+                    .maybeSingle();
+
+                if (existingComp) {
+                    return {
+                        success: false,
+                        error: `Company code "${cleanCode}" is already taken. Please choose another code.`,
+                    };
+                }
+            }
+
             // Just sign up the user with company_name in metadata
             const signUpResult = await AuthService.signUp({
                 ...data,
@@ -65,8 +82,6 @@ export const WorkspaceService = {
                 return;
             }
 
-
-
             // If user already has a company, nothing to do
             if (profile.company_id) {
 
@@ -80,15 +95,12 @@ export const WorkspaceService = {
                 const companyName = user?.user_metadata?.company_name;
                 const companyCode = user?.user_metadata?.company_code;
 
-
-
                 if (!companyName) {
 
                     return;
                 }
 
                 // Create company via RPC (bypasses RLS)
-
                 const { data: companyId, error: companyError } = await supabase
                     .rpc('register_workspace', {
                         p_company_name: companyName,
@@ -97,10 +109,25 @@ export const WorkspaceService = {
 
                 if (companyError) {
                     console.error('[WorkspaceService] Company creation error:', companyError);
+                    // If company code was already taken (e.g. re-registration), link to that existing company
+                    if (companyCode && companyError.message?.includes('already taken')) {
+                        const { data: existingComp } = await supabase
+                            .from('companies')
+                            .select('id')
+                            .eq('code', companyCode.trim().toUpperCase())
+                            .maybeSingle();
+
+                        if (existingComp?.id) {
+                            console.log('[WorkspaceService] Linking to existing company:', existingComp.id);
+                            await supabase.rpc('link_user_to_company', {
+                                p_user_id: profile.id,
+                                p_company_id: existingComp.id
+                            });
+                            return;
+                        }
+                    }
                     return;
                 }
-
-
 
                 // Link user to company via RPC (bypasses RLS)
                 const { error: linkError } = await supabase.rpc('link_user_to_company', {
@@ -112,6 +139,7 @@ export const WorkspaceService = {
                     console.error('[WorkspaceService] Link error:', linkError);
                     return;
                 }
+            }
 
 
             }

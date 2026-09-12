@@ -188,7 +188,7 @@ export const OtpService = {
           if (user) {
             await supabase
               .from('profiles')
-              .update({ is_verified: true, phone_number: formattedPhone })
+              .update({ status: 'active', phone_number: formattedPhone })
               .eq('id', user.id);
           }
         } catch (subErr) {}
@@ -212,7 +212,7 @@ export const OtpService = {
               if (user) {
                 await supabase
                   .from('profiles')
-                  .update({ is_verified: true, phone_number: formattedPhone })
+                  .update({ status: 'active', phone_number: formattedPhone })
                   .eq('id', user.id);
               }
             } catch (subErr) {
@@ -241,7 +241,7 @@ export const OtpService = {
           if (user) {
             await supabase
               .from('profiles')
-              .update({ is_verified: true, phone_number: formattedPhone })
+              .update({ status: 'active', phone_number: formattedPhone })
               .eq('id', user.id);
           }
           return {
