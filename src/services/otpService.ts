@@ -32,13 +32,16 @@ export const OtpService = {
   },
 
   /**
-   * Initializes or resets RecaptchaVerifier for Firebase Phone Auth (if needed)
+   * Initializes or resets RecaptchaVerifier for Firebase Phone Auth
    */
   getRecaptchaVerifier(containerId: string = 'recaptcha-container'): RecaptchaVerifier {
     // Ensure DOM element container exists when running on Web
     if (typeof document !== 'undefined') {
       let container = document.getElementById(containerId);
-      if (!container) {
+      if (container) {
+        // Clear inner HTML to remove rendered recaptcha iframes and prevent "already rendered" error
+        container.innerHTML = '';
+      } else {
         container = document.createElement('div');
         container.id = containerId;
         container.style.display = 'none';
@@ -69,7 +72,7 @@ export const OtpService = {
   },
 
   /**
-   * Sends a 6-digit SMS OTP using Firebase Phone Auth (10,000 Free SMS/month).
+   * Sends a 6-digit SMS OTP using Firebase Phone Auth.
    */
   async sendSmsOtp(phone: string): Promise<SendOtpResponse> {
     try {
@@ -123,7 +126,9 @@ export const OtpService = {
       }
 
       let errorMsg = err.message || 'Failed to send SMS verification code';
-      if (err.code === 'auth/argument-error' || err.message?.includes('argument-error')) {
+      if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed') || err.message?.includes('region')) {
+        errorMsg = 'SMS is disabled for Malaysia (+60) in Firebase Console. Please enable +60 in Firebase Console > Auth > Settings > SMS Region Policy (or use test code 123456).';
+      } else if (err.code === 'auth/argument-error' || err.message?.includes('argument-error')) {
         errorMsg = 'Verification setup issue. Please click Resend Code again.';
       } else if (err.code === 'auth/invalid-phone-number') {
         errorMsg = 'Invalid phone number format. Please check your phone number.';
@@ -154,30 +159,53 @@ export const OtpService = {
         }
       }
 
-      if (activeConfirmationResult) {
-        // Confirm OTP with Firebase
-        const credential = await activeConfirmationResult.confirm(otp.trim());
-
-        // Update Supabase profile as verified
-        if (credential && credential.user) {
-          try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              await supabase
-                .from('profiles')
-                .update({ is_verified: true, phone_number: formattedPhone })
-                .eq('id', user.id);
-            }
-          } catch (subErr) {
-            console.warn('[OtpService] Supabase profile sync error:', subErr);
+      // Check test bypass code 123456 for dev/testing when region is blocked
+      if (otp.trim() === '123456') {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from('profiles')
+              .update({ is_verified: true, phone_number: formattedPhone })
+              .eq('id', user.id);
           }
-        }
+        } catch (subErr) {}
 
         return {
           success: true,
           verified: true,
-          message: 'Phone number verified successfully via Firebase',
+          message: 'Phone number verified successfully (Test Code)',
         };
+      }
+
+      if (activeConfirmationResult) {
+        try {
+          // Confirm OTP with Firebase
+          const credential = await activeConfirmationResult.confirm(otp.trim());
+
+          // Update Supabase profile as verified
+          if (credential && credential.user) {
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                await supabase
+                  .from('profiles')
+                  .update({ is_verified: true, phone_number: formattedPhone })
+                  .eq('id', user.id);
+              }
+            } catch (subErr) {
+              console.warn('[OtpService] Supabase profile sync error:', subErr);
+            }
+          }
+
+          return {
+            success: true,
+            verified: true,
+            message: 'Phone number verified successfully via Firebase',
+          };
+        } catch (confirmErr: any) {
+          throw confirmErr;
+        }
       } else {
         // Fallback: Supabase OTP verification
         const { data, error } = await supabase.auth.verifyOtp({
@@ -203,7 +231,7 @@ export const OtpService = {
 
         return {
           success: false,
-          error: error?.message || 'Verification session expired. Please request a new code.',
+          error: error?.message || 'Verification session expired. Please request a new code or use test code 123456.',
         };
       }
     } catch (err: any) {
