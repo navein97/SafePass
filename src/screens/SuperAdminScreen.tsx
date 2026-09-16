@@ -34,7 +34,9 @@ import {
   Car,
   UserCheck,
   Crown,
-  Smartphone
+  Smartphone,
+  ChevronDown,
+  Check
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
@@ -95,6 +97,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
   // Global Settings State
   const [globalLimitInput, setGlobalLimitInput] = useState('5');
+  const [limitDropdownOpen, setLimitDropdownOpen] = useState(false);
   const [loadingLimit, setLoadingLimit] = useState(false);
   const [savingLimit, setSavingLimit] = useState(false);
   const [limitSaveStatus, setLimitSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -132,7 +135,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
     setLoadingLoginActivity(true);
     const roleParam = loginRoleFilter === 'all' ? undefined
       : loginRoleFilter === 'master' ? 'manager'
-      : loginRoleFilter;
+        : loginRoleFilter;
     const [logs, stats] = await Promise.all([
       SuperAdminService.getLoginLogs(150, roleParam, loginCompanyFilter),
       SuperAdminService.getLoginStats(),
@@ -174,17 +177,14 @@ export const SuperAdminScreen = ({ navigation }: any) => {
   const loadGlobalLimit = async () => {
     setLoadingLimit(true);
     const current = await SuperAdminService.getGlobalDailyLimit();
-    setGlobalLimitInput(String(current));
+    setGlobalLimitInput(String(Math.min(30, Math.max(1, current))));
     setLoadingLimit(false);
   };
 
   const handleSaveGlobalLimit = async () => {
-    const parsed = parseInt(globalLimitInput, 10);
-    if (isNaN(parsed) || parsed < 1 || parsed > 30) {
-      setLimitSaveStatus('error');
-      setTimeout(() => setLimitSaveStatus('idle'), 3000);
-      return;
-    }
+    const raw = parseInt(globalLimitInput, 10);
+    const parsed = Math.min(30, Math.max(1, isNaN(raw) ? 5 : raw));
+    setGlobalLimitInput(String(parsed));
     setSavingLimit(true);
     setLimitSaveStatus('idle');
     const ok = await SuperAdminService.setGlobalDailyLimit(parsed);
@@ -222,8 +222,8 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
     if (result.success) {
       const selectedComp = companies.find(c => c.id === broadcastCompanyId);
-      const targetLabel = broadcastTarget === 'all_masters' 
-        ? 'All Master Users' 
+      const targetLabel = broadcastTarget === 'all_masters'
+        ? 'All Master Users'
         : `${selectedComp?.name || result.companyName || 'Specific Company'} (${recipientScope === 'masters_only' ? 'Master Users' : 'All Company Members'})`;
 
       Alert.alert(
@@ -553,8 +553,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                   {broadcastTarget === 'all_masters' ? (
                     'Broadcasting to all Master Users across all registered workspaces.'
                   ) : (
-                    `Broadcasting to ${
-                      companies.find(c => c.id === broadcastCompanyId)?.name || 'Selected Company'
+                    `Broadcasting to ${companies.find(c => c.id === broadcastCompanyId)?.name || 'Selected Company'
                     } (${recipientScope === 'masters_only' ? 'Master Users Only' : 'All Company Members'}).`
                   )}
                 </Text>
@@ -657,53 +656,36 @@ export const SuperAdminScreen = ({ navigation }: any) => {
             <GlassCard style={styles.broadcastCard}>
               <View style={styles.cardHeader}>
                 <Settings size={22} color={colors.primary.DEFAULT} />
-                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Global App Settings</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Global Settings</Text>
               </View>
-              <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
-                These settings apply globally to all drivers across all companies.
-              </Text>
 
               {/* Daily Quiz Limit */}
-              <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Daily Quiz Limit (questions per day)</Text>
-              <Text style={[styles.sectionSubtitle, { color: colors.text.secondary, marginBottom: 8, marginTop: -4 }]}>
-                How many Live Quiz questions each driver can answer per day. Recommended: 5.
+              <Text style={[styles.fieldLabel, { color: colors.text.primary, marginTop: 10 }]}>Daily Quiz Limit</Text>
+              <Text style={[styles.sectionSubtitle, { color: colors.text.secondary, marginBottom: 16 }]}>
+                Live Quiz questions per driver each day.
               </Text>
 
               {loadingLimit ? (
                 <ActivityIndicator size="small" color={colors.primary.DEFAULT} style={{ marginVertical: 16 }} />
               ) : (
-                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 8 }}>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        borderColor: limitSaveStatus === 'error' ? colors.status.danger
-                          : limitSaveStatus === 'success' ? colors.status.success
-                            : colors.border,
-                        color: colors.text.primary,
-                        flex: 1,
-                        fontSize: 28,
-                        fontFamily: typography.fonts.bold,
-                        textAlign: 'center',
-                        letterSpacing: 2,
-                      }
-                    ]}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    value={globalLimitInput}
-                    onChangeText={(val) => {
-                      setLimitSaveStatus('idle');
-                      setGlobalLimitInput(val.replace(/[^0-9]/g, ''));
-                    }}
-                    placeholder="5"
-                    placeholderTextColor={colors.text.tertiary}
-                  />
-                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.dropdownTrigger,
+                    { borderColor: colors.border, backgroundColor: 'rgba(255, 255, 255, 0.06)' }
+                  ]}
+                  onPress={() => setLimitDropdownOpen(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dropdownTriggerText, { color: colors.text.primary }]}>
+                    {globalLimitInput} {parseInt(globalLimitInput, 10) === 1 ? 'question' : 'questions'} / day
+                  </Text>
+                  <ChevronDown size={20} color={colors.text.secondary} />
+                </TouchableOpacity>
               )}
 
               {/* Status feedback */}
               {limitSaveStatus === 'success' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
                   <CheckCircle size={16} color={colors.status.success} />
                   <Text style={{ color: colors.status.success, fontFamily: typography.fonts.medium, fontSize: 13 }}>
                     Limit updated successfully.
@@ -711,10 +693,10 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 </View>
               )}
               {limitSaveStatus === 'error' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
                   <AlertCircle size={16} color={colors.status.danger} />
                   <Text style={{ color: colors.status.danger, fontFamily: typography.fonts.medium, fontSize: 13 }}>
-                    Invalid value. Enter a number between 1 and 30.
+                    Failed to update limit.
                   </Text>
                 </View>
               )}
@@ -724,7 +706,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 onPress={handleSaveGlobalLimit}
                 variant="primary"
                 loading={savingLimit}
-                style={{ marginTop: 8 }}
+                style={{ marginTop: 16 }}
               />
             </GlassCard>
           </ScrollView>
@@ -855,8 +837,8 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                 const diffMins = Math.floor(diffMs / 60000);
                 const timeLabel = diffMins < 1 ? 'Just now'
                   : diffMins < 60 ? `${diffMins}m ago`
-                  : diffMins < 1440 ? `${Math.floor(diffMins / 60)}h ago`
-                  : loginDate.toLocaleDateString() + ' ' + loginDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    : diffMins < 1440 ? `${Math.floor(diffMins / 60)}h ago`
+                      : loginDate.toLocaleDateString() + ' ' + loginDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                 return (
                   <View
@@ -966,6 +948,66 @@ export const SuperAdminScreen = ({ navigation }: any) => {
               )}
             </GlassCard>
           </View>
+        </Modal>
+
+        {/* DAILY QUIZ LIMIT DROPDOWN MODAL */}
+        <Modal
+          visible={limitDropdownOpen}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setLimitDropdownOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setLimitDropdownOpen(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[styles.dropdownModalCard, { backgroundColor: colors.background.card, borderColor: colors.border }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
+                  Daily Quiz Limit
+                </Text>
+                <TouchableOpacity onPress={() => setLimitDropdownOpen(false)}>
+                  <Text style={{ color: colors.text.secondary, fontWeight: '700' }}>Close</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={true}>
+                {Array.from({ length: 30 }, (_, i) => i + 1).map((num) => {
+                  const isSelected = parseInt(globalLimitInput, 10) === num;
+                  return (
+                    <TouchableOpacity
+                      key={num}
+                      style={[
+                        styles.dropdownOptionRow,
+                        isSelected && { backgroundColor: colors.primary.DEFAULT + '1A' }
+                      ]}
+                      onPress={() => {
+                        setGlobalLimitInput(String(num));
+                        setLimitSaveStatus('idle');
+                        setLimitDropdownOpen(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          { color: isSelected ? colors.primary.DEFAULT : colors.text.primary },
+                          isSelected && { fontWeight: '700', fontFamily: typography.fonts.bold }
+                        ]}
+                      >
+                        {num} {num === 1 ? 'question' : 'questions'}{num === 5 ? ' (Default)' : ''}
+                      </Text>
+                      {isSelected && <Check size={18} color={colors.primary.DEFAULT} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
       </SafeAreaView>
     </GradientBackground>
@@ -1433,5 +1475,39 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: typography.fonts.medium,
     fontWeight: '600',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  dropdownTriggerText: {
+    fontSize: 15,
+    fontFamily: typography.fonts.medium,
+    fontWeight: '600',
+  },
+  dropdownModalCard: {
+    width: '100%',
+    maxWidth: 380,
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  dropdownOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  dropdownOptionText: {
+    fontSize: 15,
+    fontFamily: typography.fonts.regular,
   },
 });

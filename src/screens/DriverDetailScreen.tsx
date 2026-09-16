@@ -105,13 +105,14 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 const isPassed = batchNum < profile.current_batch || (completedAttemptsCount > 0 && score >= 60);
 
                 const actualAnswered = completedCounts[batchNum] || 0;
-                const completedCount = isPassed
+                const rawCompleted = isPassed
                     ? (actualAnswered > 0 ? actualAnswered : totalQ)
                     : actualAnswered;
+                const completedCount = Math.min(rawCompleted, totalQ);
 
                 return {
                     batchNumber: batchNum,
-                    averageScore: score,
+                    averageScore: Math.min(100, score || 0),
                     attemptCount: completedAttemptsCount,
                     passed: isPassed,
                     completedCount,
@@ -733,11 +734,11 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                             <View style={styles.statsGrid}>
                                 <View style={styles.statBox}>
                                     <Text style={styles.statBoxLabel}>{t('user.progress', 'Progress')}</Text>
-                                    <Text style={styles.statBoxVal}>{selectedSummary.completedCount}/{selectedSummary.totalQuestions || 30}</Text>
+                                    <Text style={styles.statBoxVal}>{Math.min(selectedSummary.completedCount, selectedSummary.totalQuestions || 30)}/{selectedSummary.totalQuestions || 30}</Text>
                                 </View>
                                 <View style={styles.statBox}>
                                     <Text style={styles.statBoxLabel}>{t('user.averageScore', 'Average Score')}</Text>
-                                    <Text style={styles.statBoxVal}>{selectedSummary.averageScore.toFixed(1)}%</Text>
+                                    <Text style={styles.statBoxVal}>{Math.min(100, selectedSummary.averageScore).toFixed(1)}%</Text>
                                 </View>
                                 <View style={styles.statBox}>
                                     <Text style={styles.statBoxLabel}>{t('user.attempts', 'Attempts')}</Text>

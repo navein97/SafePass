@@ -589,7 +589,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
           passed: false,
           isPractice: false,
           isDailySessionComplete: true, // Custom flag to render differently
-          completedCount: completedCount,
+          completedCount: Math.min(completedCount, totalBQ),
           totalBatchQuestions: totalBQ
         } as any); // Casting as any to easily append custom fields for rendering
       }

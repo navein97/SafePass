@@ -102,10 +102,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     (points: PerformanceTrendPoint[]) => {
       const validPoints = points.filter((p, i) => !isPointInFuture(p, i));
       const activePoints = validPoints.filter(p => (p.hasActivity ?? (p.attemptsCount ? p.attemptsCount > 0 : p.value > 0)) && p.value > 0);
-      const activeScores = activePoints.map(p => p.value);
-      const avg = activeScores.length > 0 ? Math.round(activeScores.reduce((s, v) => s + v, 0) / activeScores.length) : 0;
-      const high = activeScores.length > 0 ? Math.max(...activeScores) : 0;
-      const low = activeScores.length > 0 ? Math.min(...activeScores) : 0;
+      const activeScores = activePoints.map(p => Math.min(100, p.value));
+      const avg = activeScores.length > 0 ? Math.min(100, Math.round(activeScores.reduce((s, v) => s + v, 0) / activeScores.length)) : 0;
+      const high = activeScores.length > 0 ? Math.min(100, Math.max(...activeScores)) : 0;
+      const low = activeScores.length > 0 ? Math.min(100, Math.min(...activeScores)) : 0;
       const attempts = validPoints.reduce((s, p) => s + (p.attemptsCount || 0), 0);
 
       setStats(prev => ({
@@ -116,7 +116,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         totalAttempts: attempts,
         activePeriodsCount: activePoints.length,
         mcqsCompleted: (prev?.mcqsCompleted && prev.mcqsCompleted > 0) ? prev.mcqsCompleted : attempts,
-        periodPerformance: prev?.periodPerformance ?? (avg > 0 ? avg : null),
+        periodPerformance: prev?.periodPerformance !== null && prev?.periodPerformance !== undefined ? Math.min(100, prev.periodPerformance) : (avg > 0 ? avg : null),
       }));
     },
     [isPointInFuture]
@@ -690,7 +690,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           >
             <Text style={styles.tooltipScore}>
               {isPointActive(activePoint, selectedIndex)
-                ? `${activePoint.value}%`
+                ? `${Math.min(100, activePoint.value)}%`
                 : t('profile.noActivity', 'No Activity')}
             </Text>
             <Text style={styles.tooltipDate}>{activePoint.fullDate || activePoint.label}</Text>

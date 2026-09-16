@@ -161,10 +161,10 @@ export function MissionScreen() {
           // Score calculation
           let score = 0;
           if (batchAttempts.length > 0) {
-            score = batchAttempts[batchAttempts.length - 1]?.score || 0;
+            score = Math.min(100, batchAttempts[batchAttempts.length - 1]?.score || 0);
           } else if (batchQProgress.length > 0) {
             const totalEarned = batchQProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
-            score = Math.max(0, Math.round((totalEarned / Math.max(1, totalQ)) * 100));
+            score = Math.min(100, Math.max(0, Math.round((totalEarned / Math.max(1, totalQ)) * 100)));
           }
 
           const passed = batchNum < currentBatch || (batchAttempts.length > 0 && score >= 60);
@@ -427,7 +427,7 @@ export function MissionScreen() {
                       <>
                         <View style={styles.statRow}>
                           <Text style={styles.statLabel}>{t('mission.progress', 'Progress')}</Text>
-                          <Text style={styles.statValue}>{batch.completedCount}/{batch.totalQuestions || 30} {t('quiz.completed', 'completed')}</Text>
+                          <Text style={styles.statValue}>{Math.min(batch.completedCount, batch.totalQuestions || 30)}/{batch.totalQuestions || 30} {t('quiz.completed', 'completed')}</Text>
                         </View>
                         {selectedMode !== 'practice' && batch.averageScore > 0 && (
                           <View style={styles.statRow}>
@@ -439,7 +439,7 @@ export function MissionScreen() {
                                 !batch.passed && styles.statValueFailed,
                               ]}
                             >
-                              {batch.averageScore.toFixed(1)}%
+                              {Math.min(100, batch.averageScore).toFixed(1)}%
                             </Text>
                           </View>
                         )}

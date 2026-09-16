@@ -132,6 +132,16 @@ export const BatchService = {
             console.error('Error fetching question progress:', progressError);
         }
 
+        const totalQuestionsForBatch = await this.getBatchTotalQuestions(batchNumber, userId);
+        const completedQuestionsCount = (progressData || []).filter(p => p.is_correct || (p.attempts && p.attempts >= 2)).length;
+
+        // If user already reached the batch target (30 questions), do not serve more questions
+        if (completedQuestionsCount >= totalQuestionsForBatch) {
+            return [];
+        }
+
+        const remainingNeeded = Math.max(0, totalQuestionsForBatch - completedQuestionsCount);
+
         const progressMap = new Map<string, { attempts: number; is_correct: boolean }>();
         if (progressData) {
             progressData.forEach(p => {
@@ -153,13 +163,16 @@ export const BatchService = {
         // use all batch questions so the driver can retake/review the batch.
         const pool = (uncompletedData && uncompletedData.length > 0) ? uncompletedData : batchData;
 
-        // Shuffle remaining questions and cap at max 30 questions
-        const cappedPool = pool.slice(0, 30);
-        const shuffledData = [...cappedPool];
-        for (let i = shuffledData.length - 1; i > 0; i--) {
+        // Shuffle pool randomly (Option 3: Randomized 30 questions from available batch pool)
+        const shuffledPool = [...pool];
+        for (let i = shuffledPool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [shuffledData[i], shuffledData[j]] = [shuffledData[j], shuffledData[i]];
+            [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
         }
+
+        // Cap pool at remaining questions needed so user never exceeds total questions for the batch
+        const cappedPool = shuffledPool.slice(0, remainingNeeded);
+        const shuffledData = cappedPool;
 
         // Map and format options
         const questions = shuffledData.map(q => {
@@ -386,8 +399,8 @@ export const BatchService = {
                     totalScore += parseFloat(String(a.score || 0));
                 });
                 const totalQuestionsInBatch = await this.getBatchTotalQuestions(batchNumber, userId);
-                const score = Math.max(0, Math.round((totalScore / Math.max(1, totalQuestionsInBatch)) * 100));
-                const accuracy = Math.round((qProgress.filter(a => a.is_correct).length / Math.max(1, qProgress.length)) * 100);
+                const score = Math.min(100, Math.max(0, Math.round((totalScore / Math.max(1, totalQuestionsInBatch)) * 100)));
+                const accuracy = Math.min(100, Math.round((qProgress.filter(a => a.is_correct).length / Math.max(1, qProgress.length)) * 100));
                 const completion = Math.min(100, Math.round((qProgress.length / Math.max(1, totalQuestionsInBatch)) * 100));
 
                 attempts.push({
@@ -448,9 +461,9 @@ export const BatchService = {
         });
 
         const maxScore = answers.length;
-        const percentage = (totalScore / maxScore) * 100;
+        const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
-        return Math.max(0, Math.round(percentage));
+        return Math.min(100, Math.max(0, Math.round(percentage)));
     },
 
     /**
@@ -1037,8 +1050,8 @@ export const BatchService = {
                     });
                     
                     const totalQuestionsInBatch = Math.min(30, Math.max(1, batchQuestions.length > 0 ? batchQuestions.length : 30));
-                    const score = Math.max(0, Math.round((totalScore / totalQuestionsInBatch) * 100));
-                    const accuracy = Math.round((qRows.filter(a => a.is_correct).length / Math.max(1, qRows.length)) * 100);
+                    const score = Math.min(100, Math.max(0, Math.round((totalScore / totalQuestionsInBatch) * 100)));
+                    const accuracy = Math.min(100, Math.round((qRows.filter(a => a.is_correct).length / Math.max(1, qRows.length)) * 100));
                     const completion = Math.min(100, Math.round((qRows.length / totalQuestionsInBatch) * 100));
 
                     const existingAttempts = progressMap.get(key) || [];
@@ -1286,7 +1299,7 @@ export const BatchService = {
                 const inProgressQuestions = qProgress.filter(q => !completedBatchNumbers.has(q.batch_number));
                 if (inProgressQuestions.length > 0) {
                     const totalRaw = inProgressQuestions.reduce((sum: number, a: any) => sum + parseFloat(String(a.score || 0)), 0);
-                    provisionalScore = Math.round((totalRaw / 30) * 100);
+                    provisionalScore = Math.min(100, Math.round((totalRaw / 30) * 100));
                 }
             }
 
@@ -1501,15 +1514,20 @@ export const BatchService = {
 
             const answers = progressRows || [];
             
-            // Calculate score based on attempts
-            let totalScore = 0;
-            answers.forEach(a => {
-                totalScore += parseFloat(String(a.score));
-            });
-
             const totalQuestionsInBatch = await this.getBatchTotalQuestions(batchNumber, userId);
             const maxScore = Math.max(1, totalQuestionsInBatch);
-            const score = Math.max(0, Math.round((totalScore / maxScore) * 100));
+
+            // Option 3: Strictly evaluate at most maxScore (30) questions for this batch
+            const evaluatedAnswers = answers.slice(0, maxScore);
+
+            // Calculate score based on attempts
+            let totalScore = 0;
+            evaluatedAnswers.forEach(a => {
+                totalScore += parseFloat(String(a.score || 0));
+            });
+
+            const score = Math.min(100, Math.max(0, Math.round((totalScore / maxScore) * 100)));
+            const accuracy = Math.min(100, Math.max(0, Math.round((evaluatedAnswers.filter(a => a.is_correct).length / maxScore) * 100)));
             const passed = score >= 60;
 
             const { data: pastAttempts } = await supabase
@@ -1531,7 +1549,7 @@ export const BatchService = {
                 componentWeights: q.component_weights || (q as any).componentWeights
             })) as Question[];
 
-            const mappedAnswers = answers.map(a => ({
+            const mappedAnswers = evaluatedAnswers.map(a => ({
                 questionId: a.question_id,
                 attempts: a.attempts,
                 isCorrect: a.is_correct
@@ -1547,7 +1565,7 @@ export const BatchService = {
                     batch_number: batchNumber,
                     attempt_number: attemptNumber,
                     score,
-                    accuracy_percentage: Math.round((answers.filter(a => a.is_correct).length / maxScore) * 100),
+                    accuracy_percentage: accuracy,
                     completion_percentage: 100,
                     component_scores: componentScores,
                     answers: mappedAnswers,
@@ -1677,8 +1695,16 @@ export const BatchService = {
 
             if (qProgressError) throw qProgressError;
 
-            // Intentionally NOT deleting user_batch_progress here.
-            // We must preserve the audit trail of past failed attempts for compliance tracking.
+            // Delete batch attempt progress for this batch so the score is cleared and can be retaken
+            const { error: bProgressError } = await supabase
+                .from('user_batch_progress')
+                .delete()
+                .eq('user_id', userId)
+                .eq('batch_number', batchNumber);
+
+            if (bProgressError) {
+                console.warn('[BatchService] Note: user_batch_progress delete warning:', bProgressError);
+            }
 
             // Reset consecutive resets count for this batch
             const { data: profile } = await supabase

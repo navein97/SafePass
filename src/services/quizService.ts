@@ -773,7 +773,7 @@ export const QuizService = {
                     let dailyScore = 0;
 
                     if (dayBatches.length > 0) {
-                        dailyScore = Math.round(dayBatches[dayBatches.length - 1].score || 0);
+                        dailyScore = Math.min(100, Math.round(dayBatches[dayBatches.length - 1].score || 0));
                     } else if (dayQuestions.length > 0) {
                         const dayMarks = dayQuestions.reduce(
                             (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
@@ -830,7 +830,7 @@ export const QuizService = {
                     let weekScore = 0;
 
                     if (wBatches.length > 0) {
-                        weekScore = Math.round(wBatches[wBatches.length - 1].score || 0);
+                        weekScore = Math.min(100, Math.round(wBatches[wBatches.length - 1].score || 0));
                     } else if (wQuestions.length > 0) {
                         const wMarks = wQuestions.reduce(
                             (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
@@ -897,7 +897,7 @@ export const QuizService = {
                     let monthScore = 0;
 
                     if (mBatches.length > 0) {
-                        monthScore = Math.round(mBatches[mBatches.length - 1].score || 0);
+                        monthScore = Math.min(100, Math.round(mBatches[mBatches.length - 1].score || 0));
                     } else if (mQuestions.length > 0) {
                         const mMarks = mQuestions.reduce(
                             (sum: number, q: any) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))),
@@ -962,7 +962,7 @@ export const QuizService = {
                 0
             );
             const periodPerformance = periodBatches.length > 0
-                ? Math.round(periodBatches[periodBatches.length - 1].score || 0)
+                ? Math.min(100, Math.round(periodBatches[periodBatches.length - 1].score || 0))
                 : (periodQuestions.length > 0
                     ? Math.min(100, Math.max(0, Math.round((totalMarksEarned / 30) * 100)))
                     : null);
@@ -998,9 +998,9 @@ export const QuizService = {
             }
 
             const activePoints = points.filter(p => !p.isFuture && p.hasActivity && p.value > 0);
-            const averageScore = periodPerformance ?? (activePoints.length > 0 ? Math.round(activePoints.reduce((s, p) => s + p.value, 0) / activePoints.length) : 0);
-            const highestScore = activePoints.length > 0 ? Math.max(...activePoints.map(p => p.value)) : 0;
-            const lowestScore = activePoints.length > 0 ? Math.min(...activePoints.map(p => p.value)) : 0;
+            const averageScore = Math.min(100, periodPerformance ?? (activePoints.length > 0 ? Math.round(activePoints.reduce((s, p) => s + p.value, 0) / activePoints.length) : 0));
+            const highestScore = Math.min(100, activePoints.length > 0 ? Math.max(...activePoints.map(p => p.value)) : 0);
+            const lowestScore = Math.min(100, activePoints.length > 0 ? Math.min(...activePoints.map(p => p.value)) : 0);
             const totalAttempts = allBatches.length;
 
             return {
