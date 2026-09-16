@@ -38,15 +38,18 @@ export const AnalyticsService = {
   },
 
   /**
-   * Fetches recent event log history for Super Admin dashboard.
+   * Fetches recent event log history for Super Admin dashboard with offset pagination.
    */
-  async getRecentEvents(limit: number = 50): Promise<AppEvent[]> {
+  async getRecentEvents(offset: number = 0, limit: number = 25): Promise<AppEvent[]> {
     try {
+      const from = offset;
+      const to = offset + limit - 1;
+
       const { data, error } = await supabase
         .from('app_events')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .range(from, to);
 
       if (error) throw error;
       return data || [];

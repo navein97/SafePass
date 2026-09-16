@@ -55,9 +55,10 @@ CREATE POLICY "No direct reads"
 -- This function returns login logs, callable by any authenticated user.
 -- Security is enforced by the passcode gate in the app.
 CREATE OR REPLACE FUNCTION public.get_login_logs(
-  p_limit     INTEGER DEFAULT 100,
+  p_limit     INTEGER DEFAULT 25,
   p_role      TEXT    DEFAULT NULL,
-  p_company_id UUID   DEFAULT NULL
+  p_company_id UUID   DEFAULT NULL,
+  p_offset    INTEGER DEFAULT 0
 )
 RETURNS SETOF public.login_logs
 LANGUAGE sql
@@ -70,6 +71,7 @@ AS $$
     (p_role IS NULL OR role = p_role)
     AND (p_company_id IS NULL OR company_id = p_company_id)
   ORDER BY logged_in_at DESC
+  OFFSET p_offset
   LIMIT p_limit;
 $$;
 

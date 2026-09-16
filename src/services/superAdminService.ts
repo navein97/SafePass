@@ -43,22 +43,86 @@ export interface LoginStats {
 }
 
 
+export interface MasterCompaniesResult {
+  companies: MasterCompany[];
+  hasMore: boolean;
+  totalCount: number;
+}
+
+export interface CompanyLookup {
+  id: string;
+  name: string;
+  code?: string;
+}
+
 export const SuperAdminService = {
   /**
-   * Fetches all registered companies and their corresponding master users (Level 1 Managers).
+   * Fetches lightweight company list for dropdown selectors and filter chips.
    */
-  async getAllMasterCompanies(): Promise<MasterCompany[]> {
+  async getCompanyLookupList(): Promise<CompanyLookup[]> {
     try {
-      // 1. Fetch companies
-      const { data: companies, error: compErr } = await supabase
+      const { data, error } = await supabase
         .from('companies')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('id, name, code')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('[SuperAdminService] Error fetching company lookups:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Fetches paginated registered companies and their corresponding master users (Level 1 Managers).
+   */
+  async getAllMasterCompanies(
+    page: number = 0,
+    limit: number = 25,
+    searchQuery?: string
+  ): Promise<MasterCompaniesResult> {
+    try {
+      // 1. Build company query with exact count
+      let query = supabase
+        .from('companies')
+        .select('*', { count: 'exact' });
+
+      if (searchQuery && searchQuery.trim()) {
+        const q = searchQuery.trim();
+        // Check if any profiles match full_name or email to include their companies
+        const { data: matchedProfiles } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
+          .not('company_id', 'is', null);
+
+        const matchedCompIds = Array.from(
+          new Set((matchedProfiles || []).map(p => p.company_id).filter(Boolean))
+        );
+
+        if (matchedCompIds.length > 0) {
+          query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,id.in.(${matchedCompIds.join(',')})`);
+        } else {
+          query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%`);
+        }
+      }
+
+      const from = page * limit;
+      const to = from + limit - 1;
+
+      const { data: companies, count, error: compErr } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (compErr) throw compErr;
-      if (!companies || companies.length === 0) return [];
+      const totalCount = count || 0;
+      const hasMore = (from + (companies?.length || 0)) < totalCount;
 
-      // 2. Fetch profiles to link master users & counts
+      if (!companies || companies.length === 0) {
+        return { companies: [], hasMore: false, totalCount };
+      }
+
+      // 2. Fetch profiles ONLY for the companies in this page batch
       const companyIds = companies.map(c => c.id);
 
       const { data: profiles, error: profErr } = await supabase
@@ -77,7 +141,7 @@ export const SuperAdminService = {
 
       if (quizErr) console.warn('[SuperAdminService] Error fetching quiz attempts:', quizErr);
 
-      return companies.map(comp => {
+      const mappedCompanies: MasterCompany[] = companies.map(comp => {
         const compProfiles = (profiles || []).filter(p => p.company_id === comp.id);
         const masterUser = compProfiles.find(p => p.role === 'manager' && (p.manager_level === 1 || !p.manager_level)) || compProfiles[0];
         
@@ -107,9 +171,15 @@ export const SuperAdminService = {
           average_score: avgScore
         };
       });
+
+      return {
+        companies: mappedCompanies,
+        hasMore,
+        totalCount
+      };
     } catch (err) {
       console.error('[SuperAdminService] Error fetching master companies:', err);
-      return [];
+      return { companies: [], hasMore: false, totalCount: 0 };
     }
   },
 
@@ -294,18 +364,45 @@ export const SuperAdminService = {
    * Calls the SECURITY DEFINER RPC to bypass RLS.
    */
   async getLoginLogs(
-    limit: number = 100,
+    limit: number = 25,
     roleFilter?: string,
-    companyIdFilter?: string
+    companyIdFilter?: string,
+    offset: number = 0
   ): Promise<LoginLog[]> {
     try {
+      if (offset === 0) {
+        // First try calling without p_offset to be 100% compatible with existing RPC
+        const { data, error } = await supabase.rpc('get_login_logs', {
+          p_limit: limit,
+          p_role: roleFilter || null,
+          p_company_id: companyIdFilter || null,
+        });
+
+        if (!error && data) {
+          return (data as LoginLog[]) || [];
+        }
+      }
+
+      // Try calling with p_offset
       const { data, error } = await supabase.rpc('get_login_logs', {
         p_limit: limit,
         p_role: roleFilter || null,
         p_company_id: companyIdFilter || null,
+        p_offset: offset,
       });
 
       if (error) {
+        // Fallback: If DB does not have p_offset parameter yet (PGRST202), fetch offset + limit and slice
+        if (error.code === 'PGRST202') {
+          const { data: fallbackData, error: fallbackErr } = await supabase.rpc('get_login_logs', {
+            p_limit: offset + limit,
+            p_role: roleFilter || null,
+            p_company_id: companyIdFilter || null,
+          });
+          if (!fallbackErr && fallbackData) {
+            return (fallbackData as LoginLog[]).slice(offset, offset + limit);
+          }
+        }
         console.warn('[SuperAdminService] getLoginLogs RPC error:', error.message);
         return [];
       }

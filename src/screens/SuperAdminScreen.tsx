@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -41,7 +42,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { PasscodeGateModal } from '../components/PasscodeGateModal';
-import { SuperAdminService, MasterCompany, LoginLog, LoginStats } from '../services/superAdminService';
+import { SuperAdminService, MasterCompany, LoginLog, LoginStats, CompanyLookup } from '../services/superAdminService';
 import { AnalyticsService, AppEvent } from '../services/analyticsService';
 import { PasscodeService } from '../services/passcodeService';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -55,9 +56,16 @@ export const SuperAdminScreen = ({ navigation }: any) => {
   const [unlocked, setUnlocked] = useState(false);
   const [activeTab, setActiveTab] = useState<'masters' | 'broadcast' | 'analytics' | 'settings' | 'login_activity'>('masters');
 
+  const PAGE_SIZE = 25;
+
   // Master Users State
   const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [loadingMoreCompanies, setLoadingMoreCompanies] = useState(false);
   const [companies, setCompanies] = useState<MasterCompany[]>([]);
+  const [companiesPage, setCompaniesPage] = useState(0);
+  const [hasMoreCompanies, setHasMoreCompanies] = useState(true);
+  const [totalCompaniesCount, setTotalCompaniesCount] = useState(0);
+  const [companyLookups, setCompanyLookups] = useState<CompanyLookup[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<MasterCompany | null>(null);
   const [inspectModalVisible, setInspectModalVisible] = useState(false);
@@ -78,12 +86,18 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
   // Analytics & Event Logs State
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [loadingMoreEvents, setLoadingMoreEvents] = useState(false);
   const [metrics, setMetrics] = useState({ totalEvents: 0, totalCompanies: 0, totalUsers: 0, totalQuizzes: 0 });
   const [eventLogs, setEventLogs] = useState<AppEvent[]>([]);
+  const [eventsOffset, setEventsOffset] = useState(0);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true);
 
   // Login Activity State
   const [loadingLoginActivity, setLoadingLoginActivity] = useState(false);
+  const [loadingMoreLogins, setLoadingMoreLogins] = useState(false);
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
+  const [loginsOffset, setLoginsOffset] = useState(0);
+  const [hasMoreLogins, setHasMoreLogins] = useState(true);
   const [loginStats, setLoginStats] = useState<LoginStats>({
     total_today: 0,
     unique_users_today: 0,
@@ -104,7 +118,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
   useEffect(() => {
     if (unlocked) {
-      loadData();
+      loadInitialData();
       loadGlobalLimit();
       AnalyticsService.trackEvent('super_admin_unlocked', { timestamp: new Date().toISOString() });
     }
@@ -112,41 +126,121 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
   useEffect(() => {
     if (unlocked && activeTab === 'login_activity') {
-      loadLoginActivity();
+      loadLoginActivity(0, true);
     }
   }, [unlocked, activeTab, loginRoleFilter, loginCompanyFilter]);
 
-  const loadData = async () => {
-    setLoadingCompanies(true);
-    setLoadingAnalytics(true);
+  // Debounced search for Master Users
+  useEffect(() => {
+    if (!unlocked) return;
+    const timer = setTimeout(() => {
+      loadCompanies(0, true, searchQuery);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-    const fetchedCompanies = await SuperAdminService.getAllMasterCompanies();
-    setCompanies(fetchedCompanies);
-    setLoadingCompanies(false);
-
-    const fetchedMetrics = await AnalyticsService.getUsageMetrics();
-    const fetchedLogs = await AnalyticsService.getRecentEvents(50);
-    setMetrics(fetchedMetrics);
-    setEventLogs(fetchedLogs);
-    setLoadingAnalytics(false);
+  const loadInitialData = async () => {
+    loadCompanies(0, true, searchQuery);
+    loadCompanyLookups();
+    loadAnalytics(0, true);
   };
 
-  const loadLoginActivity = async () => {
-    setLoadingLoginActivity(true);
+  const loadCompanyLookups = async () => {
+    const lookups = await SuperAdminService.getCompanyLookupList();
+    setCompanyLookups(lookups);
+  };
+
+  const loadCompanies = async (pageToLoad: number = 0, isRefreshing: boolean = false, query: string = searchQuery) => {
+    if (isRefreshing || pageToLoad === 0) {
+      setLoadingCompanies(true);
+    } else {
+      setLoadingMoreCompanies(true);
+    }
+
+    const result = await SuperAdminService.getAllMasterCompanies(pageToLoad, PAGE_SIZE, query);
+
+    if (pageToLoad === 0) {
+      setCompanies(result.companies);
+    } else {
+      setCompanies(prev => [...prev, ...result.companies]);
+    }
+
+    setCompaniesPage(pageToLoad);
+    setHasMoreCompanies(result.hasMore);
+    setTotalCompaniesCount(result.totalCount);
+
+    setLoadingCompanies(false);
+    setLoadingMoreCompanies(false);
+  };
+
+  const handleLoadMoreCompanies = () => {
+    if (loadingCompanies || loadingMoreCompanies || !hasMoreCompanies) return;
+    loadCompanies(companiesPage + 1, false, searchQuery);
+  };
+
+  const loadAnalytics = async (offsetToLoad: number = 0, isRefreshing: boolean = false) => {
+    if (isRefreshing || offsetToLoad === 0) {
+      setLoadingAnalytics(true);
+      const fetchedMetrics = await AnalyticsService.getUsageMetrics();
+      setMetrics(fetchedMetrics);
+    } else {
+      setLoadingMoreEvents(true);
+    }
+
+    const fetchedLogs = await AnalyticsService.getRecentEvents(offsetToLoad, PAGE_SIZE);
+
+    if (offsetToLoad === 0) {
+      setEventLogs(fetchedLogs);
+    } else {
+      setEventLogs(prev => [...prev, ...fetchedLogs]);
+    }
+
+    setEventsOffset(offsetToLoad);
+    setHasMoreEvents(fetchedLogs.length === PAGE_SIZE);
+
+    setLoadingAnalytics(false);
+    setLoadingMoreEvents(false);
+  };
+
+  const handleLoadMoreEvents = () => {
+    if (loadingAnalytics || loadingMoreEvents || !hasMoreEvents) return;
+    loadAnalytics(eventLogs.length, false);
+  };
+
+  const loadLoginActivity = async (offsetToLoad: number = 0, isRefreshing: boolean = false) => {
+    if (isRefreshing || offsetToLoad === 0) {
+      setLoadingLoginActivity(true);
+      const stats = await SuperAdminService.getLoginStats();
+      setLoginStats(stats);
+    } else {
+      setLoadingMoreLogins(true);
+    }
+
     const roleParam = loginRoleFilter === 'all' ? undefined
       : loginRoleFilter === 'master' ? 'manager'
         : loginRoleFilter;
-    const [logs, stats] = await Promise.all([
-      SuperAdminService.getLoginLogs(150, roleParam, loginCompanyFilter),
-      SuperAdminService.getLoginStats(),
-    ]);
-    // If filtering by 'master', further filter client-side by manager_level === 1
+
+    const logs = await SuperAdminService.getLoginLogs(PAGE_SIZE, roleParam, loginCompanyFilter, offsetToLoad);
     const filteredLogs = loginRoleFilter === 'master'
       ? logs.filter(l => l.manager_level === 1)
       : logs;
-    setLoginLogs(filteredLogs);
-    setLoginStats(stats);
+
+    if (offsetToLoad === 0) {
+      setLoginLogs(filteredLogs);
+    } else {
+      setLoginLogs(prev => [...prev, ...filteredLogs]);
+    }
+
+    setLoginsOffset(offsetToLoad);
+    setHasMoreLogins(logs.length === PAGE_SIZE);
+
     setLoadingLoginActivity(false);
+    setLoadingMoreLogins(false);
+  };
+
+  const handleLoadMoreLogins = () => {
+    if (loadingLoginActivity || loadingMoreLogins || !hasMoreLogins) return;
+    loadLoginActivity(loginLogs.length, false);
   };
 
   // Beta Toggle Handler
@@ -221,7 +315,8 @@ export const SuperAdminScreen = ({ navigation }: any) => {
     setSendingBroadcast(false);
 
     if (result.success) {
-      const selectedComp = companies.find(c => c.id === broadcastCompanyId);
+      const availableComps = companyLookups.length > 0 ? companyLookups : companies;
+      const selectedComp = availableComps.find(c => c.id === broadcastCompanyId);
       const targetLabel = broadcastTarget === 'all_masters'
         ? 'All Master Users'
         : `${selectedComp?.name || result.companyName || 'Specific Company'} (${recipientScope === 'masters_only' ? 'Master Users' : 'All Company Members'})`;
@@ -242,15 +337,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
     }
   };
 
-  const filteredCompanies = companies.filter(c => {
-    const query = searchQuery.toLowerCase();
-    return (
-      c.name.toLowerCase().includes(query) ||
-      (c.code && c.code.toLowerCase().includes(query)) ||
-      (c.master_user?.full_name && c.master_user.full_name.toLowerCase().includes(query)) ||
-      (c.master_user?.email && c.master_user.email.toLowerCase().includes(query))
-    );
-  });
+  const availableCompanies = companyLookups.length > 0 ? companyLookups : companies;
 
   if (!unlocked) {
     return (
@@ -348,102 +435,134 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
         {/* TAB 1: MASTER USERS & INCOGNITO MONITORING */}
         {activeTab === 'masters' && (
-          <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* Search and Refresh Bar */}
-            <View style={styles.searchRow}>
-              <View style={[styles.searchInputContainer, { borderColor: colors.border }]}>
-                <Search size={18} color={colors.text.tertiary} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={[styles.searchInput, { color: colors.text.primary }]}
-                  placeholder="Search master user, email, or company code..."
-                  placeholderTextColor={colors.text.tertiary}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-              </View>
+          <FlatList
+            style={styles.tabContent}
+            contentContainerStyle={{ paddingBottom: 50 }}
+            data={companies}
+            keyExtractor={comp => comp.id}
+            ListHeaderComponent={
+              <View style={styles.searchRow}>
+                <View style={[styles.searchInputContainer, { borderColor: colors.border }]}>
+                  <Search size={18} color={colors.text.tertiary} style={{ marginRight: 8 }} />
+                  <TextInput
+                    style={[styles.searchInput, { color: colors.text.primary }]}
+                    placeholder="Search master user, email, or company code..."
+                    placeholderTextColor={colors.text.tertiary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    returnKeyType="search"
+                  />
+                  {Boolean(searchQuery) && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                      <Text style={{ color: colors.text.tertiary, fontSize: 13, fontWeight: '700' }}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-              <TouchableOpacity style={[styles.refreshBtn, { borderColor: colors.border }]} onPress={loadData}>
-                <RefreshCw size={18} color={colors.text.primary} />
-              </TouchableOpacity>
-            </View>
-
-            {loadingCompanies ? (
-              <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={{ marginTop: 40 }} />
-            ) : filteredCompanies.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Building size={48} color={colors.text.tertiary} />
-                <Text style={[styles.emptyText, { color: colors.text.secondary }]}>No master users found.</Text>
+                <TouchableOpacity
+                  style={[styles.refreshBtn, { borderColor: colors.border }]}
+                  onPress={() => loadCompanies(0, true, searchQuery)}
+                >
+                  <RefreshCw size={18} color={colors.text.primary} />
+                </TouchableOpacity>
               </View>
-            ) : (
-              filteredCompanies.map(comp => (
-                <GlassCard key={comp.id} style={styles.companyCard}>
-                  <View style={styles.companyCardHeader}>
-                    <View style={{ flex: 1 }}>
-                      <View style={styles.companyTitleRow}>
-                        <Text style={[styles.companyName, { color: colors.text.primary }]}>{comp.name}</Text>
-                        {comp.code && (
-                          <View style={[styles.codeBadge, { backgroundColor: colors.primary.DEFAULT + '20' }]}>
-                            <Text style={[styles.codeBadgeText, { color: colors.primary.DEFAULT }]}>
-                              {comp.code}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={[styles.masterDetailText, { color: colors.text.secondary }]}>
-                        Master: {comp.master_user?.full_name || 'Unassigned'} ({comp.master_user?.email || 'No email'})
-                      </Text>
-                      {Boolean(comp.master_user?.phone_number) && (
-                        <Text style={[styles.masterPhoneText, { color: colors.text.tertiary }]}>
-                          📞 {comp.master_user?.phone_number}
-                        </Text>
+            }
+            renderItem={({ item: comp }) => (
+              <GlassCard key={comp.id} style={styles.companyCard}>
+                <View style={styles.companyCardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.companyTitleRow}>
+                      <Text style={[styles.companyName, { color: colors.text.primary }]}>{comp.name}</Text>
+                      {comp.code && (
+                        <View style={[styles.codeBadge, { backgroundColor: colors.primary.DEFAULT + '20' }]}>
+                          <Text style={[styles.codeBadgeText, { color: colors.primary.DEFAULT }]}>
+                            {comp.code}
+                          </Text>
+                        </View>
                       )}
                     </View>
-
-                    {/* Incognito Inspect Action Button */}
-                    <TouchableOpacity
-                      style={[styles.inspectBtn, { backgroundColor: colors.primary.DEFAULT }]}
-                      onPress={() => handleInspect(comp)}
-                    >
-                      <Eye size={16} color="#fff" />
-                      <Text style={styles.inspectBtnText}>Incognito</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Company Stats Grid */}
-                  <View style={[styles.statsRow, { borderColor: colors.border }]}>
-                    <View style={styles.statCol}>
-                      <Text style={[styles.statValue, { color: colors.text.primary }]}>{comp.total_drivers}</Text>
-                      <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>Drivers</Text>
-                    </View>
-                    <View style={styles.statCol}>
-                      <Text style={[styles.statValue, { color: colors.text.primary }]}>{comp.total_quizzes}</Text>
-                      <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>Quizzes</Text>
-                    </View>
-                    <View style={styles.statCol}>
-                      <Text style={[styles.statValue, { color: colors.status.success }]}>{comp.average_score}%</Text>
-                      <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>Avg Score</Text>
-                    </View>
-                  </View>
-
-                  {/* Beta Tester Toggle */}
-                  <View style={styles.betaToggleRow}>
-                    <View style={styles.betaLabelGroup}>
-                      <Sparkles size={16} color={comp.is_beta_tester ? '#F59E0B' : colors.text.tertiary} />
-                      <Text style={[styles.betaToggleLabel, { color: colors.text.primary }]}>
-                        Pause this company
+                    <Text style={[styles.masterDetailText, { color: colors.text.secondary }]}>
+                      Master: {comp.master_user?.full_name || 'Unassigned'} ({comp.master_user?.email || 'No email'})
+                    </Text>
+                    {Boolean(comp.master_user?.phone_number) && (
+                      <Text style={[styles.masterPhoneText, { color: colors.text.tertiary }]}>
+                        📞 {comp.master_user?.phone_number}
                       </Text>
-                    </View>
-                    <Switch
-                      value={Boolean(comp.is_beta_tester)}
-                      onValueChange={() => handleToggleBeta(comp)}
-                      trackColor={{ false: '#374151', true: colors.primary.DEFAULT }}
-                      thumbColor="#fff"
-                    />
+                    )}
                   </View>
-                </GlassCard>
-              ))
+
+                  {/* Incognito Inspect Action Button */}
+                  <TouchableOpacity
+                    style={[styles.inspectBtn, { backgroundColor: colors.primary.DEFAULT }]}
+                    onPress={() => handleInspect(comp)}
+                  >
+                    <Eye size={16} color="#fff" />
+                    <Text style={styles.inspectBtnText}>Incognito</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Company Stats Grid */}
+                <View style={[styles.statsRow, { borderColor: colors.border }]}>
+                  <View style={styles.statCol}>
+                    <Text style={[styles.statValue, { color: colors.text.primary }]}>{comp.total_drivers}</Text>
+                    <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>Drivers</Text>
+                  </View>
+                  <View style={styles.statCol}>
+                    <Text style={[styles.statValue, { color: colors.text.primary }]}>{comp.total_quizzes}</Text>
+                    <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>Quizzes</Text>
+                  </View>
+                  <View style={styles.statCol}>
+                    <Text style={[styles.statValue, { color: colors.status.success }]}>{comp.average_score}%</Text>
+                    <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>Avg Score</Text>
+                  </View>
+                </View>
+
+                {/* Beta Tester Toggle */}
+                <View style={styles.betaToggleRow}>
+                  <View style={styles.betaLabelGroup}>
+                    <Sparkles size={16} color={comp.is_beta_tester ? '#F59E0B' : colors.text.tertiary} />
+                    <Text style={[styles.betaToggleLabel, { color: colors.text.primary }]}>
+                      Pause this company
+                    </Text>
+                  </View>
+                  <Switch
+                    value={Boolean(comp.is_beta_tester)}
+                    onValueChange={() => handleToggleBeta(comp)}
+                    trackColor={{ false: '#374151', true: colors.primary.DEFAULT }}
+                    thumbColor="#fff"
+                  />
+                </View>
+              </GlassCard>
             )}
-          </ScrollView>
+            ListEmptyComponent={
+              loadingCompanies ? (
+                <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={{ marginTop: 40 }} />
+              ) : (
+                <View style={styles.emptyState}>
+                  <Building size={48} color={colors.text.tertiary} />
+                  <Text style={[styles.emptyText, { color: colors.text.secondary }]}>No master users found.</Text>
+                </View>
+              )
+            }
+            ListFooterComponent={
+              loadingMoreCompanies ? (
+                <View style={{ paddingVertical: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}>
+                  <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                  <Text style={{ color: colors.text.secondary, fontSize: 13, fontFamily: typography.fonts.medium }}>
+                    Loading next 25 master users...
+                  </Text>
+                </View>
+              ) : !hasMoreCompanies && companies.length > 0 ? (
+                <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+                  <Text style={{ color: colors.text.tertiary, fontSize: 12, fontFamily: typography.fonts.regular }}>
+                    ✓ All {totalCompaniesCount || companies.length} master users loaded
+                  </Text>
+                </View>
+              ) : null
+            }
+            onEndReached={handleLoadMoreCompanies}
+            onEndReachedThreshold={0.4}
+          />
         )}
 
         {/* TAB 2: TARGETED MESSAGING */}
@@ -477,8 +596,8 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                   ]}
                   onPress={() => {
                     setBroadcastTarget('specific_company');
-                    if (!broadcastCompanyId && companies.length > 0) {
-                      setBroadcastCompanyId(companies[0].id);
+                    if (!broadcastCompanyId && availableCompanies.length > 0) {
+                      setBroadcastCompanyId(availableCompanies[0].id);
                     }
                   }}
                 >
@@ -489,13 +608,13 @@ export const SuperAdminScreen = ({ navigation }: any) => {
               {broadcastTarget === 'specific_company' && (
                 <View style={styles.companyPickerWrapper}>
                   <Text style={[styles.fieldLabel, { color: colors.text.primary }]}>Select Target Company</Text>
-                  {companies.length === 0 ? (
+                  {availableCompanies.length === 0 ? (
                     <Text style={{ color: colors.text.tertiary, fontSize: 12, marginVertical: 6 }}>
                       No registered companies found. Please refresh list.
                     </Text>
                   ) : (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
-                      {companies.map(comp => (
+                      {availableCompanies.map(comp => (
                         <TouchableOpacity
                           key={comp.id}
                           style={[
@@ -553,7 +672,7 @@ export const SuperAdminScreen = ({ navigation }: any) => {
                   {broadcastTarget === 'all_masters' ? (
                     'Broadcasting to all Master Users across all registered workspaces.'
                   ) : (
-                    `Broadcasting to ${companies.find(c => c.id === broadcastCompanyId)?.name || 'Selected Company'
+                    `Broadcasting to ${availableCompanies.find(c => c.id === broadcastCompanyId)?.name || 'Selected Company'
                     } (${recipientScope === 'masters_only' ? 'Master Users Only' : 'All Company Members'}).`
                   )}
                 </Text>
@@ -592,62 +711,107 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
         {/* TAB 3: USAGE ANALYTICS & EVENT LOGS */}
         {activeTab === 'analytics' && (
-          <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* Quick Metrics Grid */}
-            <View style={styles.metricsGrid}>
-              <GlassCard style={styles.metricCard}>
-                <Activity color={colors.primary.DEFAULT} size={24} />
-                <Text style={[styles.metricValue, { color: colors.text.primary }]}>{metrics.totalEvents}</Text>
-                <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>System Events</Text>
-              </GlassCard>
+          <FlatList
+            style={styles.tabContent}
+            contentContainerStyle={{ paddingBottom: 50 }}
+            data={eventLogs}
+            keyExtractor={(log, idx) => log.id || `${log.event_name}-${log.created_at}-${idx}`}
+            ListHeaderComponent={
+              <View>
+                {/* Quick Metrics Grid */}
+                <View style={styles.metricsGrid}>
+                  <GlassCard style={styles.metricCard}>
+                    <Activity color={colors.primary.DEFAULT} size={24} />
+                    <Text style={[styles.metricValue, { color: colors.text.primary }]}>{metrics.totalEvents}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>System Events</Text>
+                  </GlassCard>
 
-              <GlassCard style={styles.metricCard}>
-                <Building color="#10B981" size={24} />
-                <Text style={[styles.metricValue, { color: colors.text.primary }]}>{metrics.totalCompanies}</Text>
-                <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Workspaces</Text>
-              </GlassCard>
+                  <GlassCard style={styles.metricCard}>
+                    <Building color="#10B981" size={24} />
+                    <Text style={[styles.metricValue, { color: colors.text.primary }]}>{metrics.totalCompanies}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Workspaces</Text>
+                  </GlassCard>
 
-              <GlassCard style={styles.metricCard}>
-                <Users color="#8B5CF6" size={24} />
-                <Text style={[styles.metricValue, { color: colors.text.primary }]}>{metrics.totalUsers}</Text>
-                <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Total Users</Text>
-              </GlassCard>
+                  <GlassCard style={styles.metricCard}>
+                    <Users color="#8B5CF6" size={24} />
+                    <Text style={[styles.metricValue, { color: colors.text.primary }]}>{metrics.totalUsers}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Total Users</Text>
+                  </GlassCard>
 
-              <GlassCard style={styles.metricCard}>
-                <Layers color="#F59E0B" size={24} />
-                <Text style={[styles.metricValue, { color: colors.text.primary }]}>{metrics.totalQuizzes}</Text>
-                <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Quizzes Taken</Text>
-              </GlassCard>
-            </View>
+                  <GlassCard style={styles.metricCard}>
+                    <Layers color="#F59E0B" size={24} />
+                    <Text style={[styles.metricValue, { color: colors.text.primary }]}>{metrics.totalQuizzes}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Quizzes Taken</Text>
+                  </GlassCard>
+                </View>
 
-            {/* Event Activity Stream */}
-            <GlassCard style={styles.eventCard}>
-              <View style={styles.cardHeader}>
-                <Clock size={20} color={colors.primary.DEFAULT} />
-                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Live Activity Stream</Text>
+                {/* Event Activity Stream Section Title & Refresh */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Clock size={20} color={colors.primary.DEFAULT} />
+                    <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Live Activity Stream</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.refreshBtn, { borderColor: colors.border, width: 38, height: 38 }]}
+                    onPress={() => loadAnalytics(0, true)}
+                  >
+                    <RefreshCw size={16} color={colors.text.primary} />
+                  </TouchableOpacity>
+                </View>
               </View>
-
-              {loadingAnalytics ? (
-                <ActivityIndicator size="small" color={colors.primary.DEFAULT} style={{ marginVertical: 20 }} />
-              ) : eventLogs.length === 0 ? (
-                <Text style={[styles.emptyText, { color: colors.text.tertiary, marginVertical: 20 }]}>
+            }
+            renderItem={({ item: log, index }) => (
+              <View
+                key={log.id || index}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 14,
+                  borderRadius: 12,
+                  marginBottom: 8,
+                  gap: 12,
+                  backgroundColor: colors.background.card,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View style={styles.eventDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.eventName, { color: colors.text.primary }]}>{log.event_name}</Text>
+                  <Text style={[styles.eventTime, { color: colors.text.tertiary }]}>
+                    {log.created_at ? new Date(log.created_at).toLocaleString() : 'Recently'}
+                  </Text>
+                </View>
+              </View>
+            )}
+            ListEmptyComponent={
+              loadingAnalytics ? (
+                <ActivityIndicator size="small" color={colors.primary.DEFAULT} style={{ marginVertical: 30 }} />
+              ) : (
+                <Text style={[styles.emptyText, { color: colors.text.tertiary, marginVertical: 30, textAlign: 'center' }]}>
                   No system events recorded yet.
                 </Text>
-              ) : (
-                eventLogs.map((log, idx) => (
-                  <View key={log.id || idx} style={[styles.eventRow, { borderColor: colors.border }]}>
-                    <View style={styles.eventDot} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.eventName, { color: colors.text.primary }]}>{log.event_name}</Text>
-                      <Text style={[styles.eventTime, { color: colors.text.tertiary }]}>
-                        {log.created_at ? new Date(log.created_at).toLocaleString() : 'Recently'}
-                      </Text>
-                    </View>
-                  </View>
-                ))
-              )}
-            </GlassCard>
-          </ScrollView>
+              )
+            }
+            ListFooterComponent={
+              loadingMoreEvents ? (
+                <View style={{ paddingVertical: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}>
+                  <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                  <Text style={{ color: colors.text.secondary, fontSize: 13, fontFamily: typography.fonts.medium }}>
+                    Loading next 25 events...
+                  </Text>
+                </View>
+              ) : !hasMoreEvents && eventLogs.length > 0 ? (
+                <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+                  <Text style={{ color: colors.text.tertiary, fontSize: 12, fontFamily: typography.fonts.regular }}>
+                    ✓ All system events loaded ({eventLogs.length} total)
+                  </Text>
+                </View>
+              ) : null
+            }
+            onEndReached={handleLoadMoreEvents}
+            onEndReachedThreshold={0.4}
+          />
         )}
 
         {/* TAB 4: GLOBAL SETTINGS */}
@@ -714,182 +878,211 @@ export const SuperAdminScreen = ({ navigation }: any) => {
 
         {/* TAB 5: LOGIN ACTIVITY */}
         {activeTab === 'login_activity' && (
-          <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
-
-            {/* Stats Summary Grid */}
-            <View style={styles.loginStatsGrid}>
-              <GlassCard style={styles.loginStatCard}>
-                <LogIn size={20} color={colors.primary.DEFAULT} />
-                <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.total_today}</Text>
-                <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Today</Text>
-              </GlassCard>
-              <GlassCard style={styles.loginStatCard}>
-                <Users size={20} color='#8B5CF6' />
-                <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.unique_users_today}</Text>
-                <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Unique Users</Text>
-              </GlassCard>
-              <GlassCard style={styles.loginStatCard}>
-                <Car size={20} color='#3B82F6' />
-                <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.driver_logins_today}</Text>
-                <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Drivers</Text>
-              </GlassCard>
-              <GlassCard style={styles.loginStatCard}>
-                <Crown size={20} color='#F59E0B' />
-                <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.master_logins_today}</Text>
-                <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Masters</Text>
-              </GlassCard>
-            </View>
-
-            {/* All-time count */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 6 }}>
-              <Activity size={14} color={colors.text.tertiary} />
-              <Text style={{ color: colors.text.tertiary, fontSize: 12, fontFamily: typography.fonts.regular }}>
-                {loginStats.total_all_time.toLocaleString()} total logins recorded all time
-              </Text>
-            </View>
-
-            {/* Role Filter Bar */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {(['all', 'driver', 'manager', 'master'] as const).map(f => (
-                  <TouchableOpacity
-                    key={f}
-                    style={[
-                      styles.loginFilterChip,
-                      loginRoleFilter === f && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
-                    ]}
-                    onPress={() => setLoginRoleFilter(f)}
-                  >
-                    <Text style={[
-                      styles.loginFilterChipText,
-                      { color: loginRoleFilter === f ? '#fff' : colors.text.secondary }
-                    ]}>
-                      {f === 'all' ? '🌐 All' : f === 'driver' ? '🚗 Drivers' : f === 'manager' ? '👔 Managers' : '👑 Masters'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-
-            {/* Company Filter (chips from companies list) */}
-            {companies.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity
-                    style={[
-                      styles.loginFilterChip,
-                      !loginCompanyFilter && { backgroundColor: colors.primary.DEFAULT + '30', borderColor: colors.primary.DEFAULT }
-                    ]}
-                    onPress={() => setLoginCompanyFilter(undefined)}
-                  >
-                    <Text style={[styles.loginFilterChipText, { color: colors.text.secondary }]}>All Companies</Text>
-                  </TouchableOpacity>
-                  {companies.map(c => (
-                    <TouchableOpacity
-                      key={c.id}
-                      style={[
-                        styles.loginFilterChip,
-                        loginCompanyFilter === c.id && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
-                      ]}
-                      onPress={() => setLoginCompanyFilter(loginCompanyFilter === c.id ? undefined : c.id)}
-                    >
-                      <Text style={[
-                        styles.loginFilterChipText,
-                        { color: loginCompanyFilter === c.id ? '#fff' : colors.text.secondary }
-                      ]}>{c.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+          <FlatList
+            style={styles.tabContent}
+            contentContainerStyle={{ paddingBottom: 50 }}
+            data={loginLogs}
+            keyExtractor={item => item.id}
+            ListHeaderComponent={
+              <View>
+                {/* Stats Summary Grid */}
+                <View style={styles.loginStatsGrid}>
+                  <GlassCard style={styles.loginStatCard}>
+                    <LogIn size={20} color={colors.primary.DEFAULT} />
+                    <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.total_today}</Text>
+                    <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Today</Text>
+                  </GlassCard>
+                  <GlassCard style={styles.loginStatCard}>
+                    <Users size={20} color="#8B5CF6" />
+                    <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.unique_users_today}</Text>
+                    <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Unique Users</Text>
+                  </GlassCard>
+                  <GlassCard style={styles.loginStatCard}>
+                    <Car size={20} color="#3B82F6" />
+                    <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.driver_logins_today}</Text>
+                    <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Drivers</Text>
+                  </GlassCard>
+                  <GlassCard style={styles.loginStatCard}>
+                    <Crown size={20} color="#F59E0B" />
+                    <Text style={[styles.loginStatValue, { color: colors.text.primary }]}>{loginStats.master_logins_today}</Text>
+                    <Text style={[styles.loginStatLabel, { color: colors.text.tertiary }]}>Masters</Text>
+                  </GlassCard>
                 </View>
-              </ScrollView>
-            )}
 
-            {/* Refresh button */}
-            <TouchableOpacity
-              style={[styles.refreshBtn, { borderColor: colors.border, alignSelf: 'flex-end', marginBottom: 12 }]}
-              onPress={loadLoginActivity}
-            >
-              <RefreshCw size={18} color={colors.text.primary} />
-            </TouchableOpacity>
+                {/* All-time count */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 6 }}>
+                  <Activity size={14} color={colors.text.tertiary} />
+                  <Text style={{ color: colors.text.tertiary, fontSize: 12, fontFamily: typography.fonts.regular }}>
+                    {loginStats.total_all_time.toLocaleString()} total logins recorded all time
+                  </Text>
+                </View>
 
-            {/* Login Records List */}
-            {loadingLoginActivity ? (
-              <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={{ marginTop: 40 }} />
-            ) : loginLogs.length === 0 ? (
-              <View style={styles.emptyState}>
-                <LogIn size={48} color={colors.text.tertiary} />
-                <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
-                  No login records yet.
-                </Text>
-                <Text style={[styles.emptyText, { color: colors.text.tertiary, fontSize: 12 }]}>
-                  Run the SQL migration first, then users need to log in.
-                </Text>
-              </View>
-            ) : (
-              loginLogs.map((log) => {
-                const isMaster = log.role === 'manager' && log.manager_level === 1;
-                const isManager = log.role === 'manager' && log.manager_level !== 1;
-                const roleLabel = isMaster ? 'Master User' : isManager ? 'Manager' : 'Driver';
-                const roleColor = isMaster ? '#F59E0B' : isManager ? '#8B5CF6' : '#3B82F6';
-                const roleIcon = isMaster ? <Crown size={14} color={roleColor} /> : isManager ? <UserCheck size={14} color={roleColor} /> : <Car size={14} color={roleColor} />;
-                const loginDate = new Date(log.logged_in_at);
-                const now = new Date();
-                const diffMs = now.getTime() - loginDate.getTime();
-                const diffMins = Math.floor(diffMs / 60000);
-                const timeLabel = diffMins < 1 ? 'Just now'
-                  : diffMins < 60 ? `${diffMins}m ago`
-                    : diffMins < 1440 ? `${Math.floor(diffMins / 60)}h ago`
-                      : loginDate.toLocaleDateString() + ' ' + loginDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                return (
-                  <View
-                    key={log.id}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 14,
-                      borderRadius: 14,
-                      marginBottom: 10,
-                      gap: 12,
-                      backgroundColor: colors.background.card,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                    }}
-                  >
-                    {/* Role icon badge */}
-                    <View style={[styles.loginRoleIcon, { backgroundColor: roleColor + '20' }]}>
-                      {roleIcon}
-                    </View>
-
-                    {/* Main info — flex:1 so it takes remaining space */}
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <Text style={[styles.loginLogName, { color: colors.text.primary }]} numberOfLines={1}>
-                          {log.full_name || log.employee_id || 'Unknown User'}
+                {/* Role Filter Bar */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {(['all', 'driver', 'manager', 'master'] as const).map(f => (
+                      <TouchableOpacity
+                        key={f}
+                        style={[
+                          styles.loginFilterChip,
+                          loginRoleFilter === f && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
+                        ]}
+                        onPress={() => setLoginRoleFilter(f)}
+                      >
+                        <Text style={[
+                          styles.loginFilterChipText,
+                          { color: loginRoleFilter === f ? '#fff' : colors.text.secondary }
+                        ]}>
+                          {f === 'all' ? '🌐 All' : f === 'driver' ? '🚗 Drivers' : f === 'manager' ? '👔 Managers' : '👑 Masters'}
                         </Text>
-                        <View style={[styles.loginRoleBadge, { backgroundColor: roleColor + '25' }]}>
-                          <Text style={[styles.loginRoleBadgeText, { color: roleColor }]}>{roleLabel}</Text>
-                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+
+                {/* Company Filter (chips from availableCompanies) */}
+                {availableCompanies.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={[
+                          styles.loginFilterChip,
+                          !loginCompanyFilter && { backgroundColor: colors.primary.DEFAULT + '30', borderColor: colors.primary.DEFAULT }
+                        ]}
+                        onPress={() => setLoginCompanyFilter(undefined)}
+                      >
+                        <Text style={[styles.loginFilterChipText, { color: colors.text.secondary }]}>All Companies</Text>
+                      </TouchableOpacity>
+                      {availableCompanies.map(c => (
+                        <TouchableOpacity
+                          key={c.id}
+                          style={[
+                            styles.loginFilterChip,
+                            loginCompanyFilter === c.id && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT }
+                          ]}
+                          onPress={() => setLoginCompanyFilter(loginCompanyFilter === c.id ? undefined : c.id)}
+                        >
+                          <Text style={[
+                            styles.loginFilterChipText,
+                            { color: loginCompanyFilter === c.id ? '#fff' : colors.text.secondary }
+                          ]}>{c.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* Header info & Refresh button */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Text style={{ color: colors.text.tertiary, fontSize: 12, fontFamily: typography.fonts.medium }}>
+                    Showing {loginLogs.length} records
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.refreshBtn, { borderColor: colors.border, width: 38, height: 38 }]}
+                    onPress={() => loadLoginActivity(0, true)}
+                  >
+                    <RefreshCw size={16} color={colors.text.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            }
+            renderItem={({ item: log }) => {
+              const isMaster = log.role === 'manager' && log.manager_level === 1;
+              const isManager = log.role === 'manager' && log.manager_level !== 1;
+              const roleLabel = isMaster ? 'Master User' : isManager ? 'Manager' : 'Driver';
+              const roleColor = isMaster ? '#F59E0B' : isManager ? '#8B5CF6' : '#3B82F6';
+              const roleIcon = isMaster ? <Crown size={14} color={roleColor} /> : isManager ? <UserCheck size={14} color={roleColor} /> : <Car size={14} color={roleColor} />;
+              const loginDate = new Date(log.logged_in_at);
+              const now = new Date();
+              const diffMs = now.getTime() - loginDate.getTime();
+              const diffMins = Math.floor(diffMs / 60000);
+              const timeLabel = diffMins < 1 ? 'Just now'
+                : diffMins < 60 ? `${diffMins}m ago`
+                  : diffMins < 1440 ? `${Math.floor(diffMins / 60)}h ago`
+                    : loginDate.toLocaleDateString() + ' ' + loginDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+              return (
+                <View
+                  key={log.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 14,
+                    borderRadius: 14,
+                    marginBottom: 10,
+                    gap: 12,
+                    backgroundColor: colors.background.card,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  {/* Role icon badge */}
+                  <View style={[styles.loginRoleIcon, { backgroundColor: roleColor + '20' }]}>
+                    {roleIcon}
+                  </View>
+
+                  {/* Main info — flex:1 so it takes remaining space */}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={[styles.loginLogName, { color: colors.text.primary }]} numberOfLines={1}>
+                        {log.full_name || log.employee_id || 'Unknown User'}
+                      </Text>
+                      <View style={[styles.loginRoleBadge, { backgroundColor: roleColor + '25' }]}>
+                        <Text style={[styles.loginRoleBadgeText, { color: roleColor }]}>{roleLabel}</Text>
                       </View>
-                      <Text style={[styles.loginLogSub, { color: colors.text.tertiary }]} numberOfLines={1}>
-                        {log.employee_id && `ID: ${log.employee_id}  ·  `}{log.company_name || '—'}
+                    </View>
+                    <Text style={[styles.loginLogSub, { color: colors.text.tertiary }]} numberOfLines={1}>
+                      {log.employee_id && `ID: ${log.employee_id}  ·  `}{log.company_name || '—'}
+                    </Text>
+                  </View>
+
+                  {/* Time & type — pinned to the right */}
+                  <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                    <Text style={[styles.loginLogTime, { color: colors.text.secondary }]}>{timeLabel}</Text>
+                    <View style={[styles.loginTypeBadge, { backgroundColor: colors.primary.DEFAULT + '20' }]}>
+                      <LogIn size={10} color={colors.primary.DEFAULT} />
+                      <Text style={[styles.loginTypeBadgeText, { color: colors.primary.DEFAULT }]}>
+                        Login
                       </Text>
                     </View>
-
-                    {/* Time & type — pinned to the right */}
-                    <View style={{ alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                      <Text style={[styles.loginLogTime, { color: colors.text.secondary }]}>{timeLabel}</Text>
-                      <View style={[styles.loginTypeBadge, { backgroundColor: colors.primary.DEFAULT + '20' }]}>
-                        <LogIn size={10} color={colors.primary.DEFAULT} />
-                        <Text style={[styles.loginTypeBadgeText, { color: colors.primary.DEFAULT }]}>
-                          Login
-                        </Text>
-                      </View>
-                    </View>
                   </View>
-                );
-              })
-            )}
-          </ScrollView>
+                </View>
+              );
+            }}
+            ListEmptyComponent={
+              loadingLoginActivity ? (
+                <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={{ marginTop: 40 }} />
+              ) : (
+                <View style={styles.emptyState}>
+                  <LogIn size={48} color={colors.text.tertiary} />
+                  <Text style={[styles.emptyText, { color: colors.text.secondary }]}>
+                    No login records yet.
+                  </Text>
+                  <Text style={[styles.emptyText, { color: colors.text.tertiary, fontSize: 12 }]}>
+                    Run the SQL migration first, then users need to log in.
+                  </Text>
+                </View>
+              )
+            }
+            ListFooterComponent={
+              loadingMoreLogins ? (
+                <View style={{ paddingVertical: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}>
+                  <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                  <Text style={{ color: colors.text.secondary, fontSize: 13, fontFamily: typography.fonts.medium }}>
+                    Loading next 25 logins...
+                  </Text>
+                </View>
+              ) : !hasMoreLogins && loginLogs.length > 0 ? (
+                <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+                  <Text style={{ color: colors.text.tertiary, fontSize: 12, fontFamily: typography.fonts.regular }}>
+                    ✓ All login records loaded ({loginLogs.length} total)
+                  </Text>
+                </View>
+              ) : null
+            }
+            onEndReached={handleLoadMoreLogins}
+            onEndReachedThreshold={0.4}
+          />
         )}
 
         {/* INCOGNITO TELEMETRY INSPECT MODAL */}
