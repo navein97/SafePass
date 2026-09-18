@@ -92,8 +92,13 @@ export const Validation = {
         if (lowerError.includes('invalid login credentials')) {
             return 'Incorrect email or password. Please try again.';
         }
-        if (lowerError.includes('user already registered') || lowerError.includes('unique constraint')) {
-            return 'This email is already registered. Please login instead.';
+        if (
+            lowerError.includes('database error saving new user') ||
+            lowerError.includes('user already registered') ||
+            lowerError.includes('unique constraint') ||
+            lowerError.includes('duplicate key')
+        ) {
+            return 'An account with this email address or phone number already exists. Please log in or use different details.';
         }
         if (lowerError.includes('password should be at least')) {
             return 'Password must be at least 6 characters long.';

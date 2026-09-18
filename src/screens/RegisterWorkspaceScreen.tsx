@@ -93,6 +93,54 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
     return isValid;
   };
 
+  const checkCompanyCodeAvailability = async (codeToCheck?: string) => {
+    const code = (codeToCheck !== undefined ? codeToCheck : companyCode).trim().toUpperCase();
+    if (code.length < 2) return;
+    try {
+      const availability = await WorkspaceService.checkRegistrationAvailability({ companyCode: code });
+      if (availability.errors.companyCode) {
+        setErrors(prev => ({
+          ...prev,
+          companyCode: (t('auth.companyCodeTaken', 'Company code is already taken. Please choose another code.') as string),
+        }));
+      }
+    } catch (e) {
+      // Non-blocking
+    }
+  };
+
+  const checkEmailAvailability = async (emailToCheck?: string) => {
+    const targetEmail = (emailToCheck !== undefined ? emailToCheck : email).trim().toLowerCase();
+    if (!Validation.isValidEmail(targetEmail)) return;
+    try {
+      const availability = await WorkspaceService.checkRegistrationAvailability({ email: targetEmail });
+      if (availability.errors.email) {
+        setErrors(prev => ({
+          ...prev,
+          email: (t('auth.emailAlreadyRegistered', 'This email address is already registered. Please log in instead.') as string),
+        }));
+      }
+    } catch (e) {
+      // Non-blocking
+    }
+  };
+
+  const checkPhoneAvailability = async (phoneToCheck?: string) => {
+    const targetPhone = (phoneToCheck !== undefined ? phoneToCheck : phoneNumber).trim();
+    if (targetPhone.replace(/[^0-9]/g, '').length < 8) return;
+    try {
+      const availability = await WorkspaceService.checkRegistrationAvailability({ phoneNumber: targetPhone, region: 'MY' });
+      if (availability.errors.phoneNumber) {
+        setErrors(prev => ({
+          ...prev,
+          phoneNumber: (t('auth.phoneAlreadyRegistered', 'This phone number is already registered. Please use a different phone number.') as string),
+        }));
+      }
+    } catch (e) {
+      // Non-blocking
+    }
+  };
+
   const handleRegister = async () => {
     if (!validateForm()) return;
 
@@ -101,14 +149,42 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
 
     try {
       const formattedPhone = Validation.formatPhoneNumber(phoneNumber, 'MY');
+      const cleanCompanyCode = companyCode.trim().toUpperCase();
+      const cleanEmail = email.trim().toLowerCase();
+
+      // Check availability across all critical unique fields upfront
+      const availability = await WorkspaceService.checkRegistrationAvailability({
+        companyCode: cleanCompanyCode,
+        email: cleanEmail,
+        phoneNumber: formattedPhone,
+        region: 'MY',
+      });
+
+      if (!availability.isValid) {
+        setLoading(false);
+        const newFieldErrors: { [key: string]: string } = {};
+        if (availability.errors.companyCode) {
+          newFieldErrors.companyCode = t('auth.companyCodeTaken', 'Company code is already taken. Please choose another code.') as string;
+        }
+        if (availability.errors.email) {
+          newFieldErrors.email = t('auth.emailAlreadyRegistered', 'This email address is already registered. Please log in instead.') as string;
+        }
+        if (availability.errors.phoneNumber) {
+          newFieldErrors.phoneNumber = t('auth.phoneAlreadyRegistered', 'This phone number is already registered. Please use a different phone number.') as string;
+        }
+        newFieldErrors.general = t('auth.duplicateDetailsFound', 'Some details provided already exist. Please check the highlighted fields.') as string;
+        setErrors(prev => ({ ...prev, ...newFieldErrors }));
+        return;
+      }
+
       const result = await WorkspaceService.registerWorkspace({
         fullName,
-        email,
+        email: cleanEmail,
         password,
         companyName,
-        companyCode: companyCode.trim().toUpperCase(),
+        companyCode: cleanCompanyCode,
         phone_number: formattedPhone,
-        employeeId: email.split('@')[0],
+        employeeId: cleanEmail.split('@')[0],
         region: 'MY',
       });
 
@@ -119,17 +195,33 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
         navigation.navigate('OtpVerification', {
           phone: formattedPhone,
           userId: result.user?.id,
-          email,
+          email: cleanEmail,
           companyName,
         });
       } else {
-        const errorMsg = result.error || t('common.unexpectedErrorOccurred');
-        setErrors(prev => ({ ...prev, general: errorMsg }));
+        if ((result as any).fieldErrors) {
+          const fieldErrors = (result as any).fieldErrors;
+          const newFieldErrors: { [key: string]: string } = {};
+          if (fieldErrors.companyCode) {
+            newFieldErrors.companyCode = t('auth.companyCodeTaken', 'Company code is already taken. Please choose another code.') as string;
+          }
+          if (fieldErrors.email) {
+            newFieldErrors.email = t('auth.emailAlreadyRegistered', 'This email address is already registered. Please log in instead.') as string;
+          }
+          if (fieldErrors.phoneNumber) {
+            newFieldErrors.phoneNumber = t('auth.phoneAlreadyRegistered', 'This phone number is already registered. Please use a different phone number.') as string;
+          }
+          newFieldErrors.general = t('auth.duplicateDetailsFound', 'Some details provided already exist. Please check the highlighted fields.') as string;
+          setErrors(prev => ({ ...prev, ...newFieldErrors }));
+        } else {
+          const friendlyMsg = Validation.getFriendlyErrorMessage(result.error || '');
+          setErrors(prev => ({ ...prev, general: friendlyMsg || (t('common.unexpectedErrorOccurred') as string) }));
+        }
       }
     } catch (error: any) {
       setLoading(false);
-      const errorMsg = error.message || t('common.unexpectedErrorOccurred');
-      setErrors(prev => ({ ...prev, general: errorMsg }));
+      const friendlyMsg = Validation.getFriendlyErrorMessage(error.message || '');
+      setErrors(prev => ({ ...prev, general: friendlyMsg || (t('common.unexpectedErrorOccurred') as string) }));
     }
   };
 
@@ -164,7 +256,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   value={companyName}
                   onChangeText={(text) => {
                     setCompanyName(text);
-                    if (errors.companyName) setErrors(prev => ({ ...prev, companyName: '' }));
+                    if (errors.companyName || errors.general) setErrors(prev => ({ ...prev, companyName: '', general: '' }));
                   }}
                   autoCapitalize="words"
                   editable={!loading}
@@ -178,8 +270,9 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   value={companyCode}
                   onChangeText={(text) => {
                     setCompanyCode(Validation.cleanCompanyCode(text));
-                    if (errors.companyCode) setErrors(prev => ({ ...prev, companyCode: '' }));
+                    if (errors.companyCode || errors.general) setErrors(prev => ({ ...prev, companyCode: '', general: '' }));
                   }}
+                  onBlur={() => checkCompanyCodeAvailability()}
                   autoCapitalize="characters"
                   maxLength={10}
                   editable={!loading}
@@ -193,7 +286,7 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   value={fullName}
                   onChangeText={(text) => {
                     setFullName(text);
-                    if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
+                    if (errors.fullName || errors.general) setErrors(prev => ({ ...prev, fullName: '', general: '' }));
                   }}
                   autoCapitalize="words"
                   editable={!loading}
@@ -207,8 +300,9 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   value={email}
                   onChangeText={(text) => {
                     setEmail(text);
-                    if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                    if (errors.email || errors.general) setErrors(prev => ({ ...prev, email: '', general: '' }));
                   }}
+                  onBlur={() => checkEmailAvailability()}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   editable={!loading}
@@ -222,8 +316,9 @@ export const RegisterWorkspaceScreen = ({ navigation }: any) => {
                   value={phoneNumber}
                   onChangeText={(text) => {
                     setPhoneNumber(text);
-                    if (errors.phoneNumber) setErrors(prev => ({ ...prev, phoneNumber: '' }));
+                    if (errors.phoneNumber || errors.general) setErrors(prev => ({ ...prev, phoneNumber: '', general: '' }));
                   }}
+                  onBlur={() => checkPhoneAvailability()}
                   keyboardType="phone-pad"
                   editable={!loading}
                   error={errors.phoneNumber}

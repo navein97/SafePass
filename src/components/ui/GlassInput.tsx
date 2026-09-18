@@ -36,12 +36,14 @@ export const GlassInput: React.FC<GlassInputProps> = ({
     <View style={[styles.container, containerStyle]}>
       {label ? <Text style={[styles.label, { color: colors.text.secondary }]}>{label}</Text> : null}
       
-      {/* Wrapper for border on focus */}
+      {/* Wrapper for border on focus or error */}
       <View style={[
         styles.gradientBorderWrapper, 
-        isFocused 
-          ? { padding: 2, backgroundColor: theme === 'light' ? '#000000' : colors.text.primary }
-          : { padding: 1, backgroundColor: theme === 'dark' ? colors.border : '#E0E0E0' }
+        error
+          ? { padding: 1.5, backgroundColor: colors.status.danger }
+          : isFocused 
+            ? { padding: 2, backgroundColor: theme === 'light' ? '#000000' : colors.text.primary }
+            : { padding: 1, backgroundColor: theme === 'dark' ? colors.border : '#E0E0E0' }
       ]}>
         <View style={wrapperStyle}>
           {theme === 'dark' && <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />}

@@ -9,7 +9,97 @@ export interface RegisterWorkspaceData extends SignUpData {
     captchaToken?: string;
 }
 
+export interface RegistrationAvailabilityParams {
+    companyCode?: string;
+    email?: string;
+    phoneNumber?: string;
+    region?: string;
+}
+
+export interface RegistrationAvailabilityResult {
+    isValid: boolean;
+    errors: {
+        companyCode?: string;
+        email?: string;
+        phoneNumber?: string;
+        general?: string;
+    };
+}
+
 export const WorkspaceService = {
+    /**
+     * Pre-validates uniqueness of company code, email address, and phone number
+     * before attempting to register.
+     */
+    async checkRegistrationAvailability(params: RegistrationAvailabilityParams): Promise<RegistrationAvailabilityResult> {
+        const errors: RegistrationAvailabilityResult['errors'] = {};
+
+        try {
+            // 1. Check Company Code uniqueness
+            if (params.companyCode?.trim()) {
+                const cleanCode = params.companyCode.trim().toUpperCase();
+                const { data: existingComp, error: compErr } = await supabase
+                    .from('companies')
+                    .select('id')
+                    .eq('code', cleanCode)
+                    .maybeSingle();
+
+                if (!compErr && existingComp) {
+                    errors.companyCode = `Company code "${cleanCode}" is already taken. Please choose another code.`;
+                }
+            }
+
+            // 2. Check Email Address uniqueness
+            if (params.email?.trim()) {
+                const cleanEmail = params.email.trim().toLowerCase();
+                const employeeId = cleanEmail.split('@')[0];
+
+                const { data: existingProfiles, error: emailErr } = await supabase
+                    .from('profiles')
+                    .select('id, email, employee_id')
+                    .or(`email.ilike.${cleanEmail},employee_id.ilike.${employeeId}`)
+                    .limit(1);
+
+                if (!emailErr && existingProfiles && existingProfiles.length > 0) {
+                    errors.email = 'This email address is already registered. Please log in instead.';
+                }
+            }
+
+            // 3. Check Phone Number uniqueness
+            if (params.phoneNumber?.trim()) {
+                const rawDigits = params.phoneNumber.replace(/[^0-9]/g, '');
+                let coreDigits = rawDigits;
+                if (coreDigits.startsWith('60')) coreDigits = coreDigits.slice(2);
+                else if (coreDigits.startsWith('65')) coreDigits = coreDigits.slice(2);
+                else if (coreDigits.startsWith('66')) coreDigits = coreDigits.slice(2);
+                else if (coreDigits.startsWith('0')) coreDigits = coreDigits.slice(1);
+
+                if (coreDigits.length >= 7) {
+                    const region = params.region || 'MY';
+                    const countryCode = region === 'TH' ? '66' : region === 'SG' ? '65' : '60';
+                    const intlFormat = `+${countryCode}${coreDigits}`;
+                    const localFormat = `0${coreDigits}`;
+
+                    const filter = `phone_number.eq.${intlFormat},phone_number.eq.${localFormat},phone_number.ilike.*${coreDigits}`;
+                    const { data: existingPhones, error: phoneErr } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .or(filter)
+                        .limit(1);
+
+                    if (!phoneErr && existingPhones && existingPhones.length > 0) {
+                        errors.phoneNumber = 'This phone number is already registered. Please use a different phone number.';
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('[WorkspaceService] Error checking availability:', err);
+        }
+
+        const isValid = Object.keys(errors).length === 0;
+        return { isValid, errors };
+    },
+
     /**
      * Step 1: Register the Master User (no company yet)
      * Company name is stored in user metadata for later.
@@ -18,21 +108,21 @@ export const WorkspaceService = {
      */
     async registerWorkspace(data: RegisterWorkspaceData) {
         try {
-            // Check if company code is already taken before signing up user
-            if (data.companyCode) {
-                const cleanCode = data.companyCode.trim().toUpperCase();
-                const { data: existingComp } = await supabase
-                    .from('companies')
-                    .select('id')
-                    .eq('code', cleanCode)
-                    .maybeSingle();
+            // Pre-check availability for company code, email, and phone number
+            const availability = await this.checkRegistrationAvailability({
+                companyCode: data.companyCode,
+                email: data.email,
+                phoneNumber: data.phone_number,
+                region: (data as any).region || 'MY',
+            });
 
-                if (existingComp) {
-                    return {
-                        success: false,
-                        error: `Company code "${cleanCode}" is already taken. Please choose another code.`,
-                    };
-                }
+            if (!availability.isValid) {
+                const firstError = availability.errors.companyCode || availability.errors.email || availability.errors.phoneNumber;
+                return {
+                    success: false,
+                    error: firstError,
+                    fieldErrors: availability.errors,
+                };
             }
 
             // Just sign up the user with company_name in metadata
