@@ -254,7 +254,7 @@ export function MissionScreen() {
     }
 
     // Check general access (locked batch)
-    if (!canAccess && selectedMode === 'live') {
+    if (!canAccess) {
       const title = t('quiz.batchLocked');
       const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 });
 
@@ -397,17 +397,17 @@ export function MissionScreen() {
                   key={batch.batchNumber}
                   style={[
                     styles.batchCard,
-                    !(batch.canAccess || selectedMode === 'practice') && styles.batchCardLocked,
+                    !batch.canAccess && styles.batchCardLocked,
                     batch.passed && styles.batchCardPassed,
                     batch.batchNumber > maxBatches && { opacity: 0.5 },
                   ]}
-                  onPress={() => handleBatchPress(batch.batchNumber, batch.canAccess || selectedMode === 'practice')}
-                  disabled={!(batch.canAccess || selectedMode === 'practice') && batch.batchNumber <= maxBatches}
+                  onPress={() => handleBatchPress(batch.batchNumber, batch.canAccess)}
+                  disabled={!batch.canAccess && batch.batchNumber <= maxBatches}
                   activeOpacity={0.7}
                 >
                   <View style={styles.batchHeader}>
                     <View style={styles.batchTitleRow}>
-                      {!(batch.canAccess || selectedMode === 'practice') ? (
+                      {!batch.canAccess ? (
                         <Lock size={32} color="#999" />
                       ) : batch.passed ? (
                         <CheckCircle size={32} color="#00C853" />
@@ -464,7 +464,7 @@ export function MissionScreen() {
                           </View>
                         )}
                       </>
-                    ) : (batch.canAccess || selectedMode === 'practice') && batch.batchNumber <= maxBatches ? (
+                    ) : batch.canAccess && batch.batchNumber <= maxBatches ? (
                       <Text style={styles.notStartedText}>{t('mission.tapToStart')}</Text>
                     ) : batch.batchNumber > maxBatches ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>

@@ -40,20 +40,23 @@ export const PracticeService = {
      * Get a session of 30 questions for practice
      * Prioritizes questions the user has previously answered incorrectly.
      */
-    async getPracticeSession(userId: string, region: Region, limit: number = 30): Promise<Question[]> {
+    async getPracticeSession(userId: string, region: Region, limit: number = 30, batchNumber?: number): Promise<Question[]> {
         try {
 
 
-            // 1. Fetch All Questions (from all regions) from Supabase
+            // 1. Fetch Questions (filtered by batchNumber if provided) from Supabase
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('vehicle_type')
                 .eq('id', userId)
                 .single();
 
-            const { data: dbData, error: dbError } = await supabase
-                .from('questions')
-                .select('*');
+            let query = supabase.from('questions').select('*');
+            if (batchNumber && batchNumber > 0) {
+                query = query.eq('batch_number', batchNumber);
+            }
+
+            const { data: dbData, error: dbError } = await query;
 
             if (dbError) throw dbError;
 
@@ -137,17 +140,17 @@ export const PracticeService = {
         } catch (error) {
             console.error('Error generating practice session:', error);
             // Fallback to random
-            return this.getRandomQuestions(userId, region, limit);
+            return this.getRandomQuestions(userId, region, limit, batchNumber);
         }
     },
 
     /**
      * Fallback random questions
      */
-    async getRandomQuestions(userId: string, region: Region, limit: number): Promise<Question[]> {
+    async getRandomQuestions(userId: string, region: Region, limit: number, batchNumber?: number): Promise<Question[]> {
         let vType = 'General Cargo';
 
-        // Load all questions from all regions from Supabase
+        // Load questions from Supabase
         const { data: profile } = await supabase
             .from('profiles')
             .select('vehicle_type')
@@ -158,9 +161,12 @@ export const PracticeService = {
             vType = profile.vehicle_type;
         }
 
-        const { data: dbData, error: dbError } = await supabase
-            .from('questions')
-            .select('*');
+        let query = supabase.from('questions').select('*');
+        if (batchNumber && batchNumber > 0) {
+            query = query.eq('batch_number', batchNumber);
+        }
+
+        const { data: dbData, error: dbError } = await query;
 
         if (dbError) throw dbError;
 

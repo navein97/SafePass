@@ -113,23 +113,21 @@ export const QuizScreen = ({ navigation, route }: any) => {
         return;
       }
 
-      // Trial gating: block batches beyond subscription limit
-      if (!isPractice && batchNumber > 1) {
-        const maxBatches = await SubscriptionService.getMaxBatches(profile.company_id);
-        if (batchNumber > maxBatches) {
-          setLoading(false);
-          const title = t('billing.upgradeRequired');
-          const message = t('billing.trialBatchLocked');
-          if (Platform.OS === 'web') {
-            window.alert(`${title}\n\n${message}`);
-            navigation.goBack();
-          } else {
-            Alert.alert(title, message, [
-              { text: t('common.ok'), onPress: () => navigation.goBack() }
-            ]);
-          }
-          return;
+      // Trial gating: block batches beyond subscription limit (applies to Live and Practice modes)
+      const maxBatches = await SubscriptionService.getMaxBatches(profile.company_id);
+      if (batchNumber > maxBatches) {
+        setLoading(false);
+        const title = t('billing.upgradeRequired');
+        const message = t('billing.trialBatchLocked');
+        if (Platform.OS === 'web') {
+          window.alert(`${title}\n\n${message}`);
+          navigation.goBack();
+        } else {
+          Alert.alert(title, message, [
+            { text: t('common.ok'), onPress: () => navigation.goBack() }
+          ]);
         }
+        return;
       }
 
       if (!isPractice) {
@@ -146,21 +144,22 @@ export const QuizScreen = ({ navigation, route }: any) => {
           }
           return;
         }
+      }
 
-        const canAccess = await BatchService.canAccessBatch(profile.id, batchNumber);
-        if (!canAccess) {
-          setLoading(false);
-          const title = t('quiz.batchLocked') || 'Batch Locked';
-          const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 70% average score to unlock this batch.`;
+      // Check if driver has unlocked this batch (sequential progression check for all modes)
+      const canAccess = await BatchService.canAccessBatch(profile.id, batchNumber);
+      if (!canAccess) {
+        setLoading(false);
+        const title = t('quiz.batchLocked') || 'Batch Locked';
+        const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 70% average score to unlock this batch.`;
 
-          if (Platform.OS === 'web') {
-            window.alert(`${title}\n\n${message}`);
-            navigation.goBack();
-          } else {
-            Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
-          }
-          return;
+        if (Platform.OS === 'web') {
+          window.alert(`${title}\n\n${message}`);
+          navigation.goBack();
+        } else {
+          Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
         }
+        return;
       }
 
       let dailyStatus;
@@ -187,9 +186,9 @@ export const QuizScreen = ({ navigation, route }: any) => {
         let loadedQuestions;
 
         if (isPractice) {
-          // Use PracticeService for Practice Mode (Smart + Randomized)
+          // Use PracticeService for Practice Mode (Smart + Randomized for this batch)
           const { PracticeService } = await import('../services/practiceService');
-          loadedQuestions = await PracticeService.getPracticeSession(profile.id, profile.region, 30);
+          loadedQuestions = await PracticeService.getPracticeSession(profile.id, profile.region, 30, batchNumber);
 
         } else {
           // Use BatchService for Live Mode (Deterministic batches)
