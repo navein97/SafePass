@@ -226,7 +226,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             ]}
           >
             <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.batchesCompleted', 'Batches Completed')}
+              {t('profile.batchesCompletedLabel', 'Batches Completed')}
             </Text>
             <Text style={[styles.metricValue, { color: colors.text.primary }]}>
               {`${stats.batchesCompleted} / ${stats.totalBatches}`}
@@ -532,7 +532,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                   {isCompleted
                     ? (item.isPassed ? '✓' : '!')
                     : isInProgress
-                    ? 'NOW'
+                    ? t('profile.currentBatchTag', 'NOW')
                     : '--'}
                 </SvgText>
               </React.Fragment>
@@ -581,10 +581,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             </Text>
             <Text style={styles.tooltipQuestions}>
               {selectedItem.completedCount > 0
-                ? `${selectedItem.completedCount} / ${selectedItem.totalQuestions} MCQs`
+                ? `${selectedItem.completedCount} / ${selectedItem.totalQuestions} ${t('profile.mcqsUnit', 'MCQs')}`
                 : selectedItem.status === 'in_progress'
                 ? t('profile.inProgress', 'In Progress')
-                : `${selectedItem.totalQuestions} MCQs`}
+                : `${selectedItem.totalQuestions} ${t('profile.mcqsUnit', 'MCQs')}`}
             </Text>
           </View>
         )}
