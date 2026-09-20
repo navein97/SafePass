@@ -7,352 +7,170 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import Svg, { Path, Circle, Line, Text as SvgText, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Line, Text as SvgText, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTheme } from '../context/ThemeContext';
 import { typography } from '../theme/typography';
 import { useTranslation } from 'react-i18next';
 import {
-  QuizService,
-  PerformanceTimeRange,
-  PerformanceTrendPoint,
-  PerformanceStats,
-} from '../services/quizService';
+  BatchService,
+  BatchPerformanceItem,
+  BatchPerformanceResult,
+} from '../services/batchService';
 
 export interface PerformanceChartProps {
-  data?: PerformanceTrendPoint[];
+  data?: BatchPerformanceItem[] | any[];
   userId?: string;
   height?: number;
   width?: number;
-  allowedRanges?: PerformanceTimeRange[];
-  initialRange?: PerformanceTimeRange;
+  allowedRanges?: any[];
+  initialRange?: any;
   showMetrics?: boolean;
   title?: string;
-  onRangeChange?: (range: PerformanceTimeRange) => void;
+  onRangeChange?: (range: any) => void;
+  onBatchPress?: (batchNumber: number) => void;
 }
 
 export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   data: initialData,
   userId,
-  height = 210,
+  height = 220,
   width,
-  allowedRanges = ['1W', '1M', 'ALL'],
-  initialRange = '1W',
   showMetrics = true,
   title,
-  onRangeChange,
+  onBatchPress,
 }) => {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const [measuredWidth, setMeasuredWidth] = useState<number>(0);
-  const [selectedRange, setSelectedRange] = useState<PerformanceTimeRange>(
-    allowedRanges.includes(initialRange) ? initialRange : allowedRanges[0] || '1W'
-  );
-  const [chartPoints, setChartPoints] = useState<PerformanceTrendPoint[]>(initialData || []);
-  const [stats, setStats] = useState<PerformanceStats>({
-    averageScore: 0,
-    highestScore: 0,
-    lowestScore: 0,
-    totalAttempts: 0,
-    activePeriodsCount: 0,
-    activePeriodsLabel: 'Active Days',
+  const [batchItems, setBatchItems] = useState<BatchPerformanceItem[]>([]);
+  const [stats, setStats] = useState<BatchPerformanceResult['stats']>({
+    batchesCompleted: 0,
+    totalBatches: 8,
     mcqsCompleted: 0,
-    periodPerformance: null,
+    totalMCQs: 240,
+    averageScore: 0,
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // In-memory cache for fast tab switching
-  const cacheRef = React.useRef<Record<string, { points: PerformanceTrendPoint[]; stats: PerformanceStats }>>({});
+  // In-memory cache ref by userId
+  const cacheRef = React.useRef<{ items: BatchPerformanceItem[]; stats: BatchPerformanceResult['stats'] } | null>(null);
 
-  // 0 = Monday, 1 = Tuesday, ..., 6 = Sunday in ISO week
-  const currentIsoDayIndex = useMemo(() => {
-    const day = new Date().getDay(); // 0 is Sunday, 1 is Monday, ...
-    return (day + 6) % 7;
-  }, []);
+  const fetchBatchPerformance = useCallback(async () => {
+    if (!userId) return;
 
-  // Determine if a point is in the future
-  const isPointInFuture = useCallback(
-    (point: PerformanceTrendPoint, index: number): boolean => {
-      if (point.isFuture !== undefined) {
-        return point.isFuture;
+    if (cacheRef.current) {
+      setBatchItems(cacheRef.current.items);
+      setStats(cacheRef.current.stats);
+      // Default selection to currently active in_progress batch or latest completed
+      const activeIdx = cacheRef.current.items.findIndex(b => b.status === 'in_progress');
+      if (activeIdx !== -1) {
+        setSelectedIndex(activeIdx);
       }
-      if (selectedRange === '1W' && (chartPoints.length === 7 || (!chartPoints.length))) {
-        return index > currentIsoDayIndex;
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await BatchService.getUserBatchPerformance(userId);
+      if (result && result.items) {
+        cacheRef.current = result;
+        setBatchItems(result.items);
+        setStats(result.stats);
+
+        const inProgIdx = result.items.findIndex(b => b.status === 'in_progress');
+        if (inProgIdx !== -1) {
+          setSelectedIndex(inProgIdx);
+        } else {
+          const lastCompletedIdx = result.items.reduce(
+            (last, b, idx) => (b.status === 'completed' ? idx : last),
+            -1
+          );
+          if (lastCompletedIdx !== -1) setSelectedIndex(lastCompletedIdx);
+        }
       }
-      return false;
-    },
-    [selectedRange, chartPoints.length, currentIsoDayIndex]
-  );
+    } catch (err) {
+      console.error('Failed to fetch batch performance:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
 
-  // Determine if a point is "Today"
-  const isPointToday = useCallback(
-    (point: PerformanceTrendPoint, index: number): boolean => {
-      if (point.isToday !== undefined) {
-        return point.isToday;
-      }
-      if (selectedRange === '1W' && (chartPoints.length === 7 || (!chartPoints.length))) {
-        return index === currentIsoDayIndex;
-      }
-      return false;
-    },
-    [selectedRange, chartPoints.length, currentIsoDayIndex]
-  );
-
-  const calculateStatsFromPoints = useCallback(
-    (points: PerformanceTrendPoint[]) => {
-      const validPoints = points.filter((p, i) => !isPointInFuture(p, i));
-      const activePoints = validPoints.filter(p => (p.hasActivity ?? (p.attemptsCount ? p.attemptsCount > 0 : p.value > 0)) && p.value > 0);
-      const activeScores = activePoints.map(p => Math.min(100, p.value));
-      const avg = activeScores.length > 0 ? Math.min(100, Math.round(activeScores.reduce((s, v) => s + v, 0) / activeScores.length)) : 0;
-      const high = activeScores.length > 0 ? Math.min(100, Math.max(...activeScores)) : 0;
-      const low = activeScores.length > 0 ? Math.min(100, Math.min(...activeScores)) : 0;
-      const attempts = validPoints.reduce((s, p) => s + (p.attemptsCount || 0), 0);
-
-      setStats(prev => ({
-        ...prev,
-        averageScore: avg,
-        highestScore: high,
-        lowestScore: low,
-        totalAttempts: attempts,
-        activePeriodsCount: activePoints.length,
-        mcqsCompleted: (prev?.mcqsCompleted && prev.mcqsCompleted > 0) ? prev.mcqsCompleted : attempts,
-        periodPerformance: prev?.periodPerformance !== null && prev?.periodPerformance !== undefined ? Math.min(100, prev.periodPerformance) : (avg > 0 ? avg : null),
-      }));
-    },
-    [isPointInFuture]
-  );
-
-  // Sync initialData if provided and on 1W
+  // Sync if initialData is provided
   useEffect(() => {
-    if (initialData && initialData.length > 0) {
-      // Clear cache to ensure switching tabs after a refresh fetches fresh data
-      cacheRef.current = {};
-      
-      if (selectedRange === '1W') {
-        setChartPoints(initialData);
-        calculateStatsFromPoints(initialData);
-        const lastActiveIdx = initialData.reduce((last: number, pt: PerformanceTrendPoint, idx: number) => (pt.hasActivity && !pt.isFuture ? idx : last), -1);
-        if (lastActiveIdx !== -1) {
-          setSelectedIndex(lastActiveIdx);
-        }
-      }
-    }
-  }, [initialData]); // deliberately omit selectedRange to only run when initialData updates
-
-  const fetchRangeData = useCallback(
-    async (range: PerformanceTimeRange) => {
-      if (!userId) {
-        if (initialData && range === '1W') {
-          setChartPoints(initialData);
-          calculateStatsFromPoints(initialData);
-        }
-        return;
-      }
-
-      if (cacheRef.current[range]) {
-        const cached = cacheRef.current[range];
-        setChartPoints(cached.points);
-        setStats(cached.stats);
-        const lastActiveIdx = cached.points.reduce((last: number, pt: PerformanceTrendPoint, idx: number) => (pt.hasActivity && !pt.isFuture ? idx : last), -1);
-        if (lastActiveIdx !== -1) {
-          setSelectedIndex(lastActiveIdx);
-        }
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const result = await QuizService.getPerformanceTrends(userId, range);
-        if (result && result.points) {
-          cacheRef.current[range] = result;
-          setChartPoints(result.points);
-          setStats(result.stats);
-
-          // Default selection to latest active point if available
-          const lastActiveIdx = result.points.reduce((last: number, pt: PerformanceTrendPoint, idx: number) => (pt.hasActivity && !pt.isFuture ? idx : last), -1);
-          if (lastActiveIdx !== -1) {
-            setSelectedIndex(lastActiveIdx);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch performance trend for range:', range, err);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [userId, initialData, calculateStatsFromPoints]
-  );
-
-  const handleRangeSelect = (range: PerformanceTimeRange) => {
-    if (range === selectedRange && !loading) return;
-    setSelectedRange(range);
-    setSelectedIndex(null);
-    if (onRangeChange) {
-      onRangeChange(range);
-    }
-    fetchRangeData(range);
-  };
-
-  // Trigger initial fetch when component mounts or range/user changes
-  useEffect(() => {
-    if (userId) {
-      fetchRangeData(selectedRange);
-    }
-  }, [userId, selectedRange, fetchRangeData]);
-
-  const containerWidth = width || measuredWidth || (Dimensions.get('window').width - 80);
-
-  // Normalize points for rendering
-  const displayData = useMemo<PerformanceTrendPoint[]>(() => {
-    if (!chartPoints || chartPoints.length === 0) {
-      if (selectedRange === '1W') {
-        const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-        return dayLabels.map((label, i) => ({
-          value: 0,
-          label,
-          isFuture: i > currentIsoDayIndex,
-          isToday: i === currentIsoDayIndex,
+    if (initialData && Array.isArray(initialData) && initialData.length > 0) {
+      // Check if data is already in BatchPerformanceItem format
+      if ('batchNumber' in initialData[0] || 'label' in initialData[0]) {
+        const normalized = initialData.map((d: any, i: number) => ({
+          batchNumber: d.batchNumber || i + 1,
+          label: d.label || `B${d.batchNumber || i + 1}`,
+          score: Math.min(100, Math.max(0, d.score ?? d.value ?? 0)),
+          status: (d.status as 'completed' | 'in_progress' | 'not_started') || (d.score > 0 ? 'completed' : 'not_started'),
+          isPassed: d.isPassed ?? (d.score >= 60),
+          completedCount: d.completedCount || 0,
+          totalQuestions: d.totalQuestions || 30,
+          attemptsCount: d.attemptsCount || 0,
+          completedAt: d.completedAt || null,
         }));
+        setBatchItems(normalized);
       }
-      return [{ value: 0, label: '-' }];
+    } else if (userId) {
+      fetchBatchPerformance();
     }
-    if (chartPoints.length === 1 && selectedRange !== '1W') {
-      return [{ value: 0, label: '0%' }, ...chartPoints];
+  }, [initialData, userId, fetchBatchPerformance]);
+
+  const containerWidth = width || measuredWidth || (Dimensions.get('window').width - 48);
+
+  // Fallback items if none yet
+  const displayItems = useMemo<BatchPerformanceItem[]>(() => {
+    if (batchItems && batchItems.length > 0) {
+      return batchItems;
     }
-    return chartPoints;
-  }, [chartPoints, selectedRange, currentIsoDayIndex]);
+    return [1, 2, 3, 4, 5, 6, 7, 8].map((b) => ({
+      batchNumber: b,
+      label: `B${b}`,
+      score: 0,
+      status: b === 1 ? 'in_progress' : 'not_started',
+      isPassed: false,
+      completedCount: 0,
+      totalQuestions: 30,
+      attemptsCount: 0,
+    }));
+  }, [batchItems]);
 
-  const hPadding = 16;
-  const vPadding = 24;
-  const chartHeight = height - vPadding * 2;
-  const innerWidth = Math.max(10, containerWidth - hPadding * 2);
-  const maxValue = 100;
-
-  const getX = useCallback(
-    (index: number) => {
-      return hPadding + index * (innerWidth / Math.max(1, displayData.length - 1));
-    },
-    [hPadding, innerWidth, displayData.length]
-  );
+  // Layout Dimensions
+  const leftPadding = 34; // Space for Y-axis markers (100%, 60%, 0%)
+  const rightPadding = 16;
+  const topPadding = 26; // Room for score text above top of 100% bars
+  const bottomPadding = 42; // Room for "B1" and "done / now / --"
+  const chartAreaWidth = Math.max(10, containerWidth - leftPadding - rightPadding);
+  const chartAreaHeight = Math.max(10, height - topPadding - bottomPadding);
 
   const getY = useCallback(
     (value: number) => {
-      return height - vPadding - ((value / maxValue) * chartHeight);
+      const clamped = Math.min(100, Math.max(0, value));
+      return topPadding + (1 - clamped / 100) * chartAreaHeight;
     },
-    [height, vPadding, maxValue, chartHeight]
+    [topPadding, chartAreaHeight]
   );
 
-  // Helper to determine if a point represents actual quiz activity
-  const isPointActive = useCallback(
-    (point: PerformanceTrendPoint, index: number): boolean => {
-      if (isPointInFuture(point, index)) return false;
-      if (point.hasActivity !== undefined) return point.hasActivity && point.value > 0;
-      return (point.attemptsCount !== undefined ? point.attemptsCount > 0 : point.value > 0);
-    },
-    [isPointInFuture]
-  );
+  const y60 = getY(60);
+  const y100 = getY(100);
+  const y0 = getY(0);
 
-  // Active indices (strictly past and today - points with actual quiz activity)
-  const activeIndices = useMemo(() => {
-    const indices: number[] = [];
-    displayData.forEach((point, index) => {
-      if (isPointActive(point, index)) {
-        indices.push(index);
-      }
-    });
-    return indices;
-  }, [displayData, isPointActive]);
+  const slotWidth = chartAreaWidth / Math.max(1, displayItems.length);
+  const barWidth = Math.min(24, Math.max(14, slotWidth * 0.58));
 
-  const todayIndex = useMemo(() => {
-    return displayData.findIndex((p, i) => isPointToday(p, i));
-  }, [displayData, isPointToday]);
+  const selectedItem =
+    selectedIndex !== null && displayItems[selectedIndex] ? displayItems[selectedIndex] : null;
 
-  // Generate Path and Area Fill
-  const { d, dArea } = useMemo(() => {
-    if (!displayData || displayData.length === 0) {
-      return { d: '', dArea: '' };
-    }
-
-    const pastOrTodayPoints = displayData.filter((p, i) => !isPointInFuture(p, i));
-    if (pastOrTodayPoints.length === 0 || activeIndices.length === 0) {
-      return { d: '', dArea: '' };
-    }
-
-    const bottomY = height - vPadding;
-
-    if (activeIndices.length === 1) {
-      const activeIdx = activeIndices[0];
-      const activeVal = displayData[activeIdx].value;
-      const endIdx = todayIndex !== -1 && todayIndex >= activeIdx ? todayIndex : (pastOrTodayPoints.length - 1);
-
-      let linePath = `M ${getX(0)} ${getY(activeIdx === 0 ? activeVal : 0)}`;
-      if (activeIdx > 0) {
-        for (let i = 1; i < activeIdx; i++) {
-          linePath += ` L ${getX(i)} ${getY(0)}`;
-        }
-        linePath += ` L ${getX(activeIdx)} ${getY(activeVal)}`;
-      }
-      if (endIdx > activeIdx) {
-        for (let i = activeIdx + 1; i <= endIdx; i++) {
-          linePath += ` L ${getX(i)} ${getY(activeVal)}`;
-        }
-      }
-
-      const areaPath = `${linePath} L ${getX(endIdx)} ${bottomY} L ${getX(0)} ${bottomY} Z`;
-      return { d: linePath, dArea: areaPath };
-    }
-
-    // 2 or more active points
-    const firstIdx = activeIndices[0];
-    const lastIdx = activeIndices[activeIndices.length - 1];
-    const endIdx = todayIndex !== -1 && todayIndex >= lastIdx ? todayIndex : lastIdx;
-
-    let linePath = '';
-    if (firstIdx > 0) {
-      linePath = `M ${getX(0)} ${getY(0)}`;
-      for (let i = 1; i < firstIdx; i++) {
-        linePath += ` L ${getX(i)} ${getY(0)}`;
-      }
-      linePath += ` L ${getX(firstIdx)} ${getY(displayData[firstIdx].value)}`;
-    } else {
-      linePath = `M ${getX(0)} ${getY(displayData[0].value)}`;
-    }
-
-    for (let i = 1; i < activeIndices.length; i++) {
-      const idx = activeIndices[i];
-      linePath += ` L ${getX(idx)} ${getY(displayData[idx].value)}`;
-    }
-
-    if (endIdx > lastIdx) {
-      const lastVal = displayData[lastIdx].value;
-      for (let i = lastIdx + 1; i <= endIdx; i++) {
-        linePath += ` L ${getX(i)} ${getY(lastVal)}`;
-      }
-    }
-
-    const areaPath = `${linePath} L ${getX(endIdx)} ${bottomY} L ${getX(0)} ${bottomY} Z`;
-    return { d: linePath, dArea: areaPath };
-  }, [activeIndices, displayData, height, vPadding, getX, getY, isPointInFuture, todayIndex]);
-
-  const getRangeLabel = (range: PerformanceTimeRange) => {
-    switch (range) {
-      case '1W':
-        return t('profile.chartRange1W', '1W');
-      case '1M':
-        return t('profile.chartRange1M', '1M');
-      case 'ALL':
-        return t('profile.chartRangeAll', 'All');
-      default:
-        return range;
+  const handleBarSelect = (index: number) => {
+    const newIdx = index === selectedIndex ? null : index;
+    setSelectedIndex(newIdx);
+    if (newIdx !== null && onBatchPress) {
+      onBatchPress(displayItems[newIdx].batchNumber);
     }
   };
-
-  const activePoint =
-    selectedIndex !== null &&
-    displayData[selectedIndex] &&
-    !isPointInFuture(displayData[selectedIndex], selectedIndex)
-      ? displayData[selectedIndex]
-      : null;
 
   return (
     <View
@@ -364,70 +182,40 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         }
       }}
     >
-      {/* Header with Title and Range Selector Tabs */}
-      <View style={[styles.headerRow, { paddingHorizontal: hPadding }]}>
+      {/* Header with Title and Passing Benchmark Pill */}
+      <View style={[styles.headerRow, { paddingHorizontal: 12 }]}>
         <View style={styles.titleContainer}>
           <Text style={[styles.title, { color: colors.text.primary }]}>
-            {title || t('profile.performanceTrend', 'Performance Trend')}
+            {title || t('profile.batchPerformance', 'Batch Performance')}
           </Text>
-          {activePoint && activePoint.fullDate ? (
-            <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
-              {activePoint.fullDate}
-            </Text>
-          ) : null}
+          <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
+            {selectedItem
+              ? `${t('quiz.batchTitle', { number: selectedItem.batchNumber })}: ${selectedItem.score}% (${selectedItem.status === 'completed' ? (selectedItem.isPassed ? t('profile.passed', 'Passed') : t('profile.needsImprovement', 'Needs Improvement')) : selectedItem.status === 'in_progress' ? t('profile.inProgress', 'In Progress') : t('profile.notStarted', 'Not Started')})`
+              : t('profile.passingScore', 'Passing (60%)')}
+          </Text>
         </View>
 
-        {/* Range Selector Tabs */}
-        {allowedRanges.length > 1 && (
-          <View
-            style={[
-              styles.rangeTabContainer,
-              {
-                backgroundColor: colors.mode === 'light' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)',
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            {allowedRanges.map((range) => {
-              const isSelected = range === selectedRange;
-              return (
-                <TouchableOpacity
-                  key={range}
-                  activeOpacity={0.7}
-                  onPress={() => handleRangeSelect(range)}
-                  style={[
-                    styles.rangeTab,
-                    isSelected && {
-                      backgroundColor: colors.primary.DEFAULT,
-                      shadowColor: colors.primary.DEFAULT,
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 3,
-                      elevation: 2,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.rangeTabText,
-                      {
-                        color: isSelected ? '#FFFFFF' : colors.text.secondary,
-                        fontWeight: isSelected ? '700' : '500',
-                      },
-                    ]}
-                  >
-                    {getRangeLabel(range)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+        {/* Passing Benchmark Badge */}
+        <View
+          style={[
+            styles.benchmarkBadge,
+            {
+              backgroundColor: colors.mode === 'light' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.15)',
+              borderColor: 'rgba(16, 185, 129, 0.35)',
+            },
+          ]}
+        >
+          <View style={[styles.benchmarkDot, { backgroundColor: '#10B981' }]} />
+          <Text style={[styles.benchmarkText, { color: '#10B981' }]}>
+            {t('profile.passingScore', 'Pass: 60%')}
+          </Text>
+        </View>
       </View>
 
-      {/* Summary Figures (Dashboard B) */}
+      {/* Summary Metrics Row */}
       {showMetrics && (
-        <View style={[styles.metricsRow, { paddingHorizontal: hPadding }]}>
+        <View style={[styles.metricsRow, { paddingHorizontal: 12 }]}>
+          {/* Card 1: Batches Completed */}
           <View
             style={[
               styles.metricCard,
@@ -438,13 +226,14 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             ]}
           >
             <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {selectedRange === 'ALL' ? t('profile.activeMonths', 'Active Months') : t('profile.activeDays', 'Active Days')}
+              {t('profile.batchesCompleted', 'Batches Completed')}
             </Text>
             <Text style={[styles.metricValue, { color: colors.text.primary }]}>
-              {stats.activePeriodsCount ?? 0}
+              {`${stats.batchesCompleted} / ${stats.totalBatches}`}
             </Text>
           </View>
 
+          {/* Card 2: MCQs Completed */}
           <View
             style={[
               styles.metricCard,
@@ -462,6 +251,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             </Text>
           </View>
 
+          {/* Card 3: Average Score */}
           <View
             style={[
               styles.metricCard,
@@ -472,25 +262,28 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             ]}
           >
             <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.periodPerformance', 'Period Performance')}
+              {t('profile.averageScore', 'Average Score')}
             </Text>
             <Text
               style={[
                 styles.metricValue,
                 {
-                  color: stats.periodPerformance !== null && stats.periodPerformance !== undefined
-                    ? colors.primary.DEFAULT
-                    : colors.text.secondary,
+                  color:
+                    stats.averageScore >= 60
+                      ? '#10B981'
+                      : stats.averageScore > 0
+                      ? '#F59E0B'
+                      : colors.text.secondary,
                 },
               ]}
             >
-              {stats.periodPerformance !== null && stats.periodPerformance !== undefined ? `${stats.periodPerformance}%` : t('ratings.na', 'N/A')}
+              {stats.averageScore > 0 ? `${stats.averageScore}%` : t('ratings.na', 'N/A')}
             </Text>
           </View>
         </View>
       )}
 
-      {/* Chart Section */}
+      {/* Bar Chart Section */}
       <View style={{ width: containerWidth, height, position: 'relative' }}>
         {loading && (
           <View style={[styles.loadingOverlay, { height }]}>
@@ -500,200 +293,299 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
         <Svg height={height} width={containerWidth}>
           <Defs>
-            <LinearGradient id="performanceGradient" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={colors.primary.DEFAULT} stopOpacity="0.45" />
-              <Stop offset="1" stopColor={colors.primary.DEFAULT} stopOpacity="0.0" />
+            {/* Success Green Gradient (Passed) */}
+            <LinearGradient id="barPassed" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#10B981" stopOpacity="0.95" />
+              <Stop offset="1" stopColor="#059669" stopOpacity="0.8" />
+            </LinearGradient>
+
+            {/* Warning Amber/Red Gradient (Needs Improvement) */}
+            <LinearGradient id="barWarning" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#F59E0B" stopOpacity="0.95" />
+              <Stop offset="1" stopColor="#D97706" stopOpacity="0.8" />
+            </LinearGradient>
+
+            {/* Active In-Progress Primary Gradient */}
+            <LinearGradient id="barActive" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={colors.primary.DEFAULT} stopOpacity="0.95" />
+              <Stop offset="1" stopColor={colors.primary.DEFAULT} stopOpacity="0.65" />
             </LinearGradient>
           </Defs>
 
-          {/* Grid Lines */}
-          {[0, 25, 50, 75, 100].map((val) => (
-            <Line
-              key={val}
-              x1={hPadding}
-              y1={getY(val)}
-              x2={containerWidth - hPadding}
-              y2={getY(val)}
-              stroke={colors.border}
-              strokeWidth="1"
-              strokeDasharray="4 4"
-            />
-          ))}
+          {/* 100% Top Baseline Grid */}
+          <Line
+            x1={leftPadding}
+            y1={y100}
+            x2={containerWidth - rightPadding}
+            y2={y100}
+            stroke={colors.border}
+            strokeWidth="1"
+            strokeDasharray="3 3"
+            opacity={0.4}
+          />
+          <SvgText
+            x={leftPadding - 6}
+            y={y100 + 3}
+            fontSize="9"
+            fontFamily={typography.fonts.medium}
+            fill={colors.text.secondary}
+            opacity={0.7}
+            textAnchor="end"
+          >
+            100%
+          </SvgText>
 
-          {/* Area Fill - strictly under active points */}
-          {dArea ? <Path d={dArea} fill="url(#performanceGradient)" /> : null}
+          {/* 60% Passing Benchmark Guideline */}
+          <Line
+            x1={leftPadding}
+            y1={y60}
+            x2={containerWidth - rightPadding}
+            y2={y60}
+            stroke="#10B981"
+            strokeWidth="1.2"
+            strokeDasharray="4 4"
+            opacity={0.7}
+          />
+          <SvgText
+            x={leftPadding - 6}
+            y={y60 + 3}
+            fontSize="9"
+            fontFamily={typography.fonts.bold}
+            fill="#10B981"
+            textAnchor="end"
+            fontWeight="bold"
+          >
+            60%
+          </SvgText>
 
-          {/* Trend Line - stops flat at today */}
-          {d ? (
-            <Path
-              d={d}
-              stroke={colors.primary.DEFAULT}
-              strokeWidth="3"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ) : null}
+          {/* 0% Bottom Baseline */}
+          <Line
+            x1={leftPadding}
+            y1={y0}
+            x2={containerWidth - rightPadding}
+            y2={y0}
+            stroke={colors.border}
+            strokeWidth="1.5"
+            opacity={0.7}
+          />
+          <SvgText
+            x={leftPadding - 6}
+            y={y0 + 3}
+            fontSize="9"
+            fontFamily={typography.fonts.medium}
+            fill={colors.text.secondary}
+            opacity={0.6}
+            textAnchor="end"
+          >
+            0%
+          </SvgText>
 
-          {/* Today Vertical Guideline Marker */}
-          {todayIndex !== -1 && (
-            <Line
-              x1={getX(todayIndex)}
-              y1={vPadding - 6}
-              x2={getX(todayIndex)}
-              y2={height - vPadding}
-              stroke={colors.primary.DEFAULT}
-              strokeWidth="1.2"
-              strokeDasharray="2 3"
-              opacity={selectedIndex === todayIndex ? 0.8 : 0.35}
-            />
-          )}
+          {/* Render 8 Batch Bars */}
+          {displayItems.map((item, index) => {
+            const centerX = leftPadding + (index + 0.5) * slotWidth;
+            const barX = centerX - barWidth / 2;
+            const isSelected = selectedIndex === index;
 
-          {/* Selected Point Vertical Guideline */}
-          {selectedIndex !== null &&
-            selectedIndex !== todayIndex &&
-            !isPointInFuture(displayData[selectedIndex], selectedIndex) && (
-              <Line
-                x1={getX(selectedIndex)}
-                y1={vPadding - 6}
-                x2={getX(selectedIndex)}
-                y2={height - vPadding}
-                stroke={colors.primary.DEFAULT}
-                strokeWidth="1.5"
-                strokeDasharray="3 3"
-              />
-            )}
+            // Bar dimensions
+            const isNotStarted = item.status === 'not_started';
+            const isInProgress = item.status === 'in_progress';
+            const isCompleted = item.status === 'completed';
 
-          {/* Data Points and X-Axis Labels */}
-          {displayData.map((point, index) => {
-            const isFuture = isPointInFuture(point, index);
-            const isToday = isPointToday(point, index);
-            const isPointSelected = selectedIndex === index;
-            const xPos = getX(index);
-            const yPos = getY(point.value);
+            // Calculate height proportional to score (0..100)
+            const calculatedBarH = (item.score / 100) * chartAreaHeight;
+            const barH = isNotStarted
+              ? 0
+              : Math.max(isInProgress && item.completedCount > 0 ? 6 : (item.score > 0 ? 6 : 0), calculatedBarH);
+            const barY = topPadding + chartAreaHeight - barH;
 
-            const hasActivity = isPointActive(point, index);
+            // Fill color
+            let fillUrl = 'url(#barPassed)';
+            if (isCompleted) {
+              fillUrl = item.isPassed ? 'url(#barPassed)' : 'url(#barWarning)';
+            } else if (isInProgress) {
+              fillUrl = item.score >= 60 ? 'url(#barPassed)' : 'url(#barActive)';
+            }
 
             return (
-              <React.Fragment key={index}>
-                {/* Touch hotspot rect for active and past days */}
-                {!isFuture && (
+              <React.Fragment key={`batch-${item.batchNumber}`}>
+                {/* Touch Hotspot covering entire column */}
+                <Rect
+                  x={centerX - slotWidth / 2}
+                  y={0}
+                  width={slotWidth}
+                  height={height}
+                  fill="transparent"
+                  onPress={() => handleBarSelect(index)}
+                />
+
+                {/* Selection Highlight Pillar Background */}
+                {isSelected && (
                   <Rect
-                    x={xPos - 16}
-                    y={0}
-                    width={32}
-                    height={height}
-                    fill="transparent"
-                    onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
+                    x={centerX - slotWidth / 2 + 2}
+                    y={topPadding - 4}
+                    width={slotWidth - 4}
+                    height={chartAreaHeight + 8}
+                    rx={6}
+                    ry={6}
+                    fill={colors.mode === 'light' ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'}
+                    stroke={colors.primary.DEFAULT}
+                    strokeWidth="1"
                   />
                 )}
 
-                {/* Point Circle (Rendered for active points or today's subtle marker) */}
-                {!isFuture && (
-                  <>
-                    {hasActivity ? (
-                      <>
-                        {isToday && !isPointSelected && (
-                          <Circle
-                            cx={xPos}
-                            cy={yPos}
-                            r="6"
-                            fill="transparent"
-                            stroke={colors.primary.DEFAULT}
-                            strokeWidth="1"
-                            opacity={0.5}
-                          />
-                        )}
-                        <Circle
-                          cx={xPos}
-                          cy={yPos}
-                          r={isPointSelected ? '6' : (isToday ? '4.5' : '3.5')}
-                          fill={isPointSelected ? colors.primary.DEFAULT : '#FFFFFF'}
-                          stroke={colors.primary.DEFAULT}
-                          strokeWidth={isPointSelected ? '3' : '2'}
-                          onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
-                        />
-                      </>
-                    ) : isToday ? (
-                      <Circle
-                        cx={xPos}
-                        cy={height - vPadding}
-                        r="3.5"
-                        fill="transparent"
-                        stroke={colors.primary.DEFAULT}
-                        strokeWidth="1.2"
-                        strokeDasharray="2 2"
-                        opacity={0.6}
-                        onPress={() => setSelectedIndex(index === selectedIndex ? null : index)}
-                      />
-                    ) : null}
-                  </>
+                {/* Bar Element */}
+                {isNotStarted ? (
+                  /* Placeholder dashed rectangle for unstarted batches */
+                  <Rect
+                    x={barX}
+                    y={topPadding + 10}
+                    width={barWidth}
+                    height={chartAreaHeight - 10}
+                    rx={4}
+                    ry={4}
+                    fill={colors.mode === 'light' ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)'}
+                    stroke={colors.border}
+                    strokeWidth="1"
+                    strokeDasharray="3 3"
+                    opacity={0.45}
+                  />
+                ) : (
+                  /* Filled Proportional Bar */
+                  <Rect
+                    x={barX}
+                    y={barY}
+                    width={barWidth}
+                    height={barH}
+                    rx={4}
+                    ry={4}
+                    fill={fillUrl}
+                    stroke={
+                      isInProgress
+                        ? colors.primary.DEFAULT
+                        : isSelected
+                        ? '#FFFFFF'
+                        : 'transparent'
+                    }
+                    strokeWidth={isSelected ? 1.5 : (isInProgress ? 1 : 0)}
+                  />
                 )}
 
-                {/* Score label above point (active points only) */}
-                {!isFuture && (hasActivity && point.value > 0 && (displayData.length <= 7 || isPointSelected)) && (
-                  <SvgText
-                    x={xPos}
-                    y={yPos - 9}
-                    fontSize="10"
-                    fontFamily={typography.fonts.bold}
-                    fill={isPointSelected ? colors.primary.DEFAULT : colors.text.primary}
-                    textAnchor="middle"
-                    fontWeight={isPointSelected ? 'bold' : 'normal'}
-                  >
-                    {point.value}%
-                  </SvgText>
-                )}
-
-                {/* X-Axis Labels (all days visible, future days dimmed/greyed out) */}
+                {/* Score Text above Bar */}
                 <SvgText
-                  x={xPos}
-                  y={height - 4}
+                  x={centerX}
+                  y={isNotStarted ? y0 - 8 : Math.min(y0 - 6, barY - 6)}
                   fontSize="10"
-                  fontFamily={
-                    isToday || isPointSelected
-                      ? typography.fonts.bold
-                      : (isFuture ? typography.fonts.regular : typography.fonts.medium)
-                  }
+                  fontFamily={typography.fonts.bold}
                   fill={
-                    isFuture
+                    isNotStarted
                       ? (colors.mode === 'light' ? '#9CA3AF' : '#6B7280')
-                      : (isPointSelected || isToday ? colors.primary.DEFAULT : colors.text.secondary)
+                      : item.score >= 60
+                      ? '#10B981'
+                      : item.score > 0
+                      ? '#F59E0B'
+                      : colors.text.secondary
                   }
-                  opacity={isFuture ? 0.35 : 1}
                   textAnchor="middle"
-                  fontWeight={isPointSelected || isToday ? 'bold' : (isFuture ? 'normal' : '500')}
+                  fontWeight={isSelected || isCompleted ? 'bold' : 'normal'}
+                  opacity={isNotStarted ? 0.4 : 1}
                 >
-                  {point.label}
+                  {isNotStarted ? '--' : `${item.score}%`}
+                </SvgText>
+
+                {/* Batch Label (B1 to B8) */}
+                <SvgText
+                  x={centerX}
+                  y={height - 22}
+                  fontSize="11"
+                  fontFamily={isSelected ? typography.fonts.bold : typography.fonts.medium}
+                  fill={
+                    isSelected || isInProgress
+                      ? colors.primary.DEFAULT
+                      : isNotStarted
+                      ? (colors.mode === 'light' ? '#9CA3AF' : '#6B7280')
+                      : colors.text.primary
+                  }
+                  textAnchor="middle"
+                  fontWeight={isSelected || isInProgress ? 'bold' : '500'}
+                  opacity={isNotStarted ? 0.5 : 1}
+                >
+                  {item.label}
+                </SvgText>
+
+                {/* Status Indicator Text underneath */}
+                <SvgText
+                  x={centerX}
+                  y={height - 8}
+                  fontSize="8.5"
+                  fontFamily={typography.fonts.bold}
+                  fill={
+                    isCompleted
+                      ? (item.isPassed ? '#10B981' : '#F59E0B')
+                      : isInProgress
+                      ? colors.primary.DEFAULT
+                      : (colors.mode === 'light' ? '#9CA3AF' : '#6B7280')
+                  }
+                  textAnchor="middle"
+                  fontWeight="bold"
+                  opacity={isNotStarted ? 0.35 : 0.9}
+                >
+                  {isCompleted
+                    ? (item.isPassed ? '✓' : '!')
+                    : isInProgress
+                    ? 'NOW'
+                    : '--'}
                 </SvgText>
               </React.Fragment>
             );
           })}
         </Svg>
 
-        {/* Floating Tooltip Pill when selected */}
-        {activePoint && selectedIndex !== null && (
+        {/* Floating Tooltip / Popover when a bar is selected */}
+        {selectedItem && selectedIndex !== null && (
           <View
             pointerEvents="none"
             style={[
               styles.floatingTooltip,
               {
                 left: Math.min(
-                  Math.max(getX(selectedIndex) - 50, hPadding),
-                  containerWidth - hPadding - 100
+                  Math.max(leftPadding + (selectedIndex + 0.5) * slotWidth - 60, 8),
+                  containerWidth - 128
                 ),
-                top: 4,
+                top: 2,
                 backgroundColor: colors.mode === 'light' ? '#1F2937' : '#111827',
-                borderColor: colors.border,
+                borderColor: selectedItem.isPassed
+                  ? '#10B981'
+                  : selectedItem.status === 'in_progress'
+                  ? colors.primary.DEFAULT
+                  : colors.border,
               },
             ]}
           >
-            <Text style={styles.tooltipScore}>
-              {isPointActive(activePoint, selectedIndex)
-                ? `${Math.min(100, activePoint.value)}%`
-                : t('profile.noActivity', 'No Activity')}
+            <Text style={styles.tooltipBatch}>
+              {t('quiz.batchTitle', { number: selectedItem.batchNumber })}
             </Text>
-            <Text style={styles.tooltipDate}>{activePoint.fullDate || activePoint.label}</Text>
+            <Text
+              style={[
+                styles.tooltipScore,
+                {
+                  color:
+                    selectedItem.status === 'not_started'
+                      ? '#9CA3AF'
+                      : selectedItem.isPassed
+                      ? '#10B981'
+                      : '#F59E0B',
+                },
+              ]}
+            >
+              {selectedItem.status === 'not_started' ? t('profile.notStarted', 'Not Started') : `${selectedItem.score}%`}
+            </Text>
+            <Text style={styles.tooltipQuestions}>
+              {selectedItem.completedCount > 0
+                ? `${selectedItem.completedCount} / ${selectedItem.totalQuestions} MCQs`
+                : selectedItem.status === 'in_progress'
+                ? t('profile.inProgress', 'In Progress')
+                : `${selectedItem.totalQuestions} MCQs`}
+            </Text>
           </View>
         )}
       </View>
@@ -703,7 +595,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 12,
+    paddingVertical: 10,
     width: '100%',
     alignItems: 'center',
   },
@@ -712,7 +604,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   titleContainer: {
     flex: 1,
@@ -727,22 +619,55 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.medium,
     marginTop: 2,
   },
-  rangeTabContainer: {
+  benchmarkBadge: {
     flexDirection: 'row',
-    borderRadius: 8,
-    padding: 2,
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  rangeTab: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 6,
+  benchmarkDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  benchmarkText: {
+    fontSize: 10,
+    fontFamily: typography.fonts.bold,
+    fontWeight: '700',
+  },
+  metricsRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginVertical: 8,
+  },
+  metricCard: {
+    flex: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rangeTabText: {
-    fontSize: 11,
+  metricLabel: {
+    fontSize: 9.5,
+    fontFamily: typography.fonts.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  metricValue: {
+    fontSize: 14,
     fontFamily: typography.fonts.bold,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -755,60 +680,33 @@ const styles = StyleSheet.create({
   },
   floatingTooltip: {
     position: 'absolute',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
-    minWidth: 90,
+    minWidth: 120,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
     zIndex: 20,
   },
-  tooltipScore: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: typography.fonts.bold,
-  },
-  tooltipDate: {
+  tooltipBatch: {
     fontSize: 10,
     color: '#9CA3AF',
     fontFamily: typography.fonts.medium,
   },
-  metricsRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginVertical: 10,
-  },
-  metricCard: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontFamily: typography.fonts.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  metricValue: {
-    fontSize: 15,
-    fontFamily: typography.fonts.bold,
+  tooltipScore: {
+    fontSize: 14,
     fontWeight: 'bold',
-    textAlign: 'center',
+    fontFamily: typography.fonts.bold,
+    marginVertical: 1,
+  },
+  tooltipQuestions: {
+    fontSize: 9.5,
+    color: '#D1D5DB',
+    fontFamily: typography.fonts.regular,
   },
 });
-

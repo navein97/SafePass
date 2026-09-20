@@ -994,12 +994,6 @@ export const ProfileScreen = ({ navigation }: any) => {
              <GlassCard style={{ marginBottom: 16 }}>
                 <PerformanceChart 
                     userId={profile?.id}
-                    data={
-                        quizHistory && quizHistory.length > 0
-                        ? quizHistory
-                        : undefined
-                    } 
-                    allowedRanges={['1W', '1M', 'ALL']}
                 />
              </GlassCard>
 

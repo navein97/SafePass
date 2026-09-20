@@ -681,12 +681,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                     <GlassCard style={{ padding: 8 }}>
                         <PerformanceChart
                             userId={userId}
-                            data={
-                                dailyTrends && dailyTrends.length > 0
-                                    ? dailyTrends
-                                    : undefined
-                            }
-                            allowedRanges={['1W', '1M', 'ALL']}
+                            onBatchPress={(batchNum) => setSelectedBatch(batchNum)}
                         />
                     </GlassCard>
 

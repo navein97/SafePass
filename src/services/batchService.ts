@@ -28,6 +28,29 @@ export interface BatchProgress {
     completedAt: string;
 }
 
+export interface BatchPerformanceItem {
+    batchNumber: number;
+    label: string;
+    score: number;
+    status: 'completed' | 'in_progress' | 'not_started';
+    isPassed: boolean;
+    completedCount: number;
+    totalQuestions: number;
+    attemptsCount: number;
+    completedAt?: string | null;
+}
+
+export interface BatchPerformanceResult {
+    items: BatchPerformanceItem[];
+    stats: {
+        batchesCompleted: number;
+        totalBatches: number;
+        mcqsCompleted: number;
+        totalMCQs: number;
+        averageScore: number;
+    };
+}
+
 export const BatchService = {
     _availableBatchesCache: null as number[] | null,
 
@@ -437,6 +460,152 @@ export const BatchService = {
         }
 
         return data.current_batch || 1;
+    },
+
+    /**
+     * Get batch performance metrics for B1-B8 chart
+     */
+    async getUserBatchPerformance(userId: string): Promise<BatchPerformanceResult> {
+        try {
+            const batchNumbers = await this.getAvailableBatchNumbers();
+            
+            // 1. Fetch user profile
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('current_batch, total_batches_completed')
+                .eq('id', userId)
+                .single();
+
+            const currentBatch = profile?.current_batch || 1;
+            const totalBatchesCompleted = profile?.total_batches_completed || 0;
+
+            // 2. Fetch all user_question_progress for this user
+            const { data: qProgress } = await supabase
+                .from('user_question_progress')
+                .select('batch_number, question_id, score, is_correct, attempts')
+                .eq('user_id', userId);
+
+            // 3. Fetch completed batches from user_batch_progress
+            const { data: bProgress } = await supabase
+                .from('user_batch_progress')
+                .select('*')
+                .eq('user_id', userId)
+                .order('attempt_number', { ascending: true });
+
+            // 4. Fetch total questions per batch
+            const batchTotals = await Promise.all(
+                batchNumbers.map(b => this.getBatchTotalQuestions(b, userId))
+            );
+
+            // Group user_batch_progress by batch_number
+            const batchesByNumber = new Map<number, any[]>();
+            (bProgress || []).forEach(b => {
+                const bNum = b.batch_number;
+                if (!batchesByNumber.has(bNum)) batchesByNumber.set(bNum, []);
+                batchesByNumber.get(bNum)!.push(b);
+            });
+
+            // Group user_question_progress by batch_number
+            const qByBatch = new Map<number, any[]>();
+            (qProgress || []).forEach(q => {
+                const bNum = q.batch_number;
+                if (!qByBatch.has(bNum)) qByBatch.set(bNum, []);
+                qByBatch.get(bNum)!.push(q);
+            });
+
+            let totalMCQsAnswered = (qProgress || []).length;
+            const completedBatchScores: number[] = [];
+
+            const items: BatchPerformanceItem[] = batchNumbers.map((batchNum, idx) => {
+                const totalQ = batchTotals[idx] || 30;
+                const attempts = batchesByNumber.get(batchNum) || [];
+                const qList = qByBatch.get(batchNum) || [];
+                
+                let status: 'completed' | 'in_progress' | 'not_started' = 'not_started';
+                let score = 0;
+                let isPassed = false;
+                let completedAt: string | null = null;
+                const completedAttempts = attempts.filter((a: any) => !String(a.id || '').startsWith('provisional_'));
+
+                if (batchNum < currentBatch || completedAttempts.length > 0) {
+                    status = 'completed';
+                    const latest = completedAttempts.length > 0 ? completedAttempts[completedAttempts.length - 1] : attempts[attempts.length - 1];
+                    score = latest ? Math.min(100, Math.round(latest.score || 0)) : 0;
+                    isPassed = score >= 60 || batchNum < currentBatch;
+                    completedAt = latest?.completed_at || null;
+                    completedBatchScores.push(score);
+                } else if (batchNum === currentBatch) {
+                    status = 'in_progress';
+                    if (qList.length > 0) {
+                        const totalScore = qList.reduce((sum, q) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))), 0);
+                        score = Math.min(100, Math.max(0, Math.round((totalScore / Math.max(1, totalQ)) * 100)));
+                        isPassed = score >= 60;
+                    } else {
+                        score = 0;
+                        isPassed = false;
+                    }
+                } else {
+                    status = 'not_started';
+                    score = 0;
+                    isPassed = false;
+                }
+
+                const answeredCount = status === 'completed'
+                    ? (qList.length > 0 ? qList.length : totalQ)
+                    : qList.length;
+
+                return {
+                    batchNumber: batchNum,
+                    label: `B${batchNum}`,
+                    score,
+                    status,
+                    isPassed,
+                    completedCount: Math.min(answeredCount, totalQ),
+                    totalQuestions: totalQ,
+                    attemptsCount: completedAttempts.length,
+                    completedAt,
+                };
+            });
+
+            const completedCount = items.filter(i => i.status === 'completed').length;
+            const avgScore = completedBatchScores.length > 0
+                ? Math.round(completedBatchScores.reduce((a, b) => a + b, 0) / completedBatchScores.length)
+                : (items.find(i => i.status === 'in_progress' && i.completedCount > 0)?.score || 0);
+
+            const totalMCQs = batchTotals.reduce((a, b) => a + b, 0);
+
+            return {
+                items,
+                stats: {
+                    batchesCompleted: Math.max(completedCount, totalBatchesCompleted),
+                    totalBatches: batchNumbers.length,
+                    mcqsCompleted: totalMCQsAnswered,
+                    totalMCQs: totalMCQs > 0 ? totalMCQs : 240,
+                    averageScore: avgScore,
+                }
+            };
+        } catch (err) {
+            console.error('Error getting user batch performance:', err);
+            return {
+                items: [1, 2, 3, 4, 5, 6, 7, 8].map(b => ({
+                    batchNumber: b,
+                    label: `B${b}`,
+                    score: 0,
+                    status: b === 1 ? 'in_progress' : 'not_started',
+                    isPassed: false,
+                    completedCount: 0,
+                    totalQuestions: 30,
+                    attemptsCount: 0,
+                })),
+                stats: {
+                    batchesCompleted: 0,
+                    totalBatches: 8,
+                    mcqsCompleted: 0,
+                    totalMCQs: 240,
+                    averageScore: 0,
+                }
+            };
+        }
     },
 
     /**
