@@ -587,9 +587,7 @@ export const BatchService = {
                     }
                 }
 
-                const answeredCount = status === 'completed'
-                    ? Math.max(totalQ, qList.length, batchAttemptAnswersCount)
-                    : Math.max(qList.length, batchAttemptAnswersCount);
+                const answeredCount = Math.max(qList.length, batchAttemptAnswersCount);
 
                 return {
                     batchNumber: batchNum,
