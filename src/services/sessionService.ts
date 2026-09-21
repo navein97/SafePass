@@ -9,14 +9,22 @@ const SESSION_ID_KEY = '@safepass_session_id';
 export type SessionTerminationReason = 'concurrent_login' | 'session_revoked';
 
 let activeTerminationCallback: ((reason: SessionTerminationReason) => void) | null = null;
+let inMemorySessionId: string | null = null;
 
 export const SessionService = {
     /**
      * Get the locally stored session ID
      */
     async getLocalSessionId(): Promise<string | null> {
+        if (inMemorySessionId) {
+            return inMemorySessionId;
+        }
         try {
-            return await AsyncStorage.getItem(SESSION_ID_KEY);
+            const stored = await AsyncStorage.getItem(SESSION_ID_KEY);
+            if (stored) {
+                inMemorySessionId = stored;
+            }
+            return stored;
         } catch (e) {
             console.error('[SessionService] Failed to read local session ID:', e);
             return null;
@@ -39,6 +47,9 @@ export const SessionService = {
      */
     async initSession(userId: string): Promise<string> {
         const newSessionId = Crypto.randomUUID();
+        // Immediately set in memory so this device knows its new session ID before any DB or broadcast event
+        inMemorySessionId = newSessionId;
+
         try {
             // 1. Store session ID locally
             await AsyncStorage.setItem(SESSION_ID_KEY, newSessionId);
@@ -120,19 +131,12 @@ export const SessionService = {
      */
     async verifyActiveSession(userId: string): Promise<boolean> {
         try {
-            // 1. Verify that user session is still recognized by Supabase Auth server
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError || !user) {
-                console.log('⚠️ [SessionService] User token invalid or revoked on server');
-                return false;
-            }
-
             const localSessionId = await this.getLocalSessionId();
             if (!localSessionId) {
                 return true;
             }
 
-            // 2. Check if profiles table has a different active session ID
+            // Check if profiles table has a different active session ID
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('current_session_id')
@@ -140,7 +144,7 @@ export const SessionService = {
                 .single();
 
             if (profileError || !profile) {
-                // If profile lookup failed (e.g. column not created yet or network glitch), don't falsely terminate
+                // If profile lookup failed (e.g. network reconnect glitch or offline), do NOT terminate
                 return true;
             }
 
@@ -162,16 +166,9 @@ export const SessionService = {
      */
     async validateOnLaunch(userId: string): Promise<boolean> {
         try {
-            // 1. Check server-side token validity
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError || !user) {
-                console.log('⚠️ [SessionService] Saved session rejected by Supabase Auth server');
-                return false;
-            }
-
             const localSessionId = await this.getLocalSessionId();
 
-            // 2. Query profile current_session_id
+            // Query profile current_session_id
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('current_session_id')
@@ -179,6 +176,7 @@ export const SessionService = {
                 .single();
 
             if (profileError || !profile) {
+                // Network reconnect or temporary glitch on startup — allow session restore
                 return true;
             }
 
@@ -191,6 +189,7 @@ export const SessionService = {
             // If this device doesn't have a local session ID yet (e.g. existing login from before update)
             if (!localSessionId) {
                 const adoptedSessionId = profile.current_session_id || Crypto.randomUUID();
+                inMemorySessionId = adoptedSessionId;
                 await AsyncStorage.setItem(SESSION_ID_KEY, adoptedSessionId);
                 if (!profile.current_session_id) {
                     await supabase.from('profiles').update({ current_session_id: adoptedSessionId }).eq('id', userId);
@@ -234,10 +233,13 @@ export const SessionService = {
                     const incomingSessionId = eventPayload.payload?.newSessionId;
                     const mySessionId = await SessionService.getLocalSessionId();
 
-                    if (incomingSessionId && mySessionId && incomingSessionId !== mySessionId) {
-                        console.log('⚠️ [SessionService] Instant concurrent login broadcast received!');
-                        handleTermination('concurrent_login');
+                    // Ignore own broadcast or empty IDs!
+                    if (!incomingSessionId || !mySessionId || incomingSessionId === mySessionId) {
+                        return;
                     }
+
+                    console.log('⚠️ [SessionService] Instant concurrent login broadcast received!');
+                    handleTermination('concurrent_login');
                 })
                 .on(
                     'postgres_changes',
@@ -250,10 +252,14 @@ export const SessionService = {
                     async (payload) => {
                         const incomingSessionId = (payload.new as any)?.current_session_id;
                         const mySessionId = await SessionService.getLocalSessionId();
-                        if (incomingSessionId && mySessionId && incomingSessionId !== mySessionId) {
-                            console.log('⚠️ [SessionService] Session mismatch detected via DB profile update!');
-                            handleTermination('concurrent_login');
+
+                        // Ignore own DB update or empty IDs!
+                        if (!incomingSessionId || !mySessionId || incomingSessionId === mySessionId) {
+                            return;
                         }
+
+                        console.log('⚠️ [SessionService] Session mismatch detected via DB profile update!');
+                        handleTermination('concurrent_login');
                     }
                 )
                 .subscribe((status) => {
@@ -268,14 +274,19 @@ export const SessionService = {
         // 2. Listen to AppState changes (when returning from background or unlocking phone)
         const appStateSubscription = AppState.addEventListener('change', async (nextState: AppStateStatus) => {
             if (nextState === 'active' && !isTerminated) {
-                const isValid = await SessionService.verifyActiveSession(userId);
-                if (!isValid) {
-                    handleTermination('concurrent_login');
-                }
+                // Delay 1.5s after returning to foreground to allow mobile network stack to reconnect cleanly
+                setTimeout(async () => {
+                    if (!isTerminated && AppState.currentState === 'active') {
+                        const isValid = await SessionService.verifyActiveSession(userId);
+                        if (!isValid) {
+                            handleTermination('concurrent_login');
+                        }
+                    }
+                }, 1500);
             }
         });
 
-        // 3. Periodic in-app heartbeat check (every 5 seconds while active)
+        // 3. Periodic in-app heartbeat check (every 20 seconds while active)
         const heartbeatInterval = setInterval(async () => {
             if (!isTerminated && AppState.currentState === 'active') {
                 const isValid = await SessionService.verifyActiveSession(userId);
@@ -283,7 +294,7 @@ export const SessionService = {
                     handleTermination('concurrent_login');
                 }
             }
-        }, 5000);
+        }, 20000);
 
         // Return cleanup function
         return () => {
@@ -301,6 +312,7 @@ export const SessionService = {
      * Clear local session ID from storage
      */
     async clearSession(): Promise<void> {
+        inMemorySessionId = null;
         try {
             await AsyncStorage.removeItem(SESSION_ID_KEY);
         } catch (e) {

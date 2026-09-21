@@ -296,11 +296,7 @@ export const AuthService = {
         try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) {
-                const localSessionId = await SessionService.getLocalSessionId();
-                if (localSessionId) {
-                    SessionService.notifyTermination('concurrent_login');
-                }
-                return { profile: null, error: 'No user logged in' };
+                return { profile: null, error: userError?.message || 'No user logged in' };
             }
 
             const { data: profile, error } = await supabase
