@@ -40,7 +40,7 @@ import {
   Inter_700Bold 
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
-import { View, StyleSheet, Platform, Alert } from 'react-native';
+import { View, StyleSheet, Platform, Alert, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SessionService, SessionTerminationReason } from './src/services/sessionService';
 import { AuthService } from './src/services/authService';
@@ -79,6 +79,8 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 function AppContent() {
   const { colors, theme } = useTheme();
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const isLargeScreen = Platform.OS === 'web' || width > 768;
 
   useEffect(() => {
     let unsubscribeSessionWatcher: (() => void) | null = null;
@@ -167,7 +169,15 @@ function AppContent() {
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: colors.background.default }]}>
-      <GestureHandlerRootView style={[styles.container, { backgroundColor: colors.background.default }]}>
+      <GestureHandlerRootView 
+        style={[
+          styles.container, 
+          { 
+            backgroundColor: colors.background.default,
+            maxWidth: isLargeScreen ? 1000 : '100%',
+          }
+        ]}
+      >
         <SafeAreaProvider>
           <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background.default} />
           <NavigationContainer 
@@ -269,7 +279,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    maxWidth: Platform.OS === 'web' ? 1000 : undefined,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
