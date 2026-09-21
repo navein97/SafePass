@@ -179,9 +179,24 @@ export function MissionScreen() {
             canAccess = prevBest >= 60;
           }
 
-          const batchCompletedCount = passed
-            ? (batchQProgress.length > 0 ? batchQProgress.length : totalQ)
-            : batchQProgress.length;
+          // Answered count across both question progress and attempt answers
+          let batchAttemptAnswersCount = 0;
+          const latestAttempt = batchAttempts.length > 0 ? batchAttempts[batchAttempts.length - 1] : null;
+          if (latestAttempt?.answers) {
+            let ansList = latestAttempt.answers;
+            if (typeof ansList === 'string') {
+              try { ansList = JSON.parse(ansList); } catch {}
+            }
+            if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+              ansList = Object.values(ansList);
+            }
+            if (Array.isArray(ansList)) {
+              batchAttemptAnswersCount = ansList.length;
+            }
+          }
+
+          const answeredCount = Math.max(batchQProgress.length, batchAttemptAnswersCount);
+          const batchCompletedCount = Math.min(answeredCount, totalQ);
 
           return {
             batchNumber: batchNum,
@@ -241,7 +256,7 @@ export function MissionScreen() {
     const batch = batchStatuses.find(b => b.batchNumber === batchNumber);
 
     if (selectedMode === 'live' && batch) {
-      if (batch.passed) {
+      if (batch.passed && batch.completedCount >= (batch.totalQuestions || 30)) {
         const title = t('quiz.batchCompleted') || 'Goal Done';
         const message = t('quiz.goalDoneMessage') || `Batch Goal Completed! Try Practice Mode for more study.`;
         if (Platform.OS === 'web') {

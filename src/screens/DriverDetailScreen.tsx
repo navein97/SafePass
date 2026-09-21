@@ -104,11 +104,23 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                 const completedAttemptsCount = attempts.filter((a: any) => !String(a.id || '').startsWith('provisional_')).length;
                 const isPassed = batchNum < profile.current_batch || (completedAttemptsCount > 0 && score >= 60);
 
-                const actualAnswered = completedCounts[batchNum] || 0;
-                const rawCompleted = isPassed
-                    ? (actualAnswered > 0 ? actualAnswered : totalQ)
-                    : actualAnswered;
-                const completedCount = Math.min(rawCompleted, totalQ);
+                let attemptAnswersCount = 0;
+                const latestAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+                if (latestAttempt?.answers) {
+                    let ansList = latestAttempt.answers;
+                    if (typeof ansList === 'string') {
+                        try { ansList = JSON.parse(ansList); } catch {}
+                    }
+                    if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+                        ansList = Object.values(ansList);
+                    }
+                    if (Array.isArray(ansList)) {
+                        attemptAnswersCount = ansList.length;
+                    }
+                }
+
+                const actualAnswered = Math.max(completedCounts[batchNum] || 0, attemptAnswersCount);
+                const completedCount = Math.min(actualAnswered, totalQ);
 
                 return {
                     batchNumber: batchNum,

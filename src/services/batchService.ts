@@ -155,8 +155,48 @@ export const BatchService = {
             console.error('Error fetching question progress:', progressError);
         }
 
+        const progressMap = new Map<string, { attempts: number; is_correct: boolean }>();
+        if (progressData) {
+            progressData.forEach(p => {
+                progressMap.set(String(p.question_id), {
+                    attempts: p.attempts,
+                    is_correct: p.is_correct
+                });
+            });
+        }
+
+        // Also check if any answers exist in past batch attempts
+        const { data: pastBatchData } = await supabase
+            .from('user_batch_progress')
+            .select('answers')
+            .eq('user_id', userId)
+            .eq('batch_number', batchNumber);
+
+        if (pastBatchData) {
+            pastBatchData.forEach((b: any) => {
+                let ansList = b.answers;
+                if (typeof ansList === 'string') {
+                    try { ansList = JSON.parse(ansList); } catch {}
+                }
+                if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+                    ansList = Object.values(ansList);
+                }
+                if (Array.isArray(ansList)) {
+                    ansList.forEach((ans: any) => {
+                        const qId = ans?.questionId || ans?.question_id || ans?.id;
+                        if (qId && !progressMap.has(String(qId))) {
+                            progressMap.set(String(qId), {
+                                attempts: ans.attempts || 1,
+                                is_correct: ans.isCorrect ?? ans.is_correct ?? true
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
         const totalQuestionsForBatch = await this.getBatchTotalQuestions(batchNumber, userId);
-        const completedQuestionsCount = (progressData || []).filter(p => p.is_correct || (p.attempts && p.attempts >= 2)).length;
+        const completedQuestionsCount = Array.from(progressMap.values()).filter(p => p.is_correct || (p.attempts && p.attempts >= 2)).length;
 
         // If user already reached the batch target (30 questions), do not serve more questions
         if (completedQuestionsCount >= totalQuestionsForBatch) {
@@ -164,16 +204,6 @@ export const BatchService = {
         }
 
         const remainingNeeded = Math.max(0, totalQuestionsForBatch - completedQuestionsCount);
-
-        const progressMap = new Map<string, { attempts: number; is_correct: boolean }>();
-        if (progressData) {
-            progressData.forEach(p => {
-                progressMap.set(p.question_id, {
-                    attempts: p.attempts,
-                    is_correct: p.is_correct
-                });
-            });
-        }
 
         // Filter out completed questions (correct or 2 wrong attempts)
         const uncompletedData = batchData.filter(q => {
@@ -351,13 +381,28 @@ export const BatchService = {
      */
     async getBatchAverageScore(userId: string, batchNumber: number): Promise<number> {
         const attempts = await this.getBatchAttempts(userId, batchNumber);
-        if (!attempts || attempts.length === 0) {
-            return 0;
+        const completedAttempts = (attempts || []).filter(a => !String(a.id || '').startsWith('provisional_'));
+        if (completedAttempts.length > 0) {
+            const latestAttempt = completedAttempts[completedAttempts.length - 1];
+            return latestAttempt ? latestAttempt.score : 0;
         }
 
-        // Return latest attempt score for this batch
-        const latestAttempt = attempts[attempts.length - 1];
-        return latestAttempt ? latestAttempt.score : 0;
+        // If no completed attempt, check live question progress for in-progress provisional score
+        const [totalQ, { data: qList }] = await Promise.all([
+            this.getBatchTotalQuestions(batchNumber, userId),
+            supabase
+                .from('user_question_progress')
+                .select('score, is_correct, attempts')
+                .eq('user_id', userId)
+                .eq('batch_number', batchNumber)
+        ]);
+
+        if (qList && qList.length > 0) {
+            const totalScore = qList.reduce((sum, q) => sum + parseFloat(String(q.score ?? (q.is_correct ? (q.attempts === 2 ? 0.5 : 1.0) : 0))), 0);
+            return Math.min(100, Math.max(0, Math.round((totalScore / Math.max(1, totalQ)) * 100)));
+        }
+
+        return 0;
     },
 
     /**
@@ -1618,7 +1663,37 @@ export const BatchService = {
         if (profile.batch_lock_override) return false;
 
         if (batchNumber < profile.current_batch) {
-            return true;
+            const totalQ = await this.getBatchTotalQuestions(batchNumber, userId);
+            const { count } = await supabase
+                .from('user_question_progress')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('batch_number', batchNumber);
+
+            const { data: pastAttempts } = await supabase
+                .from('user_batch_progress')
+                .select('answers')
+                .eq('user_id', userId)
+                .eq('batch_number', batchNumber);
+
+            let pastAnswersCount = 0;
+            if (pastAttempts) {
+                pastAttempts.forEach((a: any) => {
+                    let ansList = a.answers;
+                    if (typeof ansList === 'string') {
+                        try { ansList = JSON.parse(ansList); } catch {}
+                    }
+                    if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+                        ansList = Object.values(ansList);
+                    }
+                    if (Array.isArray(ansList)) {
+                        pastAnswersCount = Math.max(pastAnswersCount, ansList.length);
+                    }
+                });
+            }
+
+            const answered = Math.max(count || 0, pastAnswersCount);
+            return answered >= totalQ;
         }
 
         const maxBatches = await this.getMaxBatchNumber();
@@ -1733,7 +1808,7 @@ export const BatchService = {
             });
 
             const score = Math.min(100, Math.max(0, Math.round((totalScore / maxScore) * 100)));
-            const accuracy = Math.min(100, Math.max(0, Math.round((evaluatedAnswers.filter(a => a.is_correct).length / maxScore) * 100)));
+            const accuracy = Math.min(100, Math.max(0, Math.round((evaluatedAnswers.filter(a => a.is_correct).length / Math.max(1, evaluatedAnswers.length)) * 100)));
             const passed = score >= 60;
 
             const { data: pastAttempts } = await supabase
@@ -1782,7 +1857,7 @@ export const BatchService = {
 
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('current_batch, consecutive_resets, company_id')
+                .select('current_batch, total_batches_completed, consecutive_resets, company_id')
                 .eq('id', userId)
                 .single();
 
@@ -1794,11 +1869,13 @@ export const BatchService = {
 
                 const maxBatches = await this.getMaxBatchNumber();
                 const nextBatch = batchNumber < maxBatches ? batchNumber + 1 : maxBatches;
+                const newCurrentBatch = Math.max(profile?.current_batch || 1, nextBatch);
+                const newTotalCompleted = Math.max(profile?.total_batches_completed || 0, batchNumber);
                 await supabase
                     .from('profiles')
                     .update({
-                        current_batch: nextBatch,
-                        total_batches_completed: batchNumber,
+                        current_batch: newCurrentBatch,
+                        total_batches_completed: newTotalCompleted,
                         daily_limit_waived_batch: null,
                         consecutive_resets: resetsMap
                     })

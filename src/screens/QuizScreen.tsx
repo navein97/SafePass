@@ -169,7 +169,7 @@ export const QuizScreen = ({ navigation, route }: any) => {
       if (!canAccess) {
         setLoading(false);
         const title = t('quiz.batchLocked') || 'Batch Locked';
-        const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 70% average score to unlock this batch.`;
+        const message = t('quiz.batchLockedMessage', { prevBatch: batchNumber - 1 }) || `You must complete Batch ${batchNumber - 1} with at least 60% average score to unlock this batch.`;
 
         if (Platform.OS === 'web') {
           window.alert(`${title}\n\n${message}`);
