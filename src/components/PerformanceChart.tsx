@@ -113,6 +113,21 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           completedAt: d.completedAt || null,
         }));
         setBatchItems(normalized);
+
+        const completed = normalized.filter((b: any) => b.status === 'completed');
+        const totalCompletedQs = normalized.reduce((sum: number, b: any) => sum + (b.completedCount || 0), 0);
+        const totalQs = normalized.reduce((sum: number, b: any) => sum + (b.totalQuestions || 30), 0);
+        const avgScore = completed.length > 0
+          ? Math.round(completed.reduce((sum: number, b: any) => sum + b.score, 0) / completed.length)
+          : (normalized.find((b: any) => b.status === 'in_progress' && b.score > 0)?.score || 0);
+
+        setStats({
+          batchesCompleted: completed.length,
+          totalBatches: normalized.length,
+          mcqsCompleted: totalCompletedQs,
+          totalMCQs: totalQs > 0 ? totalQs : 240,
+          averageScore: avgScore,
+        });
       }
     } else if (userId) {
       fetchBatchPerformance();
@@ -233,25 +248,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             </Text>
           </View>
 
-          {/* Card 2: MCQs Completed */}
-          <View
-            style={[
-              styles.metricCard,
-              {
-                backgroundColor: colors.mode === 'light' ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.05)',
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
-              {t('profile.mcqsCompleted', 'MCQs Completed')}
-            </Text>
-            <Text style={[styles.metricValue, { color: colors.text.primary }]}>
-              {stats.mcqsCompleted ?? 0}
-            </Text>
-          </View>
-
-          {/* Card 3: Average Score */}
+          {/* Card 2: Average Score */}
           <View
             style={[
               styles.metricCard,
@@ -311,6 +308,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
               <Stop offset="1" stopColor={colors.primary.DEFAULT} stopOpacity="0.65" />
             </LinearGradient>
           </Defs>
+
+          {/* Dismiss hotspot covering entire chart background */}
+          <Rect
+            x={0}
+            y={0}
+            width={containerWidth}
+            height={height}
+            fill="transparent"
+            onPress={() => setSelectedIndex(null)}
+          />
 
           {/* 100% Top Baseline Grid */}
           <Line
@@ -408,16 +415,6 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
             return (
               <React.Fragment key={`batch-${item.batchNumber}`}>
-                {/* Touch Hotspot covering entire column */}
-                <Rect
-                  x={centerX - slotWidth / 2}
-                  y={0}
-                  width={slotWidth}
-                  height={height}
-                  fill="transparent"
-                  onPress={() => handleBarSelect(index)}
-                />
-
                 {/* Selection Highlight Pillar Background */}
                 {isSelected && (
                   <Rect
@@ -430,6 +427,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                     fill={colors.mode === 'light' ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'}
                     stroke={colors.primary.DEFAULT}
                     strokeWidth="1"
+                    onPress={() => handleBarSelect(index)}
                   />
                 )}
 
@@ -448,6 +446,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                     strokeWidth="1"
                     strokeDasharray="3 3"
                     opacity={0.45}
+                    onPress={() => handleBarSelect(index)}
                   />
                 ) : (
                   /* Filled Proportional Bar */
@@ -467,6 +466,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                         : 'transparent'
                     }
                     strokeWidth={isSelected ? 1.5 : (isInProgress ? 1 : 0)}
+                    onPress={() => handleBarSelect(index)}
                   />
                 )}
 
@@ -488,6 +488,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                   textAnchor="middle"
                   fontWeight={isSelected || isCompleted ? 'bold' : 'normal'}
                   opacity={isNotStarted ? 0.4 : 1}
+                  onPress={() => handleBarSelect(index)}
                 >
                   {isNotStarted ? '--' : `${item.score}%`}
                 </SvgText>
@@ -508,6 +509,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                   textAnchor="middle"
                   fontWeight={isSelected || isInProgress ? 'bold' : '500'}
                   opacity={isNotStarted ? 0.5 : 1}
+                  onPress={() => handleBarSelect(index)}
                 >
                   {item.label}
                 </SvgText>
@@ -528,6 +530,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                   textAnchor="middle"
                   fontWeight="bold"
                   opacity={isNotStarted ? 0.35 : 0.9}
+                  onPress={() => handleBarSelect(index)}
                 >
                   {isCompleted
                     ? (item.isPassed ? '✓' : '!')
@@ -535,6 +538,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                     ? t('profile.currentBatchTag', 'NOW')
                     : '--'}
                 </SvgText>
+
+                {/* Touch Hotspot covering entire column - placed on top of all elements */}
+                <Rect
+                  x={centerX - slotWidth / 2}
+                  y={0}
+                  width={slotWidth}
+                  height={height}
+                  fill="transparent"
+                  onPress={() => handleBarSelect(index)}
+                />
               </React.Fragment>
             );
           })}
@@ -542,8 +555,9 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
         {/* Floating Tooltip / Popover when a bar is selected */}
         {selectedItem && selectedIndex !== null && (
-          <View
-            pointerEvents="none"
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setSelectedIndex(null)}
             style={[
               styles.floatingTooltip,
               {
@@ -586,7 +600,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                 ? t('profile.inProgress', 'In Progress')
                 : `${selectedItem.totalQuestions} ${t('profile.mcqsUnit', 'MCQs')}`}
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       </View>
     </View>

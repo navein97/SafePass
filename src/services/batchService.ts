@@ -492,10 +492,11 @@ export const BatchService = {
                 .eq('user_id', userId)
                 .order('attempt_number', { ascending: true });
 
-            // 4. Fetch total questions per batch
-            const batchTotals = await Promise.all(
-                batchNumbers.map(b => this.getBatchTotalQuestions(b, userId))
-            );
+            // 4. Fetch total questions per batch and canonical answered questions
+            const [batchTotals, totalMCQsAnsweredCanonical] = await Promise.all([
+                Promise.all(batchNumbers.map(b => this.getBatchTotalQuestions(b, userId))),
+                this.getTotalAnsweredQuestions(userId)
+            ]);
 
             // Group user_batch_progress by batch_number
             const batchesByNumber = new Map<number, any[]>();
@@ -513,7 +514,27 @@ export const BatchService = {
                 qByBatch.get(bNum)!.push(q);
             });
 
-            let totalMCQsAnswered = (qProgress || []).length;
+            // Collect unique answered question IDs across both sources
+            const answeredIds = new Set<string>();
+            (qProgress || []).forEach(q => {
+                if (q.question_id) answeredIds.add(String(q.question_id));
+            });
+            (bProgress || []).forEach((b: any) => {
+                let ansList = b.answers;
+                if (typeof ansList === 'string') {
+                    try { ansList = JSON.parse(ansList); } catch {}
+                }
+                if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+                    ansList = Object.values(ansList);
+                }
+                if (Array.isArray(ansList)) {
+                    ansList.forEach((ans: any) => {
+                        const qId = ans?.questionId || ans?.question_id || ans?.id;
+                        if (qId) answeredIds.add(String(qId));
+                    });
+                }
+            });
+
             const completedBatchScores: number[] = [];
 
             const items: BatchPerformanceItem[] = batchNumbers.map((batchNum, idx) => {
@@ -550,9 +571,25 @@ export const BatchService = {
                     isPassed = false;
                 }
 
+                // Answered count for this batch
+                let batchAttemptAnswersCount = 0;
+                const latestAttempt = completedAttempts.length > 0 ? completedAttempts[completedAttempts.length - 1] : attempts[attempts.length - 1];
+                if (latestAttempt?.answers) {
+                    let ansList = latestAttempt.answers;
+                    if (typeof ansList === 'string') {
+                        try { ansList = JSON.parse(ansList); } catch {}
+                    }
+                    if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+                        ansList = Object.values(ansList);
+                    }
+                    if (Array.isArray(ansList)) {
+                        batchAttemptAnswersCount = ansList.length;
+                    }
+                }
+
                 const answeredCount = status === 'completed'
-                    ? (qList.length > 0 ? qList.length : totalQ)
-                    : qList.length;
+                    ? Math.max(totalQ, qList.length, batchAttemptAnswersCount)
+                    : Math.max(qList.length, batchAttemptAnswersCount);
 
                 return {
                     batchNumber: batchNum,
@@ -573,13 +610,15 @@ export const BatchService = {
                 : (items.find(i => i.status === 'in_progress' && i.completedCount > 0)?.score || 0);
 
             const totalMCQs = batchTotals.reduce((a, b) => a + b, 0);
+            const itemsAnsweredSum = items.reduce((sum, item) => sum + item.completedCount, 0);
+            const finalMCQsCompleted = Math.max(totalMCQsAnsweredCanonical, answeredIds.size, itemsAnsweredSum);
 
             return {
                 items,
                 stats: {
                     batchesCompleted: Math.max(completedCount, totalBatchesCompleted),
                     totalBatches: batchNumbers.length,
-                    mcqsCompleted: totalMCQsAnswered,
+                    mcqsCompleted: finalMCQsCompleted,
                     totalMCQs: totalMCQs > 0 ? totalMCQs : 240,
                     averageScore: avgScore,
                 }
