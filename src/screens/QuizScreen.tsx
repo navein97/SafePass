@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { SubscriptionService } from '../services/subscriptionService';
 import { supabase } from '../lib/supabase';
+import * as ScreenCapture from 'expo-screen-capture';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
@@ -71,6 +72,23 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
   useEffect(() => {
     loadQuiz();
+  }, []);
+
+  // Prevent screenshots/screen recording while on Quiz screen
+  useEffect(() => {
+    const activateScreenProtection = async () => {
+      try {
+        await ScreenCapture.preventScreenCaptureAsync('quiz-screen');
+      } catch (e) {
+        // Silently fail on web or unsupported platforms
+        console.log('Screen capture prevention not available:', e);
+      }
+    };
+    activateScreenProtection();
+
+    return () => {
+      ScreenCapture.allowScreenCaptureAsync('quiz-screen').catch(() => {});
+    };
   }, []);
 
   // Handle review phase announcement for both Live and Practice Modes - MODAL VERSION

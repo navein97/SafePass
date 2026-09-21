@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { Question, QuizAttempt } from '../types/models';
 import { GradientBackground } from '../components/ui/GradientBackground';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlassButton } from '../components/ui/GlassButton';
+import * as ScreenCapture from 'expo-screen-capture';
 
 export const ReviewScreen = ({ route, navigation }: any) => {
   const { t } = useTranslation();
@@ -16,6 +17,22 @@ export const ReviewScreen = ({ route, navigation }: any) => {
   const { attempt, questions } = route.params as { attempt: QuizAttempt; questions: Question[] };
 
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  // Prevent screenshots/screen recording while on Review screen
+  useEffect(() => {
+    const activateScreenProtection = async () => {
+      try {
+        await ScreenCapture.preventScreenCaptureAsync('review-screen');
+      } catch (e) {
+        console.log('Screen capture prevention not available:', e);
+      }
+    };
+    activateScreenProtection();
+
+    return () => {
+      ScreenCapture.allowScreenCaptureAsync('review-screen').catch(() => {});
+    };
+  }, []);
 
   return (
     <GradientBackground>
