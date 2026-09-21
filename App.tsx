@@ -98,20 +98,20 @@ function AppContent() {
       const title = t('auth.sessionTerminatedTitle', 'Session Terminated');
       const message = t(
         'auth.concurrentLoginMessage',
-        'You have been logged out because this account was logged in from another device.'
+        'User has logged in on another device.'
       );
-
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.alert(`${title}\n\n${message}`);
-      } else {
-        Alert.alert(title, message, [{ text: 'OK' }]);
-      }
 
       if (navigationRef.isReady()) {
         navigationRef.reset({
           index: 0,
           routes: [{ name: 'Login' }],
         });
+      }
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`${title}\n\n${message}`);
+      } else {
+        Alert.alert(title, message, [{ text: 'OK' }]);
       }
     };
 

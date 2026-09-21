@@ -294,8 +294,14 @@ export const AuthService = {
      */
     async getUserProfile() {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return { profile: null, error: 'No user logged in' };
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) {
+                const localSessionId = await SessionService.getLocalSessionId();
+                if (localSessionId) {
+                    SessionService.notifyTermination('concurrent_login');
+                }
+                return { profile: null, error: 'No user logged in' };
+            }
 
             const { data: profile, error } = await supabase
                 .from('profiles')
@@ -304,6 +310,15 @@ export const AuthService = {
                 .single();
 
             if (error) throw error;
+
+            // Check if active session was superseded by another device
+            const localSessionId = await SessionService.getLocalSessionId();
+            if (profile?.current_session_id && localSessionId && profile.current_session_id !== localSessionId) {
+                console.log('⚠️ [AuthService] Session mismatch detected during getUserProfile');
+                SessionService.notifyTermination('concurrent_login');
+                return { profile: null, error: 'Session superseded' };
+            }
+
             return { profile, error: null };
         } catch (error: any) {
             console.error('Get profile error:', error);

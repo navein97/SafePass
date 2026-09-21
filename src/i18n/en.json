@@ -170,7 +170,7 @@
         "otpIncorrectPhone": "Wrong phone number? Go back to edit",
         "otpVerificationRequired": "Please verify your phone number via SMS to complete registration",
         "sessionTerminatedTitle": "Session Terminated",
-        "concurrentLoginMessage": "You have been logged out because this account was logged in from another device."
+        "concurrentLoginMessage": "User has logged in on another device."
     },
     "leaderboard": {
         "title": "Leaderboard",

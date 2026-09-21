@@ -62,7 +62,7 @@ export const LoginScreen = ({ navigation }: any) => {
           const title = t('auth.sessionTerminatedTitle', 'Session Terminated');
           const message = t(
             'auth.concurrentLoginMessage',
-            'You have been logged out because this account was logged in from another device.'
+            'User has logged in on another device.'
           );
           if (Platform.OS === 'web' && typeof window !== 'undefined') {
             window.alert(`${title}\n\n${message}`);

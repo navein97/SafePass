@@ -8,6 +8,8 @@ const SESSION_ID_KEY = '@safepass_session_id';
 
 export type SessionTerminationReason = 'concurrent_login' | 'session_revoked';
 
+let activeTerminationCallback: ((reason: SessionTerminationReason) => void) | null = null;
+
 export const SessionService = {
     /**
      * Get the locally stored session ID
@@ -18,6 +20,15 @@ export const SessionService = {
         } catch (e) {
             console.error('[SessionService] Failed to read local session ID:', e);
             return null;
+        }
+    },
+
+    /**
+     * Notify active watcher that session has been terminated
+     */
+    notifyTermination(reason: SessionTerminationReason = 'concurrent_login') {
+        if (activeTerminationCallback) {
+            activeTerminationCallback(reason);
         }
     },
 
@@ -55,19 +66,44 @@ export const SessionService = {
             // 4. Broadcast concurrent_login event over Supabase Realtime to instantly invalidate other active devices
             try {
                 const broadcastChannel = supabase.channel(`user_sessions_${userId}`);
-                await broadcastChannel.subscribe();
-                await broadcastChannel.send({
-                    type: 'broadcast',
-                    event: 'concurrent_login',
-                    payload: {
-                        newSessionId,
-                        timestamp: Date.now(),
-                    },
+                await new Promise<void>((resolve) => {
+                    const timer = setTimeout(() => {
+                        try {
+                            supabase.removeChannel(broadcastChannel);
+                        } catch {}
+                        resolve();
+                    }, 2500);
+
+                    broadcastChannel.subscribe(async (status) => {
+                        if (status === 'SUBSCRIBED') {
+                            try {
+                                await broadcastChannel.send({
+                                    type: 'broadcast',
+                                    event: 'concurrent_login',
+                                    payload: {
+                                        newSessionId,
+                                        timestamp: Date.now(),
+                                    },
+                                });
+                            } catch (sendErr) {
+                                console.debug('[SessionService] Broadcast send failed:', sendErr);
+                            }
+                            clearTimeout(timer);
+                            setTimeout(() => {
+                                try {
+                                    supabase.removeChannel(broadcastChannel);
+                                } catch {}
+                            }, 1000);
+                            resolve();
+                        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                            clearTimeout(timer);
+                            try {
+                                supabase.removeChannel(broadcastChannel);
+                            } catch {}
+                            resolve();
+                        }
+                    });
                 });
-                // Remove temporary broadcast channel after short delay
-                setTimeout(() => {
-                    supabase.removeChannel(broadcastChannel);
-                }, 3000);
             } catch (broadcastErr) {
                 console.debug('[SessionService] Broadcast session eviction (non-critical):', broadcastErr);
             }
@@ -169,8 +205,8 @@ export const SessionService = {
     },
 
     /**
-     * Starts listening for concurrent login events via Supabase Realtime broadcast
-     * and AppState transitions to 'active'.
+     * Starts listening for concurrent login events via Supabase Realtime broadcast,
+     * Postgres changes on profiles, AppState transitions, and periodic in-app heartbeat.
      * Returns an unsubscribe function.
      */
     startSessionWatcher(
@@ -187,7 +223,10 @@ export const SessionService = {
             onTerminated(reason);
         };
 
-        // 1. Subscribe to Realtime broadcast channel for instant eviction (< 100ms)
+        // Register global callback so other services (e.g. AuthService) can trigger eviction
+        activeTerminationCallback = handleTermination;
+
+        // 1. Subscribe to Realtime broadcast & Postgres changes for instant eviction
         try {
             listenerChannel = supabase.channel(`user_sessions_${userId}`);
             listenerChannel
@@ -200,6 +239,23 @@ export const SessionService = {
                         handleTermination('concurrent_login');
                     }
                 })
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'profiles',
+                        filter: `id=eq.${userId}`,
+                    },
+                    async (payload) => {
+                        const incomingSessionId = (payload.new as any)?.current_session_id;
+                        const mySessionId = await SessionService.getLocalSessionId();
+                        if (incomingSessionId && mySessionId && incomingSessionId !== mySessionId) {
+                            console.log('⚠️ [SessionService] Session mismatch detected via DB profile update!');
+                            handleTermination('concurrent_login');
+                        }
+                    }
+                )
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         console.log(`🔌 [SessionService] Subscribed to session channel for user ${userId}`);
@@ -219,9 +275,21 @@ export const SessionService = {
             }
         });
 
+        // 3. Periodic in-app heartbeat check (every 5 seconds while active)
+        const heartbeatInterval = setInterval(async () => {
+            if (!isTerminated && AppState.currentState === 'active') {
+                const isValid = await SessionService.verifyActiveSession(userId);
+                if (!isValid) {
+                    handleTermination('concurrent_login');
+                }
+            }
+        }, 5000);
+
         // Return cleanup function
         return () => {
             isTerminated = true;
+            activeTerminationCallback = null;
+            clearInterval(heartbeatInterval);
             appStateSubscription.remove();
             if (listenerChannel) {
                 supabase.removeChannel(listenerChannel);

@@ -172,7 +172,7 @@
         "otpIncorrectPhone": "Nombor telefon salah? Kembali untuk kemas kini",
         "otpVerificationRequired": "Sila sahkan nombor telefon anda melalui SMS untuk melengkapkan pendaftaran",
         "sessionTerminatedTitle": "Sesi Ditamatkan",
-        "concurrentLoginMessage": "Anda telah dilog keluar kerana akaun ini telah dilog masuk dari peranti lain."
+        "concurrentLoginMessage": "Pengguna telah log masuk pada peranti lain."
     },
     "leaderboard": {
         "title": "Papan Pendahulu",
