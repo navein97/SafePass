@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { Region } from '../types/models';
 import { Platform } from 'react-native';
 import { NotificationService } from './notificationService';
+import { SessionService } from './sessionService';
 
 /**
  * Silently inserts a row into login_logs.
@@ -194,6 +195,9 @@ export const AuthService = {
                 throw new Error('Account inactive. Please contact your administrator.');
             }
 
+            // Initialize single active session (generates session ID, revokes other device tokens, broadcasts eviction)
+            await SessionService.initSession(authData.user.id);
+
             // Log successful password login (fire-and-forget)
             _logLoginActivity({
                 userId: authData.user.id,
@@ -275,6 +279,7 @@ export const AuthService = {
             // Clear push token before signing out so this device
             // stops receiving notifications for the old user
             await NotificationService.clearPushToken();
+            await SessionService.clearSession();
             const { error } = await supabase.auth.signOut();
             if (error) throw error;
             return { error: null };

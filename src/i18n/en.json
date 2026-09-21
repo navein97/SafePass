@@ -168,7 +168,9 @@
         "otpSendFailed": "Failed to send code. Please try again.",
         "otpSmsNote": "Enter the 6-digit code from Firebase",
         "otpIncorrectPhone": "Wrong phone number? Go back to edit",
-        "otpVerificationRequired": "Please verify your phone number via SMS to complete registration"
+        "otpVerificationRequired": "Please verify your phone number via SMS to complete registration",
+        "sessionTerminatedTitle": "Session Terminated",
+        "concurrentLoginMessage": "You have been logged out because this account was logged in from another device."
     },
     "leaderboard": {
         "title": "Leaderboard",

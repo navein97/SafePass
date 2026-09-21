@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -40,8 +40,10 @@ import {
   Inter_700Bold 
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
-import { useCallback } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { SessionService, SessionTerminationReason } from './src/services/sessionService';
+import { AuthService } from './src/services/authService';
 
 import * as Linking from 'expo-linking';
 
@@ -76,8 +78,51 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
 function AppContent() {
   const { colors, theme } = useTheme();
+  const { t } = useTranslation();
 
   useEffect(() => {
+    let unsubscribeSessionWatcher: (() => void) | null = null;
+
+    const handleSessionTerminated = async (reason: SessionTerminationReason) => {
+      console.warn('⚠️ Session terminated due to:', reason);
+
+      if (unsubscribeSessionWatcher) {
+        unsubscribeSessionWatcher();
+        unsubscribeSessionWatcher = null;
+      }
+
+      await AuthService.signOut();
+
+      const title = t('auth.sessionTerminatedTitle', 'Session Terminated');
+      const message = t(
+        'auth.concurrentLoginMessage',
+        'You have been logged out because this account was logged in from another device.'
+      );
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`${title}\n\n${message}`);
+      } else {
+        Alert.alert(title, message, [{ text: 'OK' }]);
+      }
+
+      if (navigationRef.isReady()) {
+        navigationRef.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      }
+    };
+
+    // Check if there's already an active session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.id) {
+        unsubscribeSessionWatcher = SessionService.startSessionWatcher(
+          session.user.id,
+          handleSessionTerminated
+        );
+      }
+    });
+
     // Listen for auth state changes globally
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔔 Auth Event:', event);
@@ -86,7 +131,21 @@ function AppContent() {
         // This ensures the device's push token is always associated with the current user
         console.log('📱 Registering push token for user:', session.user.id);
         await NotificationService.registerForPushNotificationsAsync();
+
+        if (unsubscribeSessionWatcher) {
+          unsubscribeSessionWatcher();
+        }
+        unsubscribeSessionWatcher = SessionService.startSessionWatcher(
+          session.user.id,
+          handleSessionTerminated
+        );
+      } else if (event === 'SIGNED_OUT') {
+        if (unsubscribeSessionWatcher) {
+          unsubscribeSessionWatcher();
+          unsubscribeSessionWatcher = null;
+        }
       }
+
       if (event === 'PASSWORD_RECOVERY') {
         console.log('✅ PASSWORD_RECOVERY detected - navigating to ResetPassword');
         // Wait a small bit for navigation to be ready
@@ -100,8 +159,11 @@ function AppContent() {
 
     return () => {
       authListener.subscription.unsubscribe();
+      if (unsubscribeSessionWatcher) {
+        unsubscribeSessionWatcher();
+      }
     };
-  }, []);
+  }, [t]);
 
   return (
     <View style={[styles.rootWrapper, { backgroundColor: colors.background.default }]}>

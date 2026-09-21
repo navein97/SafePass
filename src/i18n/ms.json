@@ -170,7 +170,9 @@
         "otpSendFailed": "Gagal menghantar kod. Sila cuba lagi.",
         "otpSmsNote": "Masukkan kod 6 digit daripada Firebase",
         "otpIncorrectPhone": "Nombor telefon salah? Kembali untuk kemas kini",
-        "otpVerificationRequired": "Sila sahkan nombor telefon anda melalui SMS untuk melengkapkan pendaftaran"
+        "otpVerificationRequired": "Sila sahkan nombor telefon anda melalui SMS untuk melengkapkan pendaftaran",
+        "sessionTerminatedTitle": "Sesi Ditamatkan",
+        "concurrentLoginMessage": "Anda telah dilog keluar kerana akaun ini telah dilog masuk dari peranti lain."
     },
     "leaderboard": {
         "title": "Papan Pendahulu",

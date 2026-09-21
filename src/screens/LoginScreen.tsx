@@ -17,6 +17,7 @@ import { CompanySettingsService } from '../services/companySettingsService';
 import { WorkspaceService } from '../services/workspaceService';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SessionService } from '../services/sessionService';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t, i18n } = useTranslation();
@@ -53,8 +54,26 @@ export const LoginScreen = ({ navigation }: any) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // User has a persisted session — skip login screen
-        console.log('✅ Existing session found, auto-navigating to MainTabs');
+        // Validate with SessionService to ensure this device's session hasn't been superseded
+        const isValid = await SessionService.validateOnLaunch(session.user.id);
+        if (!isValid) {
+          console.log('⚠️ [LoginScreen] Saved session invalid or superseded by another device');
+          await AuthService.signOut();
+          const title = t('auth.sessionTerminatedTitle', 'Session Terminated');
+          const message = t(
+            'auth.concurrentLoginMessage',
+            'You have been logged out because this account was logged in from another device.'
+          );
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            window.alert(`${title}\n\n${message}`);
+          } else {
+            Alert.alert(title, message, [{ text: 'OK' }]);
+          }
+          return;
+        }
+
+        // User has a valid persisted session — skip login screen
+        console.log('✅ Existing session valid, auto-navigating to MainTabs');
         // Log session restore event (fire-and-forget)
         AuthService.logSessionRestore(session.user.id).catch(() => {});
         await WorkspaceService.setupWorkspaceIfNeeded();
