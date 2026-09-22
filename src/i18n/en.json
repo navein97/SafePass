@@ -324,6 +324,7 @@
         "completed": "completed",
         "failedReviewDesc": "Please review the explanations below before retaking this batch.",
         "questionNumber": "Question {{number}}",
+        "questionUnavailable": "This question is no longer available",
         "restartBatch": "Return",
         "tryAgain": "Try Again"
     },

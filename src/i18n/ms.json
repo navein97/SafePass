@@ -326,6 +326,7 @@
         "completed": "selesai",
         "failedReviewDesc": "Sila semak penjelasan di bawah sebelum menduduki semula batch ini.",
         "questionNumber": "Soalan {{number}}",
+        "questionUnavailable": "Soalan ini tidak lagi tersedia",
         "restartBatch": "Kembali",
         "tryAgain": "Cuba Lagi"
     },

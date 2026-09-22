@@ -399,7 +399,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
 
                 // Fallback for questions removed from DB
                 if (!qText) {
-                    qText = '⚠️ Question removed from database';
+                    qText = `⚠️ ${t('quiz.questionUnavailable', 'This question is no longer available')}`;
                 }
 
                 incorrectList.push({
@@ -414,7 +414,7 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
             }
         });
         return incorrectList;
-    }, [batchQuestions, progressList]);
+    }, [batchQuestions, progressList, t]);
 
     const INCORRECT_PER_PAGE = 10;
     const incorrectTotalPages = Math.ceil(incorrectQuestions.length / INCORRECT_PER_PAGE);
