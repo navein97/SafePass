@@ -72,6 +72,27 @@ export const LoginScreen = ({ navigation }: any) => {
           return;
         }
 
+        // If on web, ensure driver cannot restore session
+        if (Platform.OS === 'web') {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+          const role = profile?.role || session.user.user_metadata?.role || 'driver';
+          if (role === 'driver') {
+            await AuthService.signOut();
+            const message = t('auth.driverMobileOnly', 'Please use the mobile app to access your quizzes and account.');
+            if (typeof window !== 'undefined') {
+              window.alert(message);
+            } else {
+              Alert.alert(t('auth.loginFailed', 'Login Failed'), message, [{ text: 'OK' }]);
+            }
+            return;
+          }
+        }
+
         // User has a valid persisted session — skip login screen
         console.log('✅ Existing session valid, auto-navigating to MainTabs');
         // Log session restore event (fire-and-forget)
@@ -153,9 +174,15 @@ export const LoginScreen = ({ navigation }: any) => {
     setLoading(false);
 
     if (error) {
-      const friendlyMsg = Validation.getFriendlyErrorMessage(error);
+      const friendlyMsg = error.includes('mobile app') 
+        ? t('auth.driverMobileOnly', 'Please use the mobile app to access your quizzes and account.')
+        : Validation.getFriendlyErrorMessage(error);
       setErrors(prev => ({ ...prev, general: friendlyMsg }));
-      Alert.alert(t('auth.loginFailed', 'Login Failed'), friendlyMsg);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`${t('auth.loginFailed', 'Login Failed')}\n\n${friendlyMsg}`);
+      } else {
+        Alert.alert(t('auth.loginFailed', 'Login Failed'), friendlyMsg);
+      }
     } else if (session) {
       await WorkspaceService.setupWorkspaceIfNeeded();
       

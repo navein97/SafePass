@@ -195,6 +195,12 @@ export const AuthService = {
                 throw new Error('Account inactive. Please contact your administrator.');
             }
 
+            const userRole = profileData?.role || authData.user.user_metadata?.role || 'driver';
+            if (Platform.OS === 'web' && userRole === 'driver') {
+                await supabase.auth.signOut();
+                throw new Error('Please use the mobile app to access your quizzes and account.');
+            }
+
             // Initialize single active session (generates session ID, revokes other device tokens, broadcasts eviction)
             await SessionService.initSession(authData.user.id);
 
