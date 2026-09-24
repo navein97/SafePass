@@ -24,6 +24,7 @@ import { Lock, CheckCircle, PlayCircle, AlertCircle, Target, ArrowLeft } from 'l
 import { SubscriptionService } from '../services/subscriptionService';
 import { supabase } from '../lib/supabase';
 import { CacheService, formatTimeAgo, isDataEqual } from '../services/cacheService';
+import { getStartOfTodayUtc8, getStartOfTodayUtc8Ms } from '../utils/dateUtils';
 
 interface BatchStatus {
   batchNumber: number;
@@ -70,11 +71,7 @@ export function MissionScreen() {
     const cached = await CacheService.get<BatchStatus[]>('mission_batch_statuses');
     if (cached && cached.data && cached.data.length > 0) {
       // If cache is from a previous day (midnight UTC+8), dailyCount is 0 for today
-      const now = new Date();
-      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-      const serverTime = new Date(utc + (3600000 * 8));
-      serverTime.setHours(0, 0, 0, 0);
-      const startOfTodayUtc8Ms = serverTime.getTime() - (3600000 * 8);
+      const startOfTodayUtc8Ms = getStartOfTodayUtc8Ms();
 
       const isCacheFromPreviousDay = cached.lastUpdated < startOfTodayUtc8Ms;
       const initialStatuses = isCacheFromPreviousDay
@@ -127,12 +124,8 @@ export function MissionScreen() {
             .select('id, batch_number, driver_categories'),
         ]);
 
-        // Calculate start of today in UTC+8
-        const now = new Date();
-        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-        const serverTime = new Date(utc + (3600000 * 8));
-        serverTime.setHours(0, 0, 0, 0);
-        const startOfTodayUtc8 = new Date(serverTime.getTime() - (3600000 * 8));
+        // Calculate start of today in UTC+8 (independent of device timezone)
+        const startOfTodayUtc8 = getStartOfTodayUtc8();
 
         const dailyCountToday = (allQProgress || []).filter(
           q => new Date(q.completed_at) >= startOfTodayUtc8

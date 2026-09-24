@@ -4,6 +4,7 @@ import { getWeek, getYear } from 'date-fns';
 import * as Crypto from 'expo-crypto';
 import { PracticeService } from './practiceService';
 import { ScoringService, DimensionScores } from './scoringService';
+import { getStartOfTodayUtc8 } from '../utils/dateUtils';
 
 
 export interface BatchProgress {
@@ -1735,12 +1736,8 @@ export const BatchService = {
         const isOverridden = profile?.daily_limit_override || false;
         const isWaived = profile?.daily_limit_waived_batch === batchNumber;
 
-        // Calculate start of today in UTC+8 (KL/Singapore timezone)
-        const now = new Date();
-        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-        const serverTime = new Date(utc + (3600000 * 8)); 
-        serverTime.setHours(0, 0, 0, 0);
-        const startOfTodayUtc8 = new Date(serverTime.getTime() - (3600000 * 8));
+        // Calculate start of today in UTC+8 (KL/Singapore timezone, independent of device timezone)
+        const startOfTodayUtc8 = getStartOfTodayUtc8();
 
         const { count, error: countError } = await supabase
             .from('user_question_progress')
