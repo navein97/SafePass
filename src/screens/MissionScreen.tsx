@@ -169,7 +169,14 @@ export function MissionScreen() {
             }
           }
 
-          const answeredCount = Math.max(batchQProgress.length, batchAttemptAnswersCount);
+          const hasPassedAttempt = batchAttempts.some(a => parseFloat(String(a.score || 0)) >= 60);
+
+          let answeredCount = Math.max(batchQProgress.length, batchAttemptAnswersCount);
+          // Legacy normalization: If the user officially passed this batch (e.g. legacy 24-question version),
+          // normalize their progress to totalQ (30/30) so they aren't displayed as 24/30 with Passed.
+          if (hasPassedAttempt) {
+            answeredCount = Math.max(answeredCount, totalQ);
+          }
           const batchCompletedCount = Math.min(answeredCount, totalQ);
 
           // Score calculation
@@ -181,12 +188,14 @@ export function MissionScreen() {
             score = Math.min(100, Math.max(0, Math.round((totalEarned / Math.max(1, totalQ)) * 100)));
           }
 
-          // Passed = status shows "Passed" (score >= 60)
-          const passed = batchNum < currentBatch || score >= 60;
+          // Passed = STRICTLY requires all 30 questions completed (batchCompletedCount >= totalQ) AND score >= 60
+          // (or an official past attempt that passed). Mid-quiz progress (e.g. 25/30) is NEVER marked as Passed.
+          const isFullyCompleted = batchCompletedCount >= totalQ;
+          const passed = hasPassedAttempt || (isFullyCompleted && score >= 60);
 
-          // Access: Batch 1 always open. Otherwise, previous batch must be passed.
+          // Access: Batch 1 always open. Otherwise, previous batch must be passed (30/30 and score >= 60) or admin override.
           const prevBatchPassed = idx > 0 ? result[idx - 1].passed : false;
-          const canAccess = batchNum === 1 || isOverridden || batchNum <= currentBatch || prevBatchPassed;
+          const canAccess = batchNum === 1 || isOverridden || prevBatchPassed;
 
           result.push({
             batchNumber: batchNum,
@@ -456,11 +465,13 @@ export function MissionScreen() {
                               style={[
                                 styles.statValue,
                                 batch.passed && styles.statValuePassed,
-                                !batch.passed && styles.statValueFailed,
+                                !batch.passed && (batch.completedCount >= (batch.totalQuestions || 30) ? styles.statValueFailed : styles.statValueInProgress),
                               ]}
                             >
                               {batch.passed
                                 ? `✓ ${t('mission.passed')}`
+                                : batch.completedCount >= (batch.totalQuestions || 30)
+                                ? `${t('mission.failed', 'Failed')}`
                                 : `${t('mission.inProgress', 'In Progress')}`}
                             </Text>
                           </View>
@@ -605,6 +616,9 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   statValueFailed: {
     color: '#FF6B6B',
+  },
+  statValueInProgress: {
+    color: '#F59E0B',
   },
   notStartedText: {
     fontSize: 16,

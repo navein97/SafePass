@@ -366,9 +366,8 @@ export const BatchService = {
             .single();
 
         if (profile?.batch_lock_override) return true;
-        if (batchNumber <= (profile?.current_batch || 1)) return true;
 
-        // Previous batch passed (score >= 60)? Then this batch is unlocked.
+        // Check if previous batch was passed (attempt score >= 60)
         const { data: prevAttempts } = await supabase
             .from('user_batch_progress')
             .select('score')
@@ -376,7 +375,16 @@ export const BatchService = {
             .eq('batch_number', batchNumber - 1);
 
         const prevBest = Math.max(0, ...(prevAttempts || []).map(a => parseFloat(String(a.score || 0))));
-        return prevBest >= 60;
+        if (prevBest >= 60) return true;
+
+        // Fallback for legacy completions (e.g. drivers who finished batch when it had 24 questions):
+        // If current_batch advanced to this batch or higher, verify that previous batch reached passing score
+        if ((profile?.current_batch || 1) >= batchNumber) {
+            const prevScore = await this.getBatchAverageScore(userId, batchNumber - 1);
+            if (prevScore >= 60) return true;
+        }
+
+        return false;
     },
 
     /**
@@ -1675,9 +1683,12 @@ export const BatchService = {
 
             const { data: pastAttempts } = await supabase
                 .from('user_batch_progress')
-                .select('answers')
+                .select('answers, score')
                 .eq('user_id', userId)
                 .eq('batch_number', batchNumber);
+
+            const hasPassedAttempt = (pastAttempts || []).some(a => parseFloat(String(a.score || 0)) >= 60);
+            if (hasPassedAttempt) return true;
 
             let pastAnswersCount = 0;
             if (pastAttempts) {
