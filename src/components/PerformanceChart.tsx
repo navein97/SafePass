@@ -59,17 +59,6 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   const fetchBatchPerformance = useCallback(async () => {
     if (!userId) return;
 
-    if (cacheRef.current) {
-      setBatchItems(cacheRef.current.items);
-      setStats(cacheRef.current.stats);
-      // Default selection to currently active in_progress batch or latest completed
-      const activeIdx = cacheRef.current.items.findIndex(b => b.status === 'in_progress');
-      if (activeIdx !== -1) {
-        setSelectedIndex(activeIdx);
-      }
-      return;
-    }
-
     setLoading(true);
     try {
       const result = await BatchService.getUserBatchPerformance(userId);

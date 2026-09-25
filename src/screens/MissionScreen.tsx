@@ -315,11 +315,6 @@ export function MissionScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>{t('mission.trainingTitle')}</Text>
           <Text style={styles.subtitle}>{t('mission.trainingSubtitle')}</Text>
-          {lastUpdatedText ? (
-            <Text style={{ fontSize: 11, color: colors.text.tertiary, marginTop: 4, fontFamily: typography.fonts.regular }}>
-              {t('common.lastUpdated', 'Last updated')} {lastUpdatedText}
-            </Text>
-          ) : null}
         </View>
 
         <ScrollView 

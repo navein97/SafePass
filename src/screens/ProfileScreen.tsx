@@ -618,11 +618,6 @@ export const ProfileScreen = ({ navigation }: any) => {
           <View style={styles.header}>
             <View>
               <Text style={styles.title}>{t('profile.title')}</Text>
-              {lastUpdatedText ? (
-                <Text style={{ fontSize: 11, color: colors.text.tertiary, marginTop: 2, fontFamily: typography.fonts.regular }}>
-                  {t('common.lastUpdated', 'Last updated')} {lastUpdatedText}
-                </Text>
-              ) : null}
             </View>
             <View style={styles.headerActions}>
                <TouchableOpacity 
