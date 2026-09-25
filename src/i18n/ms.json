@@ -173,7 +173,7 @@
         "otpVerificationRequired": "Sila sahkan nombor telefon anda melalui SMS untuk melengkapkan pendaftaran",
         "sessionTerminatedTitle": "Sesi Ditamatkan",
         "concurrentLoginMessage": "Pengguna telah log masuk pada peranti lain.",
-        "driverMobileOnly": "Sila gunakan telefon app."
+        "driverMobileOnly": "Bagi Pemandu, sila gunakan aplikasi telefon"
     },
     "leaderboard": {
         "title": "Papan Pendahulu",
