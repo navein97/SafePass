@@ -119,7 +119,11 @@ export const DriverDetailScreen = ({ navigation, route }: any) => {
                     }
                 }
 
-                const actualAnswered = Math.max(completedCounts[batchNum] || 0, attemptAnswersCount);
+                let actualAnswered = Math.max(completedCounts[batchNum] || 0, attemptAnswersCount);
+                // Legacy normalization: If the batch is already passed (e.g. legacy 24-question version), normalize to totalQ
+                if (isPassed) {
+                    actualAnswered = Math.max(actualAnswered, totalQ);
+                }
                 const completedCount = Math.min(actualAnswered, totalQ);
 
                 return {

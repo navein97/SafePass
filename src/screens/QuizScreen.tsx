@@ -559,19 +559,47 @@ export const QuizScreen = ({ navigation, route }: any) => {
 
       const timeSpentSeconds = Math.floor((Date.now() - startTime) / 1000);
 
-      const { count } = await supabase
-        .from('user_question_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('batch_number', batchNumber);
+      const [
+        { count: qCount },
+        { data: pastAttempts }
+      ] = await Promise.all([
+        supabase
+          .from('user_question_progress')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('batch_number', batchNumber),
+        supabase
+          .from('user_batch_progress')
+          .select('answers, score')
+          .eq('user_id', userId)
+          .eq('batch_number', batchNumber)
+      ]);
 
-      const completedCount = count || 0;
+      let pastAnswersCount = 0;
+      const hasPassedAttempt = (pastAttempts || []).some(a => parseFloat(String(a.score || 0)) >= 60);
+      if (pastAttempts) {
+        pastAttempts.forEach((a: any) => {
+          let ansList = a.answers;
+          if (typeof ansList === 'string') {
+            try { ansList = JSON.parse(ansList); } catch {}
+          }
+          if (ansList && typeof ansList === 'object' && !Array.isArray(ansList)) {
+            ansList = Object.values(ansList);
+          }
+          if (Array.isArray(ansList)) {
+            pastAnswersCount = Math.max(pastAnswersCount, ansList.length);
+          }
+        });
+      }
 
+      const totalBQ = totalBatchQuestions || await BatchService.getBatchTotalQuestions(batchNumber, userId);
+      let completedCount = Math.max(qCount || 0, pastAnswersCount);
+      if (hasPassedAttempt) {
+        completedCount = Math.max(completedCount, totalBQ);
+      }
 
       // Clear local progress since this daily session is resolved
       await QuizStorageService.clearProgress(userId, batchNumber, mode);
-
-      const totalBQ = totalBatchQuestions || await BatchService.getBatchTotalQuestions(batchNumber, userId);
 
       // Check for any newly earned milestones
       try {

@@ -643,7 +643,11 @@ export const BatchService = {
                     }
                 }
 
-                const answeredCount = Math.max(qList.length, batchAttemptAnswersCount);
+                let answeredCount = Math.max(qList.length, batchAttemptAnswersCount);
+                // Legacy normalization: If this batch is completed & passed, normalize answeredCount to totalQ (30/30)
+                if (status === 'completed' && isPassed) {
+                    answeredCount = Math.max(answeredCount, totalQ);
+                }
 
                 return {
                     batchNumber: batchNum,
