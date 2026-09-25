@@ -244,6 +244,7 @@ export const BillingScreen = ({ navigation }: any) => {
     // Check if this package is the one recommended for the input count
     const isRecommended = calculatedTier?.id === pkg.id && inputCount > 0;
     const isStandard = pkg.id.toLowerCase() === 'standard';
+    const isEligibleForFreeTrial = isStandard && !currentSubscription?.has_used_free_trial;
     
     // Determine if the package is invalid for the current input
     const isInvalid = (inputCount > 0) && ((pkg.maxDrivers !== null && inputCount > pkg.maxDrivers) || (pkg.minDrivers > 1 && inputCount < pkg.minDrivers));
@@ -284,7 +285,7 @@ export const BillingScreen = ({ navigation }: any) => {
               <Text style={styles.currentBadgeText}>{t('billing.currentPlan')}</Text>
             </View>
           )}
-          {isStandard && !isCurrent && (
+          {isEligibleForFreeTrial && !isCurrent && (
             <View style={[styles.currentBadge, { backgroundColor: '#F59E0B20' }]}>
               <Zap size={14} color="#F59E0B" />
               <Text style={[styles.currentBadgeText, { color: '#F59E0B' }]}>1 Month Free</Text>
@@ -303,7 +304,7 @@ export const BillingScreen = ({ navigation }: any) => {
           <Text style={styles.pricePer}>/ {t('billing.perDriverYear')}</Text>
         </View>
         
-        {isStandard && (
+        {isEligibleForFreeTrial && (
           <Text style={{ fontSize: 13, color: colors.text.secondary, fontFamily: typography.fonts.regular, marginBottom: 16 }}>
              Start free for 1 month, no payment required, then RM 120/driver/year
           </Text>
@@ -338,7 +339,7 @@ export const BillingScreen = ({ navigation }: any) => {
           <Text style={styles.exampleSubtext}>
             + {calculateFreeManagers(displayCount, pkg.freeManagerRatio)} {t('billing.freeManagers')}
           </Text>
-          {isStandard && (
+          {isEligibleForFreeTrial && (
             <View style={{ marginTop: 12, backgroundColor: '#F59E0B15', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B50' }}>
               <Text style={{ fontSize: 13, fontFamily: typography.fonts.bold, color: '#F59E0B', textAlign: 'center' }}>
                 First 1 month free, no payment required!
