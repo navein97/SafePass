@@ -359,22 +359,24 @@ export const BatchService = {
     async canAccessBatch(userId: string, batchNumber: number): Promise<boolean> {
         if (batchNumber === 1) return true;
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
             .from('profiles')
             .select('batch_lock_override, current_batch')
             .eq('id', userId)
             .single();
 
-        if (profileError) {
-            console.error('Error fetching profile overrides for canAccessBatch:', profileError);
-        }
+        if (profile?.batch_lock_override) return true;
+        if (batchNumber <= (profile?.current_batch || 1)) return true;
 
-        if (profile?.batch_lock_override) {
-            return true;
-        }
+        // Previous batch passed (score >= 60)? Then this batch is unlocked.
+        const { data: prevAttempts } = await supabase
+            .from('user_batch_progress')
+            .select('score')
+            .eq('user_id', userId)
+            .eq('batch_number', batchNumber - 1);
 
-        const currentBatch = profile?.current_batch || 1;
-        return batchNumber <= currentBatch;
+        const prevBest = Math.max(0, ...(prevAttempts || []).map(a => parseFloat(String(a.score || 0))));
+        return prevBest >= 60;
     },
 
     /**

@@ -135,42 +135,23 @@ export function MissionScreen() {
         const currentBatch = profile.current_batch || 1;
         const isOverridden = profile.batch_lock_override || false;
 
-        return batchNumbers.map(batchNum => {
+        const result: any[] = [];
+
+        batchNumbers.forEach((batchNum, idx) => {
           // Attempts for this batch
-          const batchAttempts = (allBatchAttempts || []).filter(a => a.batch_number === batchNum);
-          const batchQProgress = (allQProgress || []).filter(q => q.batch_number === batchNum);
+          const batchAttempts = (allBatchAttempts || []).filter(a => Number(a.batch_number) === batchNum);
+          const batchQProgress = (allQProgress || []).filter(q => Number(q.batch_number) === batchNum);
           const batchDailyCount = batchQProgress.filter(
             q => new Date(q.completed_at) >= startOfTodayUtc8
           ).length;
 
           // Matching questions count
           const batchQuestions = (allQuestionsData || []).filter(q => {
-            if (q.batch_number !== batchNum) return false;
+            if (Number(q.batch_number) !== batchNum) return false;
             if (!vType || !q.driver_categories || !Array.isArray(q.driver_categories) || q.driver_categories.length === 0) return true;
             return q.driver_categories.includes(vType) || q.driver_categories.includes('All');
           });
           const totalQ = Math.min(30, batchQuestions.length > 0 ? batchQuestions.length : 30);
-
-          // Score calculation
-          let score = 0;
-          if (batchAttempts.length > 0) {
-            score = Math.min(100, batchAttempts[batchAttempts.length - 1]?.score || 0);
-          } else if (batchQProgress.length > 0) {
-            const totalEarned = batchQProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
-            score = Math.min(100, Math.max(0, Math.round((totalEarned / Math.max(1, totalQ)) * 100)));
-          }
-
-          const passed = batchNum < currentBatch || (batchAttempts.length > 0 && score >= 60);
-
-          // Access check
-          let canAccess = false;
-          if (batchNum === 1 || isOverridden || batchNum <= currentBatch) {
-            canAccess = true;
-          } else {
-            const prevAttempts = (allBatchAttempts || []).filter(a => a.batch_number === batchNum - 1);
-            const prevBest = Math.max(0, ...prevAttempts.map(a => a.score || 0));
-            canAccess = prevBest >= 60;
-          }
 
           // Answered count across both question progress and attempt answers
           let batchAttemptAnswersCount = 0;
@@ -191,7 +172,23 @@ export function MissionScreen() {
           const answeredCount = Math.max(batchQProgress.length, batchAttemptAnswersCount);
           const batchCompletedCount = Math.min(answeredCount, totalQ);
 
-          return {
+          // Score calculation
+          let score = 0;
+          if (batchAttempts.length > 0) {
+            score = Math.min(100, parseFloat(String(batchAttempts[batchAttempts.length - 1]?.score || 0)));
+          } else if (batchQProgress.length > 0) {
+            const totalEarned = batchQProgress.reduce((sum, q) => sum + parseFloat(String(q.score || 0)), 0);
+            score = Math.min(100, Math.max(0, Math.round((totalEarned / Math.max(1, totalQ)) * 100)));
+          }
+
+          // Passed = status shows "Passed" (score >= 60)
+          const passed = batchNum < currentBatch || score >= 60;
+
+          // Access: Batch 1 always open. Otherwise, previous batch must be passed.
+          const prevBatchPassed = idx > 0 ? result[idx - 1].passed : false;
+          const canAccess = batchNum === 1 || isOverridden || batchNum <= currentBatch || prevBatchPassed;
+
+          result.push({
             batchNumber: batchNum,
             canAccess,
             averageScore: score,
@@ -200,8 +197,10 @@ export function MissionScreen() {
             dailyCount: batchDailyCount,
             completedCount: batchCompletedCount,
             totalQuestions: totalQ,
-          };
+          });
         });
+
+        return result;
       };
 
       const freshStatuses = await CacheService.fetchWithTimeout(fetchPromise, 8000);
